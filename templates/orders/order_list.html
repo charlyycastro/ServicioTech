@@ -1,0 +1,27 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+<h3>Órdenes</h3>
+<form class="row g-2 mb-3">
+<div class="col-md-3"><input class="form-control" name="cliente" placeholder="Cliente" value="{{ request.GET.cliente }}"></div>
+<div class="col-md-3"><input class="form-control" name="ingeniero" placeholder="Ingeniero" value="{{ request.GET.ingeniero }}"></div>
+<div class="col-md-2"><input class="form-control" type="date" name="fmin" value="{{ request.GET.fmin }}"></div>
+<div class="col-md-2"><input class="form-control" type="date" name="fmax" value="{{ request.GET.fmax }}"></div>
+<div class="col-md-2 d-grid"><button class="btn btn-primary">Filtrar</button></div>
+</form>
+<table class="table table-striped">
+<thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Ingeniero</th><th>Título</th></tr></thead>
+<tbody>
+{% for o in object_list %}
+<tr>
+<td><a href="/{{ o.folio }}/">{{ o.folio }}</a></td>
+<td>{{ o.fecha_servicio }}</td>
+<td>{{ o.cliente_nombre }}</td>
+<td>{{ o.ingeniero_nombre }}</td>
+<td>{{ o.titulo }}</td>
+</tr>
+{% empty %}
+<tr><td colspan="5">Sin resultados</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endblock %}

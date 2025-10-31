@@ -1,0 +1,72 @@
+{% extends 'orders/base.html' %}
+{% load static %}
+{% block content %}
+<h3>Nueva Orden</h3>
+<form method="post" enctype="multipart/form-data" class="row g-3">
+{% csrf_token %}
+{{ form.non_field_errors }}
+
+
+<div class="col-md-6">{{ form.cliente_nombre.label_tag }} {{ form.cliente_nombre }}</div>
+<div class="col-md-6">{{ form.cliente_email.label_tag }} {{ form.cliente_email }}</div>
+<div class="col-md-8">{{ form.ubicacion.label_tag }} {{ form.ubicacion }}</div>
+<div class="col-md-4">{{ form.fecha_servicio.label_tag }} {{ form.fecha_servicio }}</div>
+<div class="col-md-6">{{ form.contacto_nombre.label_tag }} {{ form.contacto_nombre }}</div>
+<div class="col-md-6">{{ form.tipo_servicio.label_tag }} {{ form.tipo_servicio }}</div>
+<div class="col-md-6">{{ form.ingeniero_nombre.label_tag }} {{ form.ingeniero_nombre }}</div>
+
+
+<h5 class="mt-3">Equipo</h5>
+<div class="col-md-3">{{ form.equipo_marca.label_tag }} {{ form.equipo_marca }}</div>
+<div class="col-md-3">{{ form.equipo_modelo.label_tag }} {{ form.equipo_modelo }}</div>
+<div class="col-md-3">{{ form.equipo_serie.label_tag }} {{ form.equipo_serie }}</div>
+<div class="col-md-12">{{ form.equipo_descripcion.label_tag }} {{ form.equipo_descripcion }}</div>
+
+
+<h5 class="mt-3">Datos técnicos</h5>
+<div class="col-md-12">{{ form.titulo.label_tag }} {{ form.titulo }}</div>
+<div class="col-md-12">{{ form.actividades.label_tag }} {{ form.actividades }}</div>
+<div class="col-md-12">{{ form.comentarios.label_tag }} {{ form.comentarios }}</div>
+
+
+<div class="col-md-6">{{ form.resguardo.label_tag }} {{ form.resguardo }}</div>
+<div class="col-md-3">{{ form.horas.label_tag }} {{ form.horas }}</div>
+<div class="col-md-3">{{ form.costo_mxn.label_tag }} {{ form.costo_mxn }}</div>
+<div class="col-md-3">{{ form.costo_no_aplica }} {{ form.costo_no_aplica.label_tag }}</div>
+<div class="col-md-3">{{ form.costo_se_cotizara }} {{ form.costo_se_cotizara.label_tag }}</div>
+
+
+<div class="col-md-3">{{ form.reagenda }} {{ form.reagenda.label_tag }}</div>
+<div class="col-md-3">{{ form.reagenda_fecha.label_tag }} {{ form.reagenda_fecha }}</div>
+<div class="col-md-3">{{ form.reagenda_hora.label_tag }} {{ form.reagenda_hora }}</div>
+<div class="col-md-12">{{ form.reagenda_motivo.label_tag }} {{ form.reagenda_motivo }}</div>
+
+
+<h5 class="mt-3">Materiales</h5>
+{{ formset.management_form }}
+<div id="materials">
+{% for f in formset %}
+<div class="row g-2 mb-2">
+<div class="col-2">{{ f.cantidad }}</div>
+<div class="col-8">{{ f.descripcion }}</div>
+<div class="col-2">{{ f.comentarios }}</div>
+{% if f.can_delete %}<div class="col-12">{{ f.DELETE }} Eliminar</div>{% endif %}
+</div>
+{% endfor %}
+</div>
+
+
+<h5 class="mt-3">Firma del cliente</h5>
+<canvas id="sig" width="500" height="180" class="border bg-white"></canvas>
+<input type="hidden" name="signature_data" id="signature_data">
+<div class="mt-2">
+<button type="button" id="sig-clear" class="btn btn-sm btn-secondary">Limpiar</button>
+</div>
+
+
+<div class="col-12 mt-3 d-grid">
+<button class="btn btn-primary">Guardar y Enviar</button>
+</div>
+</form>
+<script src="{% static 'orders/signature.js' %}"></script>
+{% endblock %}

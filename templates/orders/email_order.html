@@ -1,0 +1,7 @@
+<h3>Orden de Servicio {{ o.folio }}</h3>
+<p>Cliente: <strong>{{ o.cliente_nombre }}</strong></p>
+<p>Fecha: {{ o.fecha_servicio }} | Ingeniero: {{ o.ingeniero_nombre }}</p>
+<p><strong>Título:</strong> {{ o.titulo }}</p>
+<p><strong>Actividades:</strong><br>{{ o.actividades|linebreaks }}</p>
+<p><strong>Comentarios:</strong><br>{{ o.comentarios|linebreaks }}</p>
+<p>Gracias por su preferencia.</p>

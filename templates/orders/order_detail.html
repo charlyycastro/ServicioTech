@@ -1,0 +1,26 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+<h3>Orden {{ object.folio }}</h3>
+<p><strong>Cliente:</strong> {{ object.cliente_nombre }} ({{ object.cliente_email }})<br>
+<strong>Fecha:</strong> {{ object.fecha_servicio }}<br>
+<strong>Ubicación:</strong> {{ object.ubicacion }}<br>
+<strong>Ingeniero:</strong> {{ object.ingeniero_nombre }}</p>
+
+
+<h5>{{ object.titulo }}</h5>
+<p><strong>Actividades:</strong><br>{{ object.actividades|linebreaks }}</p>
+<p><strong>Comentarios:</strong><br>{{ object.comentarios|linebreaks }}</p>
+
+
+<h6>Materiales</h6>
+<ul>
+{% for m in object.materiales.all %}
+<li>{{ m.cantidad }} × {{ m.descripcion }} {% if m.comentarios %}- {{ m.comentarios }}{% endif %}</li>
+{% empty %}<li>Sin materiales</li>{% endfor %}
+</ul>
+
+
+{% if object.firma %}
+<p><strong>Firma del cliente:</strong><br><img src="{{ object.firma.url }}" style="max-width:350px"></p>
+{% endif %}
+{% endblock %}

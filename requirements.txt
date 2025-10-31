@@ -1,0 +1,8 @@
+django==5.1.*
+Pillow
+python-dotenv
+dj-database-url
+whitenoise
+gunicorn
+django-anymail[resend]
+psycopg[binary]
