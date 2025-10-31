@@ -3,12 +3,10 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
-
 urlpatterns = [
-path('admin/', admin.site.urls),
-path('', include('orders.urls')),
+    path('admin/', admin.site.urls),
+    path('', include('orders.urls')),
 ]
 
-
-if settings.DEBUG:
+# Servir archivos subidos (firmas). Temporal para Render (luego moveremos a S3/R2).
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
