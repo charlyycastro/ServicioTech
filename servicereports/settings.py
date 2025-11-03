@@ -23,8 +23,9 @@ if RENDER_HOSTNAME:
 INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
     'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles',
-    'orders',
-    'anymail',  # correo por API (Resend)
+
+    'orders.apps.OrdersConfig',   # ← reemplaza 'orders' por su AppConfig
+    'anymail',                    # correo por API (Resend)
 ]
 
 # --- Middleware ---
