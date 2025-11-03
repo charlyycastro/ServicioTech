@@ -1,0 +1,34 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Iniciar sesión</title>
+</head>
+<body>
+  <h1>Acceso</h1>
+
+  {% if form.errors %}
+    <p style="color:red">Usuario o contraseña incorrectos.</p>
+  {% endif %}
+
+  <form method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+    <div>
+      <label for="id_username">Usuario</label>
+      <input type="text" name="username" autofocus required id="id_username">
+    </div>
+    <div>
+      <label for="id_password">Contraseña</label>
+      <input type="password" name="password" required id="id_password">
+    </div>
+
+    {# Para volver a /nuevo/ tras login si venías de ahí #}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+    <button type="submit">Entrar</button>
+  </form>
+
+  <p><a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a></p>
+</body>
+</html>

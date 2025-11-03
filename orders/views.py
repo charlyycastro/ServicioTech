@@ -1,5 +1,6 @@
 # orders/views.py
 import base64
+from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core.mail import EmailMessage
 from django.db import transaction
@@ -44,6 +45,7 @@ class OrderDetailView(DetailView):
     slug_url_kwarg = 'folio'
 
 
+@login_required
 @transaction.atomic
 def order_create(request):
     if request.method == 'POST':
@@ -66,7 +68,7 @@ def order_create(request):
             formset.instance = order
             formset.save()
 
-            # Enviar correo al cliente (Resend vía Anymail o SMTP según settings)
+            # Enviar correo al cliente
             if order.cliente_email:
                 html = render_to_string('orders/email_order.html', {'o': order})
                 email = EmailMessage(
