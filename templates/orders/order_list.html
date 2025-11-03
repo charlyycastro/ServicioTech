@@ -1,27 +1,77 @@
-{% extends 'orders/base.html' %}
+{% extends "orders/base.html" %}
+{% block title %}Órdenes · ServicioTech{% endblock %}
 {% block content %}
-<h3>Órdenes</h3>
-<form class="row g-2 mb-3">
-<div class="col-md-3"><input class="form-control" name="cliente" placeholder="Cliente" value="{{ request.GET.cliente }}"></div>
-<div class="col-md-3"><input class="form-control" name="ingeniero" placeholder="Ingeniero" value="{{ request.GET.ingeniero }}"></div>
-<div class="col-md-2"><input class="form-control" type="date" name="fmin" value="{{ request.GET.fmin }}"></div>
-<div class="col-md-2"><input class="form-control" type="date" name="fmax" value="{{ request.GET.fmax }}"></div>
-<div class="col-md-2 d-grid"><button class="btn btn-primary">Filtrar</button></div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 m-0">Órdenes</h1>
+  <a class="btn btn-success" href="{% url 'orders:create' %}">Nueva orden</a>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-3">
+    <input class="form-control" name="q" placeholder="Buscar por título" value="{{ request.GET.q }}">
+  </div>
+  <div class="col-md-3">
+    <input class="form-control" name="cliente" placeholder="Cliente" value="{{ request.GET.cliente }}">
+  </div>
+  <div class="col-md-3">
+    <input class="form-control" name="ingeniero" placeholder="Ingeniero" value="{{ request.GET.ingeniero }}">
+  </div>
+  <div class="col-md-1">
+    <input class="form-control" type="date" name="fmin" value="{{ request.GET.fmin }}">
+  </div>
+  <div class="col-md-1">
+    <input class="form-control" type="date" name="fmax" value="{{ request.GET.fmax }}">
+  </div>
+  <div class="col-md-1 d-grid">
+    <button class="btn btn-primary" type="submit">Filtrar</button>
+  </div>
+  <div class="col-md-1 d-grid">
+    <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Limpiar</a>
+  </div>
 </form>
-<table class="table table-striped">
-<thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Ingeniero</th><th>Título</th></tr></thead>
-<tbody>
-{% for o in object_list %}
-<tr>
-<td><a href="/{{ o.folio }}/">{{ o.folio }}</a></td>
-<td>{{ o.fecha_servicio }}</td>
-<td>{{ o.cliente_nombre }}</td>
-<td>{{ o.ingeniero_nombre }}</td>
-<td>{{ o.titulo }}</td>
-</tr>
-{% empty %}
-<tr><td colspan="5">Sin resultados</td></tr>
-{% endfor %}
-</tbody>
+
+<table class="table table-striped align-middle">
+  <thead>
+    <tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Ingeniero</th><th>Título</th></tr>
+  </thead>
+  <tbody>
+    {% for o in object_list %}
+      <tr>
+        <td><a href="{% url 'orders:detail' o.folio %}">{{ o.folio }}</a></td>
+        <td>{{ o.fecha_servicio|date:"Y-m-d" }}</td>
+        <td>{{ o.cliente_nombre|default:"—" }}</td>
+        <td>{{ o.ingeniero_nombre|default:"—" }}</td>
+        <td>{{ o.titulo|default:"(sin título)" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="text-center text-muted">Sin resultados</td></tr>
+    {% endfor %}
+  </tbody>
 </table>
+
+{% if is_paginated %}
+<nav aria-label="Paginación">
+  <ul class="pagination">
+    {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode|cut:'page='|cut:'&page=' }}&{% endif %}page={{ page_obj.previous_page_number }}">«</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">«</span></li>
+    {% endif %}
+
+    <li class="page-item active"><span class="page-link">{{ page_obj.number }}/{{ paginator.num_pages }}</span></li>
+
+    {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode|cut:'page='|cut:'&page=' }}&{% endif %}page={{ page_obj.next_page_number }}">»</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">»</span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
 {% endblock %}

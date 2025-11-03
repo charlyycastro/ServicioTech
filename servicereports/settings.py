@@ -104,3 +104,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # --- Django 3.2+ ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+#---LOGIN -----
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'orders:list'
+LOGOUT_REDIRECT_URL = 'login'
