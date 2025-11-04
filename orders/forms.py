@@ -1,8 +1,7 @@
 # orders/forms.py
 from django import forms
 from django.forms import inlineformset_factory
-from .models import ServiceOrder, ServiceMaterial
-
+from .models import ServiceOrder, Equipment 
 
 class ServiceOrderForm(forms.ModelForm):
     fecha_servicio = forms.DateField(
@@ -36,6 +35,25 @@ class ServiceOrderForm(forms.ModelForm):
             "equipo_descripcion": forms.Textarea(attrs={"rows": 3}),
             "reagenda_motivo": forms.Textarea(attrs={"rows": 2}),
         }
+class Equipment(models.Model):
+    order = models.ForeignKey("ServiceOrder", related_name="equipos", on_delete=models.CASCADE)
+    marca = models.CharField("Marca", max_length=100, blank=True)
+    modelo = models.CharField("Modelo", max_length=100, blank=True)
+    serie = models.CharField("Serie", max_length=100, blank=True)
+    descripcion = models.TextField("Descripción", blank=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Equipo"
+        verbose_name_plural = "Equipos"
+        ordering = ["id"]
+
+    def __str__(self):
+        base = f"{self.marca or ''} {self.modelo or ''}".strip()
+        if self.serie:
+            base += f" ({self.serie})"
+        return base or "Equipo"
+
 
 
 class MaterialForm(forms.ModelForm):
