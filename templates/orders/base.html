@@ -17,7 +17,8 @@
       <a class="navbar-brand" href="{% url 'orders:list' %}">ServicioTech</a>
 
       {% if user.is_authenticated %}
-        <a class="btn btn-success order-lg-2 ms-auto d-none d-lg-inline-flex"
+        <!-- ÚNICO botón "Nueva orden" (visible en desktop y también en mobile dentro del menú al abrirlo) -->
+        <a class="btn btn-success order-lg-2 ms-auto"
            href="{% url 'orders:create' %}">Nueva orden</a>
       {% endif %}
 
@@ -28,12 +29,8 @@
       <div class="collapse navbar-collapse order-lg-1" id="mainNav">
         <ul class="navbar-nav ms-auto align-items-lg-center">
           {% if user.is_authenticated %}
-            <li class="nav-item me-2 d-lg-none">
-              <a class="btn btn-success w-100" href="{% url 'orders:create' %}">Nueva orden</a>
-            </li>
-
-            <!-- Logout por POST (evita 405) -->
-            <li class="nav-item">
+            <li class="nav-item ms-lg-3">
+              <!-- Logout por POST (evita 405) -->
               <form action="{% url 'logout' %}" method="post" class="d-inline">
                 {% csrf_token %}
                 <button type="submit" class="nav-link btn btn-link p-0">Cerrar sesión</button>

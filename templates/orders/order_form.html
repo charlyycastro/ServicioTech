@@ -150,5 +150,71 @@
       <button type="submit" class="btn btn-primary">Guardar orden</button>
     </div>
   </div>
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong>Equipos</strong>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="add-equipo">
+      + Agregar equipo
+    </button>
+  </div>
+
+  <div class="card-body p-0">
+    {{ equip_formset.management_form }}
+
+    <div class="table-responsive">
+      <table class="table mb-0" id="equipos-table">
+        <thead class="bg-light-subtle">
+          <tr>
+            <th style="width:16%">Marca</th>
+            <th style="width:16%">Modelo</th>
+            <th style="width:16%">Serie</th>
+            <th>Descripción</th>
+            <th style="width:100px">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ef in equip_formset.forms %}
+            <tr class="equipo-row">
+              <td>{{ ef.marca }}</td>
+              <td>{{ ef.modelo }}</td>
+              <td>{{ ef.serie }}</td>
+              <td>{{ ef.descripcion }}</td>
+              <td class="text-nowrap">
+                {{ ef.id }}   {# hidden PK #}
+                {{ ef.DELETE }} {# hidden por CSS si quieres #}
+                <button type="button" class="btn btn-link text-danger btn-sm btn-del-equipo">
+                  Eliminar
+                </button>
+              </td>
+            </tr>
+          {% empty %}
+            {# Sin filas iniciales #}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# Plantilla oculta de una fila nueva usando empty_form (lleva __prefix__) #}
+<template id="equip-row-template">
+  <tr class="equipo-row">
+    {% with f=equip_formset.empty_form %}
+      <td>{{ f.marca }}</td>
+      <td>{{ f.modelo }}</td>
+      <td>{{ f.serie }}</td>
+      <td>{{ f.descripcion }}</td>
+      <td class="text-nowrap">
+        {{ f.id }}
+        {{ f.DELETE }}
+        <button type="button" class="btn btn-link text-danger btn-sm btn-del-equipo">
+          Eliminar
+        </button>
+      </td>
+    {% endwith %}
+  </tr>
+</template>
+
+
 </form>
 {% endblock %}
