@@ -2,9 +2,7 @@
 .card { border-radius: 0.8rem; }
 
 /* Mejor aspecto del form generado con as_p sin tocar Python */
-.pretty-form p {
-  margin-bottom: 0.9rem;
-}
+.pretty-form p { margin-bottom: 0.9rem; }
 .pretty-form label {
   display: inline-block;
   margin-bottom: .35rem;
@@ -23,9 +21,7 @@
   border-radius: .5rem;
   background-color: #fff;
 }
-.pretty-form textarea {
-  min-height: 110px;
-}
+.pretty-form textarea { min-height: 110px; }
 
 /* Firma: estable y con bloqueo de scroll mientras se firma */
 #signature-wrapper {
@@ -47,13 +43,9 @@ body.signing {
 }
 
 /* Ajustes menores */
-.bg-light-subtle {
-  background-color: #f8f9fa;
-}
+.bg-light-subtle { background-color: #f8f9fa; }
 .table td .form-control,
-.table td textarea.form-control {
-  min-width: 140px;
-}
+.table td textarea.form-control { min-width: 140px; }
 
 @media (max-width: 576px) {
   .table-responsive { overflow-x: auto; }

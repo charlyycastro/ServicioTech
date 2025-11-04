@@ -15,101 +15,112 @@ from .forms import ServiceOrderForm, MaterialFormSet, EquipmentFormSet
 
 
 class OrderListView(LoginRequiredMixin, ListView):
-    login_url = "login"
-    redirect_field_name = "next"
+    login_url = 'login'
+    redirect_field_name = 'next'
     model = ServiceOrder
     paginate_by = 20
-    template_name = "orders/order_list.html"
+    template_name = 'orders/order_list.html'
 
     def get_queryset(self):
-        qs = ServiceOrder.objects.all().order_by("-creado")
-        q = self.request.GET.get("q")
-        cliente = self.request.GET.get("cliente")
-        ingeniero = self.request.GET.get("ingeniero")
-        fmin = self.request.GET.get("fmin")
-        fmax = self.request.GET.get("fmax")
-        if q:
-            qs = qs.filter(titulo__icontains=q)
-        if cliente:
-            qs = qs.filter(cliente_nombre__icontains=cliente)
-        if ingeniero:
-            qs = qs.filter(ingeniero_nombre__icontains=ingeniero)
-        if fmin:
-            qs = qs.filter(fecha_servicio__gte=fmin)
-        if fmax:
-            qs = qs.filter(fecha_servicio__lte=fmax)
+        qs = ServiceOrder.objects.all().order_by('-creado')
+        q = self.request.GET.get('q')
+        cliente = self.request.GET.get('cliente')
+        ingeniero = self.request.GET.get('ingeniero')
+        fmin = self.request.GET.get('fmin')
+        fmax = self.request.GET.get('fmax')
+        if q: qs = qs.filter(titulo__icontains=q)
+        if cliente: qs = qs.filter(cliente_nombre__icontains=cliente)
+        if ingeniero: qs = qs.filter(ingeniero_nombre__icontains=ingeniero)
+        if fmin: qs = qs.filter(fecha_servicio__gte=fmin)
+        if fmax: qs = qs.filter(fecha_servicio__lte=fmax)
         return qs
 
 
 class OrderDetailView(LoginRequiredMixin, DetailView):
-    login_url = "login"
-    redirect_field_name = "next"
+    login_url = 'login'
+    redirect_field_name = 'next'
     model = ServiceOrder
-    template_name = "orders/order_detail.html"
-    slug_field = "folio"
-    slug_url_kwarg = "folio"
+    template_name = 'orders/order_detail.html'
+    slug_field = 'folio'
+    slug_url_kwarg = 'folio'
 
 
-@login_required(login_url="login")
+@login_required
 @transaction.atomic
 def order_create(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         form = ServiceOrderForm(request.POST, request.FILES)
-        equip_formset = EquipmentFormSet(request.POST)
-        material_formset = MaterialFormSet(request.POST)
-
-        if form.is_valid() and equip_formset.is_valid() and material_formset.is_valid():
+        if form.is_valid():
             order = form.save(commit=False)
 
-            # firma base64 -> archivo
-            sig_data = request.POST.get("signature_data")
-            if sig_data and sig_data.startswith("data:image/png;base64,"):
-                b64 = sig_data.split(",")[1]
+            # firma desde canvas (hidden input "signature_data")
+            sig_data = request.POST.get('signature_data')
+            if sig_data and sig_data.startswith('data:image/png;base64,'):
+                b64 = sig_data.split(',')[1]
                 order.firma.save(
                     f"{order.folio}_firma.png",
                     ContentFile(base64.b64decode(b64)),
-                    save=False,
+                    save=False
                 )
+            order.save()  # necesitamos PK para formsets
 
-            order.save()
+            equip_fs = EquipmentFormSet(request.POST, instance=order, prefix='equipos')
+            mat_fs = MaterialFormSet(request.POST, instance=order, prefix='mats')
 
-            # guardar formsets
-            equip_formset.instance = order
-            equip_formset.save()
+            if equip_fs.is_valid() and mat_fs.is_valid():
+                equip_fs.save()
+                mat_fs.save()
 
-            material_formset.instance = order
-            material_formset.save()
+                # correo al cliente (si hay)
+                if order.cliente_email:
+                    html = render_to_string('orders/email_order.html', {'o': order})
+                    email = EmailMessage(
+                        subject=f"Orden de Servicio {order.folio}",
+                        body=html,
+                        from_email=None,
+                        to=[order.cliente_email],
+                    )
+                    email.content_subtype = 'html'
+                    try:
+                        if order.firma:
+                            email.attach_file(order.firma.path)
+                    except Exception:
+                        pass
+                    try:
+                        email.send(fail_silently=True)
+                        order.email_enviado = True
+                        order.save(update_fields=['email_enviado'])
+                    except Exception:
+                        pass
 
-            # correo (si hay)
-            if order.cliente_email:
-                html = render_to_string("orders/email_order.html", {"o": order})
-                email = EmailMessage(
-                    subject=f"Orden de Servicio {order.folio}",
-                    body=html,
-                    from_email=None,
-                    to=[order.cliente_email],
+                return redirect(reverse('orders:detail', kwargs={'folio': order.folio}))
+            else:
+                # rollback si los formsets fallan
+                transaction.set_rollback(True)
+                equip_fs = EquipmentFormSet(request.POST, prefix='equipos')
+                mat_fs = MaterialFormSet(request.POST, prefix='mats')
+                return render(
+                    request,
+                    'orders/order_form.html',
+                    {'form': form, 'equipment_formset': equip_fs, 'formset': mat_fs},
+                    status=400
                 )
-                email.content_subtype = "html"
-                try:
-                    if order.firma and hasattr(order.firma, "path"):
-                        email.attach_file(order.firma.path)
-                except Exception:
-                    pass
-                try:
-                    email.send(fail_silently=True)
-                    order.email_enviado = True
-                    order.save(update_fields=["email_enviado"])
-                except Exception:
-                    pass
-
-            return redirect(reverse("orders:detail", kwargs={"folio": order.folio}))
+        else:
+            equip_fs = EquipmentFormSet(request.POST, prefix='equipos')
+            mat_fs = MaterialFormSet(request.POST, prefix='mats')
+            return render(
+                request,
+                'orders/order_form.html',
+                {'form': form, 'equipment_formset': equip_fs, 'formset': mat_fs},
+                status=400
+            )
     else:
         form = ServiceOrderForm()
-        equip_formset = EquipmentFormSet()
-        material_formset = MaterialFormSet()
+        equip_fs = EquipmentFormSet(prefix='equipos')
+        mat_fs = MaterialFormSet(prefix='mats')
 
-    return render(
-        request,
-        "orders/order_form.html",
-        {"form": form, "equip_formset": equip_formset, "material_formset": material_formset},
-    )
+    return render(request, 'orders/order_form.html', {
+        'form': form,
+        'equipment_formset': equip_fs,
+        'formset': mat_fs,
+    })
