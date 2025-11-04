@@ -1,0 +1,8 @@
+#signature-wrapper{
+  height:220px; border:2px dashed #6c757d; border-radius:.5rem;
+  touch-action:none;            /* evita pan/zoom mientras firmas */
+  overscroll-behavior:contain;  /* evita overscroll en móvil */
+  background:#fff;
+}
+#signature-canvas{ width:100%; height:100%; display:block; }
+body.signing{ height:100vh; overflow:hidden; } /* bloquea scroll global durante la firma */
