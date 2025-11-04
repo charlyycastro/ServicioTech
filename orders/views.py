@@ -11,7 +11,7 @@ from django.views.generic import ListView, DetailView
 from django.template.loader import render_to_string
 
 from .models import ServiceOrder
-from .forms import ServiceOrderForm, MaterialFormSet
+from .forms import ServiceOrderForm, MaterialFormSet, EquipmentFormSet
 
 
 class OrderListView(LoginRequiredMixin, ListView):
@@ -55,8 +55,10 @@ class OrderDetailView(LoginRequiredMixin, DetailView):
 def order_create(request):
     if request.method == "POST":
         form = ServiceOrderForm(request.POST, request.FILES)
-        formset = MaterialFormSet(request.POST)
-        if form.is_valid() and formset.is_valid():
+        equip_formset = EquipmentFormSet(request.POST)
+        material_formset = MaterialFormSet(request.POST)
+
+        if form.is_valid() and equip_formset.is_valid() and material_formset.is_valid():
             order = form.save(commit=False)
 
             # firma base64 -> archivo
@@ -70,10 +72,15 @@ def order_create(request):
                 )
 
             order.save()
-            formset.instance = order
-            formset.save()
 
-            # correo al cliente (si hay correo)
+            # guardar formsets
+            equip_formset.instance = order
+            equip_formset.save()
+
+            material_formset.instance = order
+            material_formset.save()
+
+            # correo (si hay)
             if order.cliente_email:
                 html = render_to_string("orders/email_order.html", {"o": order})
                 email = EmailMessage(
@@ -98,6 +105,11 @@ def order_create(request):
             return redirect(reverse("orders:detail", kwargs={"folio": order.folio}))
     else:
         form = ServiceOrderForm()
-        formset = MaterialFormSet()
+        equip_formset = EquipmentFormSet()
+        material_formset = MaterialFormSet()
 
-    return render(request, "orders/order_form.html", {"form": form, "formset": formset})
+    return render(
+        request,
+        "orders/order_form.html",
+        {"form": form, "equip_formset": equip_formset, "material_formset": material_formset},
+    )

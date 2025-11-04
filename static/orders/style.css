@@ -50,3 +50,11 @@ body.signing {
 .bg-light-subtle {
   background-color: #f8f9fa;
 }
+.table td .form-control,
+.table td textarea.form-control {
+  min-width: 140px;
+}
+
+@media (max-width: 576px) {
+  .table-responsive { overflow-x: auto; }
+}

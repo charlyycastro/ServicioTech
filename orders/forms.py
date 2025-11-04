@@ -48,6 +48,22 @@ class MaterialForm(forms.ModelForm):
         }
 
 
+class EquipmentForm(forms.ModelForm):
+    class Meta:
+        model = Equipment
+        fields = ["marca", "modelo", "serie", "descripcion"]
+        widgets = {
+            "marca": forms.TextInput(attrs={"class": "form-control", "placeholder": "Marca"}),
+            "modelo": forms.TextInput(attrs={"class": "form-control", "placeholder": "Modelo"}),
+            "serie": forms.TextInput(attrs={"class": "form-control", "placeholder": "Serie"}),
+            "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Descripción"}),
+        }
+
+EquipmentFormSet = inlineformset_factory(
+    ServiceOrder, Equipment,
+    form=EquipmentForm,
+    extra=1, can_delete=True
+)
 MaterialFormSet = inlineformset_factory(
     ServiceOrder,
     ServiceMaterial,

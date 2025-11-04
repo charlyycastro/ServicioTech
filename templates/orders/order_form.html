@@ -7,8 +7,7 @@
   {% csrf_token %}
 
   <div class="row g-4 align-items-start">
-
-    <!-- COLUMNA IZQUIERDA: Datos del servicio + Materiales -->
+    <!-- IZQUIERDA -->
     <div class="col-12 col-lg-8">
 
       <!-- Datos del servicio -->
@@ -19,67 +18,85 @@
             <span class="badge text-bg-secondary">Nuevo</span>
           </div>
           <p class="text-muted small mb-4">Completa la información general del servicio.</p>
-
-          <!-- TIP: para garantizar que todo se renderiza, usamos {{ form.as_p }}.
-               Si quieres luego lo maquetamos campo por campo. -->
           <div class="pretty-form">
             {{ form.as_p }}
           </div>
-
-          <!-- Si tienes estos campos, se verán en grid (si no, no pasa nada) -->
-          <div class="row g-3 mt-2">
-            {% if form.fecha_servicio %}
-              <div class="col-12 col-md-4">
-                {{ form.fecha_servicio.label_tag }}
-                {{ form.fecha_servicio }}
-              </div>
-            {% endif %}
-            {% if form.cliente_nombre %}
-              <div class="col-12 col-md-4">
-                {{ form.cliente_nombre.label_tag }}
-                {{ form.cliente_nombre }}
-              </div>
-            {% endif %}
-            {% if form.ingeniero_nombre %}
-              <div class="col-12 col-md-4">
-                {{ form.ingeniero_nombre.label_tag }}
-                {{ form.ingeniero_nombre }}
-              </div>
-            {% endif %}
-          </div>
-
-          {% if form.titulo or form.descripcion %}
-            <hr class="my-4">
-            <h6 class="text-muted fw-bold mb-3">Descripción del trabajo</h6>
-            <div class="row g-3">
-              {% if form.titulo %}
-                <div class="col-12">
-                  {{ form.titulo.label_tag }}
-                  {{ form.titulo }}
-                </div>
-              {% endif %}
-              {% if form.descripcion %}
-                <div class="col-12">
-                  {{ form.descripcion.label_tag }}
-                  {{ form.descripcion }}
-                </div>
-              {% endif %}
-            </div>
-          {% endif %}
         </div>
       </div>
 
-      <!-- Materiales -->
+      <!-- EQUIPOS (tabla expandible) -->
       <div class="card shadow-sm border-0 mt-4">
         <div class="card-body p-4">
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <h2 class="h6 m-0">Materiales utilizados</h2>
+            <h2 class="h6 m-0">Equipos del servicio</h2>
           </div>
-          <p class="text-muted small mb-3">Registra refacciones o consumibles usados.</p>
+          <p class="text-muted small mb-3">Agrega uno o varios equipos involucrados.</p>
 
-          {{ formset.management_form }}
+          <div id="equipos-formset">
+            {{ equip_formset.management_form }}
+
+            <div class="table-responsive">
+              <table class="table table-sm align-middle" id="equipos-table">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:18%">Marca</th>
+                    <th style="width:18%">Modelo</th>
+                    <th style="width:18%">Serie</th>
+                    <th>Descripción</th>
+                    <th style="width:1%"></th>
+                  </tr>
+                </thead>
+                <tbody id="equipos-tbody">
+                  {% for f in equip_formset %}
+                    <tr data-row="{{ forloop.counter0 }}">
+                      {{ f.id }}  {# pk oculto si existe #}
+                      <td>{{ f.marca }}</td>
+                      <td>{{ f.modelo }}</td>
+                      <td>{{ f.serie }}</td>
+                      <td>{{ f.descripcion }}</td>
+                      <td class="text-nowrap">
+                        {% if f.DELETE %}
+                          {{ f.DELETE }}
+                        {% endif %}
+                        <button type="button" class="btn btn-outline-danger btn-sm equip-remove">Eliminar</button>
+                      </td>
+                    </tr>
+                  {% empty %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <button type="button" class="btn btn-outline-primary" id="equipos-add">
+              + Agregar equipo
+            </button>
+
+            <!-- Fila plantilla (Django genera __prefix__) -->
+            <template id="equipos-empty-form">
+              <tr>
+                {{ equip_formset.empty_form.id }}
+                <td>{{ equip_formset.empty_form.marca }}</td>
+                <td>{{ equip_formset.empty_form.modelo }}</td>
+                <td>{{ equip_formset.empty_form.serie }}</td>
+                <td>{{ equip_formset.empty_form.descripcion }}</td>
+                <td class="text-nowrap">
+                  {{ equip_formset.empty_form.DELETE }}
+                  <button type="button" class="btn btn-outline-danger btn-sm equip-remove">Eliminar</button>
+                </td>
+              </tr>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- (Si quieres, deja tus Materiales debajo) -->
+      {% if material_formset %}
+      <div class="card shadow-sm border-0 mt-4">
+        <div class="card-body p-4">
+          <h2 class="h6">Materiales</h2>
+          {{ material_formset.management_form }}
           <div class="vstack gap-3">
-            {% for f in formset %}
+            {% for f in material_formset %}
               <div class="border rounded-3 p-3 bg-light-subtle">
                 {{ f.as_p }}
               </div>
@@ -87,15 +104,16 @@
           </div>
         </div>
       </div>
+      {% endif %}
 
     </div>
 
-    <!-- COLUMNA DERECHA: Firma + Acciones -->
+    <!-- DERECHA: Firma + Acciones -->
     <div class="col-12 col-lg-4">
       <div class="card shadow-sm border-0 position-sticky" style="top: 1rem; z-index: 1;">
         <div class="card-body p-4">
           <h2 class="h6 mb-3">Firma del cliente</h2>
-          <p class="text-muted small">La casilla de firma es estable y no “salta” al firmar desde el teléfono.</p>
+          <p class="text-muted small">Casilla estable para firmar desde el teléfono.</p>
 
           <div id="signature-wrapper" class="signature-wrapper">
             <canvas id="signature-canvas"></canvas>
@@ -109,15 +127,12 @@
           <hr class="my-4">
 
           <div class="d-grid gap-2">
-            <button class="btn btn-primary btn-lg" type="submit">
-              Guardar orden
-            </button>
+            <button class="btn btn-primary btn-lg" type="submit">Guardar orden</button>
             <a class="btn btn-light" href="{% url 'orders:list' %}">Cancelar</a>
           </div>
         </div>
       </div>
     </div>
-
   </div>
 </form>
 {% endblock %}

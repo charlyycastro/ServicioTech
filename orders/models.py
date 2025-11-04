@@ -60,6 +60,25 @@ class ServiceOrder(models.Model):
 
     def __str__(self):
         return f"{self.folio} - {self.cliente_nombre}"
+    
+class Equipment(models.Model):
+    order = models.ForeignKey("ServiceOrder", related_name="equipos", on_delete=models.CASCADE)
+    marca = models.CharField("Marca", max_length=100, blank=True)
+    modelo = models.CharField("Modelo", max_length=100, blank=True)
+    serie = models.CharField("Serie", max_length=100, blank=True)
+    descripcion = models.TextField("Descripción", blank=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Equipo"
+        verbose_name_plural = "Equipos"
+        ordering = ["id"]
+
+    def __str__(self):
+        base = f"{self.marca or ''} {self.modelo or ''}".strip()
+        if self.serie:
+            base += f" ({self.serie})"
+        return base or "Equipo"
 
 class ServiceMaterial(models.Model):
     order = models.ForeignKey(ServiceOrder, on_delete=models.CASCADE, related_name="materiales")
