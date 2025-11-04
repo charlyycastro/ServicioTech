@@ -48,79 +48,40 @@ class OrderDetailView(LoginRequiredMixin, DetailView):
 @login_required
 @transaction.atomic
 def order_create(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = ServiceOrderForm(request.POST, request.FILES)
-        if form.is_valid():
+        mat_fs = MaterialFormSet(request.POST, prefix="materiales")
+        eq_fs  = EquipmentFormSet(request.POST, prefix="equipos")   # ← prefix fijo
+
+        if form.is_valid() and mat_fs.is_valid() and eq_fs.is_valid():
             order = form.save(commit=False)
 
-            # firma desde canvas (hidden input "signature_data")
-            sig_data = request.POST.get('signature_data')
-            if sig_data and sig_data.startswith('data:image/png;base64,'):
-                b64 = sig_data.split(',')[1]
+            # firma por canvas (igual que antes)
+            sig_data = request.POST.get("signature_data")
+            if sig_data and sig_data.startswith("data:image/png;base64,"):
+                b64 = sig_data.split(",")[1]
                 order.firma.save(
                     f"{order.folio}_firma.png",
                     ContentFile(base64.b64decode(b64)),
-                    save=False
+                    save=False,
                 )
-            order.save()  # necesitamos PK para formsets
+            order.save()
 
-            equip_fs = EquipmentFormSet(request.POST, instance=order, prefix='equipos')
-            mat_fs = MaterialFormSet(request.POST, instance=order, prefix='mats')
+            # enlaza formsets a la orden y guarda
+            mat_fs.instance = order
+            mat_fs.save()
+            eq_fs.instance = order
+            eq_fs.save()
 
-            if equip_fs.is_valid() and mat_fs.is_valid():
-                equip_fs.save()
-                mat_fs.save()
-
-                # correo al cliente (si hay)
-                if order.cliente_email:
-                    html = render_to_string('orders/email_order.html', {'o': order})
-                    email = EmailMessage(
-                        subject=f"Orden de Servicio {order.folio}",
-                        body=html,
-                        from_email=None,
-                        to=[order.cliente_email],
-                    )
-                    email.content_subtype = 'html'
-                    try:
-                        if order.firma:
-                            email.attach_file(order.firma.path)
-                    except Exception:
-                        pass
-                    try:
-                        email.send(fail_silently=True)
-                        order.email_enviado = True
-                        order.save(update_fields=['email_enviado'])
-                    except Exception:
-                        pass
-
-                return redirect(reverse('orders:detail', kwargs={'folio': order.folio}))
-            else:
-                # rollback si los formsets fallan
-                transaction.set_rollback(True)
-                equip_fs = EquipmentFormSet(request.POST, prefix='equipos')
-                mat_fs = MaterialFormSet(request.POST, prefix='mats')
-                return render(
-                    request,
-                    'orders/order_form.html',
-                    {'form': form, 'equipment_formset': equip_fs, 'formset': mat_fs},
-                    status=400
-                )
-        else:
-            equip_fs = EquipmentFormSet(request.POST, prefix='equipos')
-            mat_fs = MaterialFormSet(request.POST, prefix='mats')
-            return render(
-                request,
-                'orders/order_form.html',
-                {'form': form, 'equipment_formset': equip_fs, 'formset': mat_fs},
-                status=400
-            )
+            return redirect(reverse("orders:detail", kwargs={"folio": order.folio}))
     else:
         form = ServiceOrderForm()
-        equip_fs = EquipmentFormSet(prefix='equipos')
-        mat_fs = MaterialFormSet(prefix='mats')
+        mat_fs = MaterialFormSet(prefix="materiales")
+        eq_fs  = EquipmentFormSet(prefix="equipos")  # ← prefix fijo
 
-    return render(request, 'orders/order_form.html', {
-        'form': form,
-        'equipment_formset': equip_fs,
-        'formset': mat_fs,
-    })
+    return render(
+        request,
+        "orders/order_form.html",
+        {"form": form, "formset": mat_fs, "equip_formset": eq_fs},
+    )
+    

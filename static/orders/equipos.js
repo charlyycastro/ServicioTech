@@ -45,4 +45,52 @@ document.addEventListener("DOMContentLoaded", function () {
   tbody && tbody.addEventListener("click", (e) => {
     if (e.target.closest(".equip-remove")) removeRow(e.target);
   });
+
+  (function () {
+  const addBtn = document.getElementById("add-equipo");
+  const tbody = document.getElementById("equipos-body");
+  const tmpl = document.getElementById("equipos-empty-template");
+  const totalInput = document.getElementById("id_equipos-TOTAL_FORMS"); // ← ojo al id
+
+  if (!addBtn || !tbody || !tmpl || !totalInput) return;
+
+  function wireDelete(btn) {
+    btn.addEventListener("click", () => {
+      // Marca DELETE si existe el checkbox; si no, simplemente quita la fila
+      const row = btn.closest("tr");
+      const del = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+      if (del) {
+        del.checked = true;
+        row.style.display = "none";
+      } else {
+        row.remove();
+        // no tocamos TOTAL_FORMS porque solo cuenta formularios “creados”
+      }
+    });
+  }
+
+  // Botón agregar
+  addBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    const index = parseInt(totalInput.value, 10);
+    let html = tmpl.innerHTML.replace(/__prefix__/g, index);
+
+    // Creamos la fila
+    const temp = document.createElement("tbody");
+    temp.innerHTML = html.trim();
+    const newRow = temp.firstElementChild;
+    tbody.appendChild(newRow);
+
+    // Incrementa TOTAL_FORMS
+    totalInput.value = index + 1;
+
+    // Cablea el botón de borrar de la nueva fila
+    const delBtn = newRow.querySelector(".btn-del-equipo");
+    if (delBtn) wireDelete(delBtn);
+  });
+
+  // Cablear los existentes (si los hay)
+  tbody.querySelectorAll(".btn-del-equipo").forEach(wireDelete);
+})();
+
 });
