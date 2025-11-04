@@ -1,0 +1,33 @@
+/* Espaciado y tarjetas */
+.section-card { margin-bottom: 1.25rem; }
+.section-card .card-header { font-weight: 600; }
+
+/* Firma: caja fija, sin scroll mientras dibujas */
+#signature-wrapper{
+  border: 2px dashed #6c757d;
+  border-radius: .5rem;
+  height: 220px;               /* alto fijo y cómodo en móvil */
+  background: #fff;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;          /* clave: desactiva pan/zoom en canvas */
+  overscroll-behavior: contain;
+}
+#signature-canvas{
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+body.signing {                 /* bloquea scroll de toda la página mientras firmas */
+  height: 100vh;
+  overflow: hidden;
+}
+.sticky-actions{               /* barra de acciones fija al fondo */
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid #eee;
+  padding: .75rem;
+  z-index: 10;
+}
