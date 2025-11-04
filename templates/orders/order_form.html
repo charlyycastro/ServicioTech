@@ -1,105 +1,43 @@
-// static/orders/signature.js
-(function () {
-  const wrapper = document.getElementById("signature-wrapper");
-  const canvas = document.getElementById("signature-canvas");
-  const clearBtn = document.getElementById("sig-clear");
-  const undoBtn = document.getElementById("sig-undo");
-  const dataInput = document.getElementById("signature-data");
-  const form = document.getElementById("order-form");
+{% extends "orders/base.html" %}
+{% load static %}
+{% block title %}Nueva orden · ServicioTech{% endblock %}
 
-  if (!wrapper || !canvas) return;
+{% block content %}
+<h1 class="h4 mb-3">Nueva orden</h1>
 
-  const ctx = canvas.getContext("2d");
-  let drawing = false;
-  let last = null;
-  let stack = []; // para UNDO: guardamos snapshots por trazo
+<form id="order-form" method="post" enctype="multipart/form-data" class="row g-3">
+  {% csrf_token %}
 
-  // Escala el canvas a la densidad de pixeles del dispositivo (lineas nítidas)
-  function resizeCanvas(preserve = true) {
-    const data = preserve ? canvas.toDataURL() : null;
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const rect = wrapper.getBoundingClientRect();
-    canvas.width = Math.floor(rect.width * ratio);
-    canvas.height = Math.floor(rect.height * ratio);
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.lineWidth = 2;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#000";
+  <!-- Si quieres rápido, usa as_p. Luego lo maquetamos bonito. -->
+  {{ form.as_p }}
 
-    if (preserve && data) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
-      img.src = data;
-    } else {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-  }
-  resizeCanvas(false);
-  window.addEventListener("resize", () => resizeCanvas(true));
+  <!-- Materiales -->
+  <div class="col-12">
+    <h5 class="mt-3">Materiales</h5>
+    {{ formset.management_form }}
+    {% for f in formset %}
+      <div class="border rounded p-3 mb-2">
+        {{ f.as_p }}
+      </div>
+    {% endfor %}
+  </div>
 
-  // Helpers
-  function pointFromEvent(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-    return { x, y };
-  }
+  <!-- Firma -->
+  <div class="col-12">
+    <label class="form-label">Firma del cliente</label>
+    <div id="signature-wrapper" class="signature-wrapper">
+      <canvas id="signature-canvas"></canvas>
+    </div>
+    <div class="mt-2 d-flex gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="sig-clear">Limpiar</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="sig-undo">Deshacer</button>
+    </div>
+    <input type="hidden" name="signature_data" id="signature-data">
+  </div>
 
-  function startStroke(e) {
-    e.preventDefault();
-    drawing = true;
-    last = pointFromEvent(e);
-    stack.push(ctx.getImageData(0, 0, canvas.width, canvas.height)); // snapshot antes del trazo
-    document.body.classList.add("signing"); // bloquea scroll de la página
-  }
-
-  function moveStroke(e) {
-    if (!drawing) return;
-    e.preventDefault();
-    const p = pointFromEvent(e);
-    ctx.beginPath();
-    ctx.moveTo(last.x, last.y);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    last = p;
-  }
-
-  function endStroke(e) {
-    if (!drawing) return;
-    drawing = false;
-    last = null;
-    document.body.classList.remove("signing"); // libera scroll de la página
-  }
-
-  // Eventos Pointer (moderno) con passive:false para poder preventDefault
-  const opts = { passive: false };
-  canvas.addEventListener("pointerdown", startStroke, opts);
-  canvas.addEventListener("pointermove", moveStroke, opts);
-  window.addEventListener("pointerup", endStroke, opts);
-  window.addEventListener("pointercancel", endStroke, opts);
-  // Fallback touch (por si acaso)
-  canvas.addEventListener("touchstart", startStroke, opts);
-  canvas.addEventListener("touchmove", moveStroke, opts);
-  window.addEventListener("touchend", endStroke, opts);
-  window.addEventListener("touchcancel", endStroke, opts);
-
-  // Controles
-  clearBtn && clearBtn.addEventListener("click", () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    stack = [];
-    dataInput.value = "";
-  });
-
-  undoBtn && undoBtn.addEventListener("click", () => {
-    if (!stack.length) return;
-    const imgData = stack.pop();
-    ctx.putImageData(imgData, 0, 0);
-  });
-
-  // Antes de enviar, guardamos la imagen base64
-  form && form.addEventListener("submit", () => {
-    // Si no hay trazos, data irá vacía (el servidor lo maneja)
-    dataInput.value = canvas.toDataURL("image/png");
-  });
-})();
+  <div class="col-12 mt-3">
+    <button class="btn btn-primary">Guardar orden</button>
+    <a class="btn btn-light" href="{% url 'orders:list' %}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}
