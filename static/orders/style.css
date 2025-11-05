@@ -50,3 +50,26 @@ body.signing {
 @media (max-width: 576px) {
   .table-responsive { overflow-x: auto; }
 }
+/* ---- Equipos (formset) -------------------------------------------- */
+
+/* Oculta el checkbox DELETE del formset (usamos el botón Eliminar) */
+.equipo-row input[type="checkbox"][name$="-DELETE"] {
+  display: none !important;
+}
+
+/* Que los inputs ocupen todo el ancho dentro de la tabla */
+#equipos-table td > .form-control,
+#equipos-table td > textarea.form-control {
+  width: 100%;
+}
+
+/* Botón "Eliminar" más compacto y alineado */
+#equipos-table .btn-del-equipo {
+  padding: 0;
+  line-height: 1;
+}
+
+/* Encabezado clarito */
+#equipos-table thead.bg-light-subtle {
+  background-color: #f8f9fa;
+}

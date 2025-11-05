@@ -1,48 +1,47 @@
 // static/orders/equipos.js
-document.addEventListener('DOMContentLoaded', () => {
-  const tableBody = document.querySelector('#equipos-table tbody');
-  const addBtn    = document.getElementById('add-equipo');
-  const total     = document.getElementById('id_equipos-TOTAL_FORMS'); // lo genera Django
-  const tpl       = document.getElementById('equip-row-template');
+(function () {
+  const addBtn   = document.getElementById('add-equipo');
+  const table    = document.getElementById('equipos-table');
+  const template = document.getElementById('equip-row-template');
+  const totalInp = document.getElementById('id_equipos-TOTAL_FORMS');
 
-  if (!tableBody || !addBtn || !total || !tpl) return;
+  if (!addBtn || !table || !template || !totalInp) return;
 
-  function wireDelete(row) {
-    const btn = row.querySelector('.btn-del-equipo');
-    if (!btn) return;
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const delInput = row.querySelector('input[name$="-DELETE"]');
-      // Si la fila es nueva (sin PK), la removemos y decrementamos el contador.
-      if (row.dataset.new === '1') {
-        row.remove();
-        total.value = String(Math.max(0, parseInt(total.value || '0', 10) - 1));
-      } else {
-        // Si es existente, marcamos DELETE y ocultamos la fila.
-        if (delInput) delInput.checked = true;
+  const tbody = table.querySelector('tbody');
+
+  function bindDelete(btn, row) {
+    btn.addEventListener('click', () => {
+      const del = row.querySelector('input[name$="-DELETE"]');
+      const pk  = row.querySelector('input[name$="-id"]');
+      if (del && pk && pk.value) {
+        // fila ya guardada: marcar delete y ocultar
+        del.checked = true;
         row.style.display = 'none';
+      } else {
+        // fila nueva: quitar del DOM y decrementar TOTAL_FORMS
+        row.remove();
+        totalInp.value = String(Math.max(0, parseInt(totalInp.value, 10) - 1));
       }
     });
   }
 
   function addRow() {
-    const idx = parseInt(total.value || '0', 10);
-    // Clonar la plantilla y reemplazar __prefix__ por el índice
-    const html = tpl.innerHTML.replace(/__prefix__/g, idx);
-    const tmp = document.createElement('tbody');
-    tmp.innerHTML = html.trim();
-    const row = tmp.firstElementChild;
+    const idx = parseInt(totalInp.value, 10);
+    const html = template.innerHTML.replace(/__prefix__/g, idx);
+    const frag = document.createElement('tbody');
+    frag.innerHTML = html.trim();
+    const row = frag.firstElementChild;
+    tbody.appendChild(row);
+    totalInp.value = String(idx + 1);
 
-    row.dataset.new = '1';
-    tableBody.appendChild(row);
-
-    total.value = String(idx + 1);
-    wireDelete(row);
+    const delBtn = row.querySelector('.btn-del-equipo');
+    if (delBtn) bindDelete(delBtn, row);
   }
 
-  // Enlazar existentes
-  tableBody.querySelectorAll('tr.equipo-row').forEach(wireDelete);
+  // enlazar ya existentes
+  tbody.querySelectorAll('.btn-del-equipo').forEach(btn => {
+    bindDelete(btn, btn.closest('tr'));
+  });
 
-  // Click para agregar
   addBtn.addEventListener('click', addRow);
-});
+})();
