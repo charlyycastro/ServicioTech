@@ -1,26 +1,126 @@
-{% extends 'orders/base.html' %}
+{% extends "orders/base.html" %}
+{% load static %}
+
+{% block title %}{{ object.folio }} · ServicioTech{% endblock %}
+
 {% block content %}
-<h3>Orden {{ object.folio }}</h3>
-<p><strong>Cliente:</strong> {{ object.cliente_nombre }} ({{ object.cliente_email }})<br>
-<strong>Fecha:</strong> {{ object.fecha_servicio }}<br>
-<strong>Ubicación:</strong> {{ object.ubicacion }}<br>
-<strong>Ingeniero:</strong> {{ object.ingeniero_nombre }}</p>
+<div class="d-print-none d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 m-0">Orden {{ object.folio }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Volver</a>
+    <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+  </div>
+</div>
 
+<div class="card shadow-sm print-card">
+  <div class="card-body">
+    <div class="row">
+      <div class="col-7">
+        <h2 class="h5 mb-3">Datos del servicio</h2>
+        <dl class="row small">
+          <dt class="col-4">Folio</dt><dd class="col-8">{{ object.folio }}</dd>
+          <dt class="col-4">Fecha</dt><dd class="col-8">{{ object.fecha_servicio|date:"Y-m-d" }}</dd>
+          <dt class="col-4">Cliente</dt><dd class="col-8">{{ object.cliente_nombre }}</dd>
+          <dt class="col-4">Correo</dt><dd class="col-8">{{ object.cliente_email|default:"—" }}</dd>
+          <dt class="col-4">Ubicación</dt><dd class="col-8">{{ object.ubicacion|default:"—" }}</dd>
+          <dt class="col-4">Contacto</dt><dd class="col-8">{{ object.contacto_nombre|default:"—" }}</dd>
+          <dt class="col-4">Tipo</dt><dd class="col-8">{{ object.get_tipo_servicio_display }}</dd>
+          <dt class="col-4">Ingeniero</dt><dd class="col-8">{{ object.ingeniero_nombre }}</dd>
+        </dl>
+      </div>
+      <div class="col-5 text-end">
+        <img src="{% static 'orders/logo.png' %}" alt="Logo" class="print-logo d-none d-print-inline-block">
+        <div class="small text-muted d-print-none">Generado: {{ object.actualizado|date:"Y-m-d H:i" }}</div>
+      </div>
+    </div>
 
-<h5>{{ object.titulo }}</h5>
-<p><strong>Actividades:</strong><br>{{ object.actividades|linebreaks }}</p>
-<p><strong>Comentarios:</strong><br>{{ object.comentarios|linebreaks }}</p>
+    <hr>
 
+    <h3 class="h6">Título</h3>
+    <p class="mb-3">{{ object.titulo|default:"(sin título)" }}</p>
 
-<h6>Materiales</h6>
-<ul>
-{% for m in object.materiales.all %}
-<li>{{ m.cantidad }} × {{ m.descripcion }} {% if m.comentarios %}- {{ m.comentarios }}{% endif %}</li>
-{% empty %}<li>Sin materiales</li>{% endfor %}
-</ul>
+    <div class="row">
+      <div class="col-md-6">
+        <h3 class="h6">Actividades</h3>
+        <div class="border rounded p-2 bg-light-subtle mb-3" style="min-height:100px;">
+          {{ object.actividades|linebreaksbr|default:"—" }}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <h3 class="h6">Comentarios</h3>
+        <div class="border rounded p-2 bg-light-subtle mb-3" style="min-height:100px;">
+          {{ object.comentarios|linebreaksbr|default:"—" }}
+        </div>
+      </div>
+    </div>
 
+    {% if object.equipos.all %}
+    <h3 class="h6 mt-3">Equipos</h3>
+    <table class="table table-sm">
+      <thead><tr><th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th></tr></thead>
+      <tbody>
+        {% for e in object.equipos.all %}
+          <tr>
+            <td>{{ e.marca|default:"—" }}</td>
+            <td>{{ e.modelo|default:"—" }}</td>
+            <td>{{ e.serie|default:"—" }}</td>
+            <td>{{ e.descripcion|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
 
-{% if object.firma %}
-<p><strong>Firma del cliente:</strong><br><img src="{{ object.firma.url }}" style="max-width:350px"></p>
-{% endif %}
+    {% if object.materiales.all %}
+    <h3 class="h6 mt-3">Materiales</h3>
+    <table class="table table-sm">
+      <thead><tr><th>Cant.</th><th>Descripción</th><th>Comentarios</th></tr></thead>
+      <tbody>
+        {% for m in object.materiales.all %}
+          <tr>
+            <td>{{ m.cantidad }}</td>
+            <td>{{ m.descripcion }}</td>
+            <td>{{ m.comentarios|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <div class="row mt-3">
+      <div class="col-md-6">
+        <h3 class="h6">Resguardo</h3>
+        <div class="border rounded p-2" style="min-height:60px;">{{ object.resguardo|default:"—" }}</div>
+      </div>
+      <div class="col-md-6">
+        <h3 class="h6">Costos y tiempo</h3>
+        <table class="table table-sm mb-0">
+          <tr><th>Horas</th><td>{{ object.horas }}</td></tr>
+          <tr><th>Costo (MXN)</th><td>
+            {% if object.costo_no_aplica %}No aplica{% elif object.costo_se_cotizara %}Se cotizará{% else %}${{ object.costo_mxn }}{% endif %}
+          </td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="row mt-4 align-items-center">
+      <div class="col-md-7">
+        <h3 class="h6 mb-2">Firma del cliente</h3>
+        <div class="border rounded p-2 text-center" style="height:150px;">
+          {% if object.firma %}
+            <img src="{{ object.firma.url }}" style="max-height:130px; max-width:100%;" alt="Firma">
+          {% else %}
+            <span class="text-muted">Sin firma</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-5 small">
+        {% if object.reagenda %}
+          <strong>Reagendado:</strong> {{ object.reagenda_fecha|date:"Y-m-d" }} {{ object.reagenda_hora|time:"H:i" }}<br>
+          <strong>Motivo:</strong> {{ object.reagenda_motivo|default:"—" }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
