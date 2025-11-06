@@ -89,7 +89,10 @@ body.signing {
 /*order*/
 .table-hover tbody tr:hover { cursor: pointer; }
 .card-header .btn { height: 36px; }
-
+/*Eliminacion dde reporte boton*/
 .card-header { border-bottom: 1px solid rgba(0,0,0,.06); }
 .card-header .btn { height: 36px; }
 .table-hover tbody tr:hover { background-color: rgba(0,0,0,.03); cursor: pointer; }
+
+/* Ajuste fino del botón ojo en el login */
+#togglePassword { line-height: 1; padding: .25rem .5rem; }
