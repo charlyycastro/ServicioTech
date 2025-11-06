@@ -6,18 +6,23 @@
     const emptyProto = document.getElementById(prefix + '-empty');
     const idx = parseInt(total.value, 10);
 
-    let rowHtml = emptyProto.innerHTML;
     const tmp = document.createElement('tbody');
-    tmp.innerHTML = rowHtml.trim();
+    tmp.innerHTML = emptyProto.innerHTML.trim();
     const tr = tmp.firstElementChild;
 
-    const fields = ['tipo','marca','modelo','serie','falla','descripcion','cantidad','unidad'];
-    fields.forEach(function(name){
-      tr.querySelectorAll('td').forEach(function(td){
+    // Campos por prefix
+    const fieldsByPrefix = {
+      equipos: ['marca','modelo','serie','descripcion'],
+      materiales: ['descripcion','cantidad','comentarios'],
+    };
+    const fields = fieldsByPrefix[prefix] || [];
+
+    tr.querySelectorAll('td').forEach(function(td){
+      const text = td.textContent || '';
+      fields.forEach(function(name){
         const marker = '__FIELD__:' + name;
-        if (td.textContent && td.textContent.indexOf(marker) !== -1) {
-          const html = getEmptyFieldHTML(prefix, name, idx);
-          if (html) td.innerHTML = html;
+        if (text.indexOf(marker) !== -1) {
+          td.innerHTML = getEmptyFieldHTML(prefix, name, idx, name === 'cantidad' ? 'number' : 'text');
         }
       });
     });
@@ -26,14 +31,14 @@
     total.value = idx + 1;
   }
 
-  function getEmptyFieldHTML(prefix, name, idx){
+  function getEmptyFieldHTML(prefix, name, idx, type){
     const id = `id_${prefix}-__prefix__-${name}`;
     const baseName = `${prefix}-__prefix__-${name}`;
-    const input = document.createElement('input');
+    const input = document.createElement(name === 'descripcion' || name === 'comentarios' ? 'input' : 'input');
     input.className = 'form-control';
     input.name = baseName.replace('__prefix__', idx);
     input.id = id.replace('__prefix__', idx);
-    input.type = (name === 'cantidad') ? 'number' : 'text';
+    input.type = type || 'text';
     return input.outerHTML;
   }
 

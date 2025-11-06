@@ -1,159 +1,123 @@
-{% extends "orders/base.html" %}
+{% extends 'orders/base.html' %}
 {% load static %}
 
-{% block title %}Nueva orden · ServicioTech{% endblock %}
-
 {% block content %}
-<form id="order-form" method="post" enctype="multipart/form-data" class="needs-validation pretty-form" novalidate>
+<h1 class="h4 mb-3">Nueva orden</h1>
+
+<form method="post" enctype="multipart/form-data" id="order-form">
   {% csrf_token %}
 
-  <div class="row g-3">
-    <!-- Información general -->
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header"><strong>Información general</strong></div>
-        <div class="card-body row g-3">
-          <div class="col-md-4">{{ form.cliente_nombre.label_tag }}{{ form.cliente_nombre }}</div>
-          <div class="col-md-4">{{ form.cliente_email.label_tag }}{{ form.cliente_email }}</div>
-          <div class="col-md-4">{{ form.ubicacion.label_tag }}{{ form.ubicacion }}</div>
-
-          <div class="col-md-4">{{ form.fecha_servicio.label_tag }}{{ form.fecha_servicio }}</div>
-          <div class="col-md-4">{{ form.contacto_nombre.label_tag }}{{ form.contacto_nombre }}</div>
-          <div class="col-md-4">{{ form.tipo_servicio.label_tag }}{{ form.tipo_servicio }}</div>
-
-          <div class="col-md-6">{{ form.ingeniero_nombre.label_tag }}{{ form.ingeniero_nombre }}</div>
+  <div class="card mb-3">
+    <div class="card-body row g-3">
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <div class="col-md-6">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          <div class="text-danger small">{{ field.errors }}</div>
         </div>
-      </div>
-    </div>
-
-    <!-- Datos técnicos -->
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header"><strong>Datos técnicos</strong></div>
-        <div class="card-body row g-3">
-          <div class="col-12">{{ form.titulo.label_tag }}{{ form.titulo }}</div>
-          <div class="col-md-6">{{ form.actividades.label_tag }}{{ form.actividades }}</div>
-          <div class="col-md-6">{{ form.comentarios.label_tag }}{{ form.comentarios }}</div>
-          <div class="col-md-6">{{ form.resguardo.label_tag }}{{ form.resguardo }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Costos y tiempos -->
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header"><strong>Costos y tiempos</strong></div>
-        <div class="card-body row g-3 align-items-end">
-          <div class="col-md-3">{{ form.horas.label_tag }}{{ form.horas }}</div>
-          <div class="col-md-3">{{ form.costo_mxn.label_tag }}{{ form.costo_mxn }}</div>
-          <div class="col-md-3 form-check ms-2">
-            {{ form.costo_no_aplica }} {{ form.costo_no_aplica.label_tag }}
-          </div>
-          <div class="col-md-3 form-check ms-2">
-            {{ form.costo_se_cotizara }} {{ form.costo_se_cotizara.label_tag }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Reagenda -->
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header"><strong>Reagenda (opcional)</strong></div>
-        <div class="card-body row g-3">
-          <div class="col-md-2 form-check ms-2">
-            {{ form.reagenda }} {{ form.reagenda.label_tag }}
-          </div>
-          <div class="col-md-3">{{ form.reagenda_fecha.label_tag }}{{ form.reagenda_fecha }}</div>
-          <div class="col-md-3">{{ form.reagenda_hora.label_tag }}{{ form.reagenda_hora }}</div>
-          <div class="col-md-4">{{ form.reagenda_motivo.label_tag }}{{ form.reagenda_motivo }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Equipos (SOLO UNA tabla) -->
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <strong>Equipos</strong>
-          <button id="add-equipo" type="button" class="btn btn-sm btn-outline-primary">Agregar equipo</button>
-        </div>
-        <div class="card-body p-0">
-          {{ equip_formset.management_form }}
-
-          <div class="table-responsive">
-            <table class="table mb-0" id="equipos-table">
-              <thead class="bg-light-subtle">
-                <tr>
-                  <th style="width:16%">Marca</th>
-                  <th style="width:16%">Modelo</th>
-                  <th style="width:16%">Serie</th>
-                  <th>Descripción</th>
-                  <th style="width:100px">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for ef in equip_formset.forms %}
-                  <tr class="equipo-row">
-                    <td>{{ ef.marca }}</td>
-                    <td>{{ ef.modelo }}</td>
-                    <td>{{ ef.serie }}</td>
-                    <td>{{ ef.descripcion }}</td>
-                    <td class="text-nowrap">
-                      {{ ef.id }}
-                      {{ ef.DELETE }}
-                      <button type="button" class="btn btn-link text-danger btn-sm btn-del-equipo">Eliminar</button>
-                    </td>
-                  </tr>
-                {% empty %}
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Fila vacía (empty_form) para JS -->
-        <template id="equip-row-template">
-          <tr class="equipo-row">
-            {% with f=equip_formset.empty_form %}
-              <td>{{ f.marca }}</td>
-              <td>{{ f.modelo }}</td>
-              <td>{{ f.serie }}</td>
-              <td>{{ f.descripcion }}</td>
-              <td class="text-nowrap">
-                {{ f.id }}
-                {{ f.DELETE }}
-                <button type="button" class="btn btn-link text-danger btn-sm btn-del-equipo">Eliminar</button>
-              </td>
-            {% endwith %}
-          </tr>
-        </template>
-      </div>
-    </div>
-
-    <!-- Firma -->
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header"><strong>Firma del cliente</strong></div>
-        <div class="card-body">
-          <div id="signature-wrapper" class="signature-box">
-            <canvas id="signature-canvas"></canvas>
-          </div>
-          <div class="mt-2 d-flex gap-2">
-            <button type="button" id="sig-undo" class="btn btn-sm btn-outline-secondary">Deshacer</button>
-            <button type="button" id="sig-clear" class="btn btn-sm btn-outline-danger">Limpiar</button>
-          </div>
-          <input type="hidden" name="signature_data" id="signature-data">
-          <div class="form-text">La caja de firma se bloquea para evitar scroll accidental en el teléfono.</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Acciones -->
-    <div class="col-12 d-flex justify-content-end">
-      <a href="{% url 'orders:list' %}" class="btn btn-outline-secondary me-2">Cancelar</a>
-      <button type="submit" class="btn btn-primary">Guardar orden</button>
+      {% endfor %}
     </div>
   </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Equipos</strong>
+      <button class="btn btn-sm btn-primary" type="button" data-add-equipo>Agregar equipo</button>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0 formset-table">
+        <thead>
+          <tr>
+            <th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th><th style="width:1%"></th>
+          </tr>
+        </thead>
+        <tbody id="equipos-body">
+          {{ equipos_fs.management_form }}
+          {% for f in equipos_fs %}
+          <tr class="formset-row">
+            <td>{{ f.marca }}</td>
+            <td>{{ f.modelo }}</td>
+            <td>{{ f.serie }}</td>
+            <td>{{ f.descripcion }}</td>
+            <td>
+              {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
+              <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <template id="equipos-empty">
+        <tr class="formset-row">
+          <td>__FIELD__:marca</td>
+          <td>__FIELD__:modelo</td>
+          <td>__FIELD__:serie</td>
+          <td>__FIELD__:descripcion</td>
+          <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
+        </tr>
+      </template>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Materiales</strong>
+      <button class="btn btn-sm btn-primary" type="button" data-add-material>Agregar material</button>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0 formset-table">
+        <thead>
+          <tr>
+            <th>Descripción</th><th>Cantidad</th><th>Comentarios</th><th style="width:1%"></th>
+          </tr>
+        </thead>
+        <tbody id="materiales-body">
+          {{ materiales_fs.management_form }}
+          {% for f in materiales_fs %}
+          <tr class="formset-row">
+            <td>{{ f.descripcion }}</td>
+            <td>{{ f.cantidad }}</td>
+            <td>{{ f.comentarios }}</td>
+            <td>
+              {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
+              <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <template id="materiales-empty">
+        <tr class="formset-row">
+          <td>__FIELD__:descripcion</td>
+          <td>__FIELD__:cantidad</td>
+          <td>__FIELD__:comentarios</td>
+          <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
+        </tr>
+      </template>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><strong>Firma del cliente</strong></div>
+    <div class="card-body">
+      <div class="d-flex gap-2 align-items-center mb-2">
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
+      </div>
+      <canvas id="signature" width="600" height="200" class="border rounded w-100"></canvas>
+      <input type="hidden" name="firma" id="firma-base64">
+      <div class="form-text">Firme con el dedo o mouse (sin scroll en móvil).</div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary" type="submit">Guardar</button>
+    <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Cancelar</a>
+  </div>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'orders/equipos.js' %}"></script>
+<script src="{% static 'orders/signature.js' %}"></script>
 {% endblock %}

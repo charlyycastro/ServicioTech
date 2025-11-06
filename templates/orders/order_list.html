@@ -1,125 +1,80 @@
 {% extends 'orders/base.html' %}
-{% load static %}
-
 {% block content %}
-<h1 class="h4 mb-3">Nueva orden</h1>
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h1 class="h4 mb-0">Órdenes</h1>
+  <a class="btn btn-primary" href="{% url 'orders:create' %}">Nueva orden</a>
+</div>
 
-<form method="post" enctype="multipart/form-data" id="order-form">
-  {% csrf_token %}
-
-  <div class="card mb-3">
-    <div class="card-body row g-3">
-      {{ form.non_field_errors }}
-      {% for field in form %}
-        <div class="col-md-6">
-          <label class="form-label">{{ field.label }}</label>
-          {{ field }}
-          <div class="text-danger small">{{ field.errors }}</div>
-        </div>
-      {% endfor %}
-    </div>
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-12 col-md-3">
+    <label class="form-label">Buscar</label>
+    <input type="text" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="folio, título, cliente…">
   </div>
-
-  <div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <strong>Equipos</strong>
-      <button class="btn btn-sm btn-primary" type="button" data-add-equipo>Agregar equipo</button>
-    </div>
-    <div class="card-body p-0">
-      <table class="table table-sm mb-0 formset-table">
-        <thead>
-          <tr>
-            <th>Tipo</th><th>Marca</th><th>Modelo</th><th>Serie</th><th>Falla</th><th style="width:1%"></th>
-          </tr>
-        </thead>
-        <tbody id="equipos-body">
-          {{ equipos_fs.management_form }}
-          {% for f in equipos_fs %}
-          <tr class="formset-row">
-            <td>{{ f.tipo }}</td>
-            <td>{{ f.marca }}</td>
-            <td>{{ f.modelo }}</td>
-            <td>{{ f.serie }}</td>
-            <td>{{ f.falla }}</td>
-            <td>
-              {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-              <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <template id="equipos-empty">
-        <tr class="formset-row">
-          <td>__FIELD__:tipo</td>
-          <td>__FIELD__:marca</td>
-          <td>__FIELD__:modelo</td>
-          <td>__FIELD__:serie</td>
-          <td>__FIELD__:falla</td>
-          <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
-        </tr>
-      </template>
-    </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label">Cliente</label>
+    <input type="text" name="cliente" value="{{ request.GET.cliente }}" class="form-control">
   </div>
-
-  <div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <strong>Materiales</strong>
-      <button class="btn btn-sm btn-primary" type="button" data-add-material>Agregar material</button>
-    </div>
-    <div class="card-body p-0">
-      <table class="table table-sm mb-0 formset-table">
-        <thead>
-          <tr>
-            <th>Descripción</th><th>Cantidad</th><th>Unidad</th><th style="width:1%"></th>
-          </tr>
-        </thead>
-        <tbody id="materiales-body">
-          {{ materiales_fs.management_form }}
-          {% for f in materiales_fs %}
-          <tr class="formset-row">
-            <td>{{ f.descripcion }}</td>
-            <td>{{ f.cantidad }}</td>
-            <td>{{ f.unidad }}</td>
-            <td>
-              {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-              <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <template id="materiales-empty">
-        <tr class="formset-row">
-          <td>__FIELD__:descripcion</td>
-          <td>__FIELD__:cantidad</td>
-          <td>__FIELD__:unidad</td>
-          <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
-        </tr>
-      </template>
-    </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label">Ingeniero</label>
+    <input type="text" name="ingeniero" value="{{ request.GET.ingeniero }}" class="form-control">
   </div>
-
-  <div class="card mb-3">
-    <div class="card-header"><strong>Firma del cliente</strong></div>
-    <div class="card-body">
-      <div class="d-flex gap-2 align-items-center mb-2">
-        <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
-      </div>
-      <canvas id="signature" width="600" height="200" class="border rounded w-100"></canvas>
-      <input type="hidden" name="firma" id="firma-base64">
-      <div class="form-text">Firme con el dedo o mouse (sin scroll en móvil).</div>
-    </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label">Desde</label>
+    <input type="date" name="desde" value="{{ request.GET.desde }}" class="form-control">
   </div>
-
-  <div class="d-flex gap-2">
-    <button class="btn btn-primary" type="submit">Guardar</button>
-    <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Cancelar</a>
+  <div class="col-6 col-md-2">
+    <label class="form-label">Hasta</label>
+    <input type="date" name="hasta" value="{{ request.GET.hasta }}" class="form-control">
+  </div>
+  <div class="col-12 col-md-1 d-grid">
+    <button class="btn btn-dark" type="submit">Filtrar</button>
   </div>
 </form>
-{% endblock %}
 
-{% block scripts %}
-<script src="{% static 'orders/equipos.js' %}"></script>
-<script src="{% static 'orders/signature.js' %}"></script>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead>
+      <tr>
+        <th>Folio</th>
+        <th>Fecha</th>
+        <th>Cliente</th>
+        <th>Ingeniero</th>
+        <th>Título</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in ordenes %}
+      <tr>
+        <td>{{ o.folio }}</td>
+        <td>{{ o.fecha_servicio|date:'Y-m-d' }}</td>
+        <td>{{ o.cliente_nombre }}</td>
+        <td>{{ o.ingeniero_nombre }}</td>
+        <td>{{ o.titulo }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted">Sin resultados</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<nav>
+  <ul class="pagination">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">«</a></li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link">«</span></li>
+    {% endif %}
+
+    <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ paginator.num_pages }}</span></li>
+
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">»</a></li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link">»</span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
 {% endblock %}

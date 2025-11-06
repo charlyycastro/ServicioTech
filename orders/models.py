@@ -1,3 +1,4 @@
+# orders/models.py
 from django.db import models
 from django.utils import timezone
 import uuid
@@ -11,12 +12,12 @@ SERVICE_TYPES = [
     ("capacitacion", "Capacitación"),
 ]
 
-class ServiceOrder(models.Model):
-    def folio_default():
-        today = timezone.now().strftime("%Y%m%d")
-        short = uuid.uuid4().hex[:6].upper()
-        return f"SRV-{today}-{short}"
+def folio_default():
+    today = timezone.now().strftime("%Y%m%d")
+    short = uuid.uuid4().hex[:6].upper()
+    return f"SRV-{today}-{short}"
 
+class ServiceOrder(models.Model):
     folio = models.CharField(max_length=32, unique=True, default=folio_default, editable=False)
 
     # 1. Información general
@@ -28,7 +29,7 @@ class ServiceOrder(models.Model):
     tipo_servicio = models.CharField(max_length=20, choices=SERVICE_TYPES)
     ingeniero_nombre = models.CharField(max_length=200)
 
-    # 2. Equipo
+    # 2. Equipo (resumen)
     equipo_marca = models.CharField(max_length=100, blank=True)
     equipo_modelo = models.CharField(max_length=100, blank=True)
     equipo_serie = models.CharField(max_length=100, blank=True)
@@ -60,7 +61,7 @@ class ServiceOrder(models.Model):
 
     def __str__(self):
         return f"{self.folio} - {self.cliente_nombre}"
-    
+
 class Equipment(models.Model):
     order = models.ForeignKey("ServiceOrder", related_name="equipos", on_delete=models.CASCADE)
     marca = models.CharField("Marca", max_length=100, blank=True)
@@ -81,7 +82,7 @@ class Equipment(models.Model):
         return base or "Equipo"
 
 class ServiceMaterial(models.Model):
-    order = models.ForeignKey(ServiceOrder, on_delete=models.CASCADE, related_name="materiales")
+    order = models.ForeignKey("ServiceOrder", on_delete=models.CASCADE, related_name="materiales")
     cantidad = models.PositiveIntegerField(default=1)
     descripcion = models.CharField(max_length=200)
     comentarios = models.CharField(max_length=200, blank=True)
