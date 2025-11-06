@@ -7,7 +7,7 @@
 <form method="post" enctype="multipart/form-data" id="order-form">
   {% csrf_token %}
 
-  <div class="accordion" id="ordenAccordion">
+  <div class="accordion shadow-sm" id="ordenAccordion">
 
     <!-- A) DATOS DEL SERVICIO -->
     <div class="accordion-item">
@@ -27,6 +27,7 @@
               <label class="form-label">Correo del cliente</label>
               {{ form.cliente_email }}
             </div>
+
             <div class="col-md-6">
               <label class="form-label">Ubicación</label>
               {{ form.ubicacion }}
@@ -39,6 +40,7 @@
               <label class="form-label">Contacto</label>
               {{ form.contacto_nombre }}
             </div>
+
             <div class="col-md-4">
               <label class="form-label">Tipo de servicio</label>
               {{ form.tipo_servicio }}
@@ -56,7 +58,7 @@
       </div>
     </div>
 
-    <!-- B) EQUIPOS (resumen + formset) -->
+    <!-- B) EQUIPOS (solo formset, SIN resumen) -->
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingEquipos">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipos" aria-expanded="false" aria-controls="collapseEquipos">
@@ -65,67 +67,43 @@
       </h2>
       <div id="collapseEquipos" class="accordion-collapse collapse" aria-labelledby="headingEquipos" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
-          <!-- Resumen rápido (campos del modelo principal) -->
-          <div class="card mb-3">
-            <div class="card-header">Equipo (resumen)</div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <label class="form-label">Marca</label>
-                  {{ form.equipo_marca }}
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Modelo</label>
-                  {{ form.equipo_modelo }}
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Serie</label>
-                  {{ form.equipo_serie }}
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Descripción</label>
-                  {{ form.equipo_descripcion }}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Formset de equipos (detallado) -->
-          <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="card border-0">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <strong>Listado de equipos</strong>
               <button class="btn btn-sm btn-primary" type="button" data-add-equipo>Agregar equipo</button>
             </div>
             <div class="card-body p-0">
-              <table class="table table-sm mb-0 formset-table">
-                <thead>
-                  <tr>
-                    <th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th><th style="width:1%"></th>
-                  </tr>
-                </thead>
-                <tbody id="equipos-body">
-                  {{ equipos_fs.management_form }}
-                  {% for f in equipos_fs %}
-                  <tr class="formset-row">
-                    <td>{{ f.marca }}</td>
-                    <td>{{ f.modelo }}</td>
-                    <td>{{ f.serie }}</td>
-                    <td>{{ f.descripcion }}</td>
-                    <td>
-                      {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-                      <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0 formset-table">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th><th style="width:1%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="equipos-body">
+                    {{ equipos_fs.management_form }}
+                    {% for f in equipos_fs %}
+                    <tr class="formset-row">
+                      <td>{{ f.marca }}</td>
+                      <td>{{ f.modelo }}</td>
+                      <td>{{ f.serie }}</td>
+                      <td>{{ f.descripcion }}</td>
+                      <td class="text-end">
+                        {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
               <template id="equipos-empty">
                 <tr class="formset-row">
                   <td>__FIELD__:marca</td>
                   <td>__FIELD__:modelo</td>
                   <td>__FIELD__:serie</td>
                   <td>__FIELD__:descripcion</td>
-                  <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
+                  <td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
                 </tr>
               </template>
             </div>
@@ -161,7 +139,7 @@
       </div>
     </div>
 
-    <!-- D) COSTOS Y PROGRAMACIÓN (secciones faltantes) -->
+    <!-- D) COSTOS Y PROGRAMACIÓN -->
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingCostos">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCostos" aria-expanded="false" aria-controls="collapseCostos">
@@ -179,12 +157,14 @@
               <label class="form-label">Costo (MXN)</label>
               {{ form.costo_mxn }}
             </div>
-            <div class="col-md-6 d-flex align-items-center gap-3 mt-2">
+            <div class="col-md-6 d-flex align-items-center gap-4">
               <div class="form-check">
-                {{ form.costo_no_aplica }} <label class="form-check-label">No aplica</label>
+                {{ form.costo_no_aplica }}
+                <label class="form-check-label">No aplica</label>
               </div>
               <div class="form-check">
-                {{ form.costo_se_cotizara }} <label class="form-check-label">Se cotizará</label>
+                {{ form.costo_se_cotizara }}
+                <label class="form-check-label">Se cotizará</label>
               </div>
             </div>
 
@@ -192,7 +172,8 @@
 
             <div class="col-md-2 d-flex align-items-center">
               <div class="form-check">
-                {{ form.reagenda }} <label class="form-check-label">Reagendar</label>
+                {{ form.reagenda }}
+                <label class="form-check-label">Reagendar</label>
               </div>
             </div>
             <div class="col-md-3">
@@ -221,39 +202,41 @@
       </h2>
       <div id="collapseMateriales" class="accordion-collapse collapse" aria-labelledby="headingMateriales" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
-          <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="card border-0">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <strong>Listado de materiales</strong>
               <button class="btn btn-sm btn-primary" type="button" data-add-material>Agregar material</button>
             </div>
             <div class="card-body p-0">
-              <table class="table table-sm mb-0 formset-table">
-                <thead>
-                  <tr>
-                    <th>Descripción</th><th>Cantidad</th><th>Comentarios</th><th style="width:1%"></th>
-                  </tr>
-                </thead>
-                <tbody id="materiales-body">
-                  {{ materiales_fs.management_form }}
-                  {% for f in materiales_fs %}
-                  <tr class="formset-row">
-                    <td>{{ f.descripcion }}</td>
-                    <td>{{ f.cantidad }}</td>
-                    <td>{{ f.comentarios }}</td>
-                    <td>
-                      {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-                      <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0 formset-table">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Descripción</th><th>Cantidad</th><th>Comentarios</th><th style="width:1%"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="materiales-body">
+                    {{ materiales_fs.management_form }}
+                    {% for f in materiales_fs %}
+                    <tr class="formset-row">
+                      <td>{{ f.descripcion }}</td>
+                      <td style="max-width:120px;">{{ f.cantidad }}</td>
+                      <td>{{ f.comentarios }}</td>
+                      <td class="text-end">
+                        {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
               <template id="materiales-empty">
                 <tr class="formset-row">
                   <td>__FIELD__:descripcion</td>
                   <td>__FIELD__:cantidad</td>
                   <td>__FIELD__:comentarios</td>
-                  <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
+                  <td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
                 </tr>
               </template>
             </div>

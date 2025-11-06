@@ -73,3 +73,16 @@ body.signing {
 #equipos-table thead.bg-light-subtle {
   background-color: #f8f9fa;
 }
+/* Mejora visual de secciones */
+.accordion-button { font-weight: 600; }
+.form-label { color: #6c757d; font-size: 0.92rem; }
+
+/* Tablas de formset */
+.formset-table th, .formset-table td { vertical-align: middle; }
+.formset-table thead th { position: sticky; top: 0; z-index: 2; }
+
+/* Inputs compactos en tablas */
+.formset-table td .form-control { height: 38px; padding: .375rem .5rem; }
+
+/* Bordes suaves */
+.card, .accordion-item { border-radius: .75rem; overflow: hidden; }
