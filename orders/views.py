@@ -1,25 +1,26 @@
 # orders/views.py
 import base64
 from django.core.files.base import ContentFile
-from django.shortcuts import get_object_or_404
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
-from django.views.generic import ListView
+from django.views.generic import ListView, DetailView
 from django.shortcuts import render, redirect
 from django.db.models import Q
 
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
-from django.views.generic import ListView, DetailView  # añade DetailView
+
 
 @require_POST
 @login_required
 def logout_view(request):
     logout(request)
     return redirect("login")
+
 
 @method_decorator(login_required, name="dispatch")
 class OrderListView(ListView):
@@ -38,10 +39,10 @@ class OrderListView(ListView):
 
         if q:
             qs = qs.filter(
-                Q(folio__icontains=q) |
-                Q(titulo__icontains=q) |
-                Q(cliente_nombre__icontains=q) |
-                Q(ingeniero_nombre__icontains=q)
+                Q(folio__icontains=q)
+                | Q(titulo__icontains=q)
+                | Q(cliente_nombre__icontains=q)
+                | Q(ingeniero_nombre__icontains=q)
             )
         if cliente:
             qs = qs.filter(cliente_nombre__icontains=cliente)
@@ -52,6 +53,7 @@ class OrderListView(ListView):
         if f_hasta:
             qs = qs.filter(fecha_servicio__lte=f_hasta)
         return qs
+
 
 @login_required
 def order_create(request):
@@ -65,11 +67,13 @@ def order_create(request):
             # Firma base64 → ImageField
             b64 = request.POST.get("firma")
             if b64 and b64.startswith("data:image"):
-                header, data = b64.split(",", 1)  # ej. data:image/png;base64,XXXXX
+                header, data = b64.split(",", 1)
                 ext = "png" if "png" in header else "jpg"
-                file_data = base64.b64decode(data)
-                filename = f"{order.folio or 'firma'}.{ext}"
-                order.firma.save(filename, ContentFile(file_data), save=False)
+                order.firma.save(
+                    f"{order.folio or 'firma'}.{ext}",
+                    ContentFile(base64.b64decode(data)),
+                    save=False,
+                )
 
             order.save()
 
@@ -86,19 +90,19 @@ def order_create(request):
         equipos_fs = EquipmentFormSet(prefix="equipos")
         materiales_fs = ServiceMaterialFormSet(prefix="materiales")
 
-    return render(request, "orders/order_form.html", {
-        "form": form,
-        "equipos_fs": equipos_fs,
-        "materiales_fs": materiales_fs,
-    })
+    return render(
+        request,
+        "orders/order_form.html",
+        {"form": form, "equipos_fs": equipos_fs, "materiales_fs": materiales_fs},
+    )
 
-@login_required
-def order_detail(request, pk):
-    o = get_object_or_404(ServiceOrder, pk=pk)
-    # si quieres, precarga relaciones
-    equipos = o.equipos.all()
-    materiales = o.materiales.all()
-    return render(request, "orders/order_detail.html", {"o": o, "equipos": equipos, "materiales": materiales})
+
+@method_decorator(login_required, name="dispatch")
+class ServiceOrderDetailView(DetailView):
+    model = ServiceOrder
+    template_name = "orders/order_detail.html"
+    # El template usa {{ object }}, que es el nombre por defecto.
+
 
 @require_POST
 @login_required
@@ -112,9 +116,3 @@ def order_bulk_delete(request):
     else:
         messages.warning(request, "Selecciona al menos una orden para eliminar.")
     return redirect("orders:list")
-
-    @method_decorator(login_required, name="dispatch")
-class ServiceOrderDetailView(DetailView):
-    model = ServiceOrder
-    template_name = "orders/order_detail.html"
-    # context_object_name por defecto es "object", justo como usa tu template
