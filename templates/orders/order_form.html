@@ -7,110 +7,283 @@
 <form method="post" enctype="multipart/form-data" id="order-form">
   {% csrf_token %}
 
-  <div class="card mb-3">
-    <div class="card-body row g-3">
-      {{ form.non_field_errors }}
-      {% for field in form %}
-        <div class="col-md-6">
-          <label class="form-label">{{ field.label }}</label>
-          {{ field }}
-          <div class="text-danger small">{{ field.errors }}</div>
+  <div class="accordion" id="ordenAccordion">
+
+    <!-- A) DATOS DEL SERVICIO -->
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingDatos">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatos" aria-expanded="true" aria-controls="collapseDatos">
+          A) Datos del servicio
+        </button>
+      </h2>
+      <div id="collapseDatos" class="accordion-collapse collapse show" aria-labelledby="headingDatos" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Cliente</label>
+              {{ form.cliente_nombre }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Correo del cliente</label>
+              {{ form.cliente_email }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ubicación</label>
+              {{ form.ubicacion }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Fecha de servicio</label>
+              {{ form.fecha_servicio }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Contacto</label>
+              {{ form.contacto_nombre }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Tipo de servicio</label>
+              {{ form.tipo_servicio }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Ingeniero</label>
+              {{ form.ingeniero_nombre }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Resguardo</label>
+              {{ form.resguardo }}
+            </div>
+          </div>
         </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <strong>Equipos</strong>
-      <button class="btn btn-sm btn-primary" type="button" data-add-equipo>Agregar equipo</button>
-    </div>
-    <div class="card-body p-0">
-      <table class="table table-sm mb-0 formset-table">
-        <thead>
-          <tr>
-            <th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th><th style="width:1%"></th>
-          </tr>
-        </thead>
-        <tbody id="equipos-body">
-          {{ equipos_fs.management_form }}
-          {% for f in equipos_fs %}
-          <tr class="formset-row">
-            <td>{{ f.marca }}</td>
-            <td>{{ f.modelo }}</td>
-            <td>{{ f.serie }}</td>
-            <td>{{ f.descripcion }}</td>
-            <td>
-              {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-              <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <template id="equipos-empty">
-        <tr class="formset-row">
-          <td>__FIELD__:marca</td>
-          <td>__FIELD__:modelo</td>
-          <td>__FIELD__:serie</td>
-          <td>__FIELD__:descripcion</td>
-          <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
-        </tr>
-      </template>
-    </div>
-  </div>
-
-  <div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <strong>Materiales</strong>
-      <button class="btn btn-sm btn-primary" type="button" data-add-material>Agregar material</button>
-    </div>
-    <div class="card-body p-0">
-      <table class="table table-sm mb-0 formset-table">
-        <thead>
-          <tr>
-            <th>Descripción</th><th>Cantidad</th><th>Comentarios</th><th style="width:1%"></th>
-          </tr>
-        </thead>
-        <tbody id="materiales-body">
-          {{ materiales_fs.management_form }}
-          {% for f in materiales_fs %}
-          <tr class="formset-row">
-            <td>{{ f.descripcion }}</td>
-            <td>{{ f.cantidad }}</td>
-            <td>{{ f.comentarios }}</td>
-            <td>
-              {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-              <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <template id="materiales-empty">
-        <tr class="formset-row">
-          <td>__FIELD__:descripcion</td>
-          <td>__FIELD__:cantidad</td>
-          <td>__FIELD__:comentarios</td>
-          <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
-        </tr>
-      </template>
-    </div>
-  </div>
-
-  <div class="card mb-3">
-    <div class="card-header"><strong>Firma del cliente</strong></div>
-    <div class="card-body">
-      <div class="d-flex gap-2 align-items-center mb-2">
-        <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
       </div>
-      <canvas id="signature" width="600" height="200" class="border rounded w-100"></canvas>
-      <input type="hidden" name="firma" id="firma-base64">
-      <div class="form-text">Firme con el dedo o mouse (sin scroll en móvil).</div>
     </div>
-  </div>
 
-  <div class="d-flex gap-2">
+    <!-- B) EQUIPOS (resumen + formset) -->
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingEquipos">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipos" aria-expanded="false" aria-controls="collapseEquipos">
+          B) Datos de los equipos
+        </button>
+      </h2>
+      <div id="collapseEquipos" class="accordion-collapse collapse" aria-labelledby="headingEquipos" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body">
+          <!-- Resumen rápido (campos del modelo principal) -->
+          <div class="card mb-3">
+            <div class="card-header">Equipo (resumen)</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Marca</label>
+                  {{ form.equipo_marca }}
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Modelo</label>
+                  {{ form.equipo_modelo }}
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Serie</label>
+                  {{ form.equipo_serie }}
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Descripción</label>
+                  {{ form.equipo_descripcion }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formset de equipos (detallado) -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong>Listado de equipos</strong>
+              <button class="btn btn-sm btn-primary" type="button" data-add-equipo>Agregar equipo</button>
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-sm mb-0 formset-table">
+                <thead>
+                  <tr>
+                    <th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th><th style="width:1%"></th>
+                  </tr>
+                </thead>
+                <tbody id="equipos-body">
+                  {{ equipos_fs.management_form }}
+                  {% for f in equipos_fs %}
+                  <tr class="formset-row">
+                    <td>{{ f.marca }}</td>
+                    <td>{{ f.modelo }}</td>
+                    <td>{{ f.serie }}</td>
+                    <td>{{ f.descripcion }}</td>
+                    <td>
+                      {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
+                      <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              <template id="equipos-empty">
+                <tr class="formset-row">
+                  <td>__FIELD__:marca</td>
+                  <td>__FIELD__:modelo</td>
+                  <td>__FIELD__:serie</td>
+                  <td>__FIELD__:descripcion</td>
+                  <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
+                </tr>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C) ACTIVIDADES Y COMENTARIOS -->
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingActividades">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividades" aria-expanded="false" aria-controls="collapseActividades">
+          C) Actividades y comentarios
+        </button>
+      </h2>
+      <div id="collapseActividades" class="accordion-collapse collapse" aria-labelledby="headingActividades" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Título del servicio</label>
+              {{ form.titulo }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Actividades realizadas</label>
+              {{ form.actividades }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Comentarios</label>
+              {{ form.comentarios }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D) COSTOS Y PROGRAMACIÓN (secciones faltantes) -->
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingCostos">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCostos" aria-expanded="false" aria-controls="collapseCostos">
+          D) Costos y programación
+        </button>
+      </h2>
+      <div id="collapseCostos" class="accordion-collapse collapse" aria-labelledby="headingCostos" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">Horas</label>
+              {{ form.horas }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Costo (MXN)</label>
+              {{ form.costo_mxn }}
+            </div>
+            <div class="col-md-6 d-flex align-items-center gap-3 mt-2">
+              <div class="form-check">
+                {{ form.costo_no_aplica }} <label class="form-check-label">No aplica</label>
+              </div>
+              <div class="form-check">
+                {{ form.costo_se_cotizara }} <label class="form-check-label">Se cotizará</label>
+              </div>
+            </div>
+
+            <div class="col-12"><hr></div>
+
+            <div class="col-md-2 d-flex align-items-center">
+              <div class="form-check">
+                {{ form.reagenda }} <label class="form-check-label">Reagendar</label>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Fecha</label>
+              {{ form.reagenda_fecha }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Hora</label>
+              {{ form.reagenda_hora }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Motivo</label>
+              {{ form.reagenda_motivo }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E) MATERIALES (antes de la firma) -->
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingMateriales">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMateriales" aria-expanded="false" aria-controls="collapseMateriales">
+          E) Materiales utilizados
+        </button>
+      </h2>
+      <div id="collapseMateriales" class="accordion-collapse collapse" aria-labelledby="headingMateriales" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong>Listado de materiales</strong>
+              <button class="btn btn-sm btn-primary" type="button" data-add-material>Agregar material</button>
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-sm mb-0 formset-table">
+                <thead>
+                  <tr>
+                    <th>Descripción</th><th>Cantidad</th><th>Comentarios</th><th style="width:1%"></th>
+                  </tr>
+                </thead>
+                <tbody id="materiales-body">
+                  {{ materiales_fs.management_form }}
+                  {% for f in materiales_fs %}
+                  <tr class="formset-row">
+                    <td>{{ f.descripcion }}</td>
+                    <td>{{ f.cantidad }}</td>
+                    <td>{{ f.comentarios }}</td>
+                    <td>
+                      {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
+                      <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              <template id="materiales-empty">
+                <tr class="formset-row">
+                  <td>__FIELD__:descripcion</td>
+                  <td>__FIELD__:cantidad</td>
+                  <td>__FIELD__:comentarios</td>
+                  <td><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
+                </tr>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F) FIRMA -->
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingFirma">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma" aria-expanded="false" aria-controls="collapseFirma">
+          F) Firma del cliente
+        </button>
+      </h2>
+      <div id="collapseFirma" class="accordion-collapse collapse" aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body">
+          <div class="d-flex gap-2 align-items-center mb-2">
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
+          </div>
+          <canvas id="signature" width="600" height="200" class="border rounded w-100"></canvas>
+          <input type="hidden" name="firma" id="firma-base64">
+          <div class="form-text">Firme con el dedo o mouse. (El lienzo no hace scroll en móvil)</div>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /accordion -->
+
+  <div class="d-flex gap-2 mt-3">
     <button class="btn btn-primary" type="submit">Guardar</button>
     <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Cancelar</a>
   </div>

@@ -64,8 +64,7 @@ def order_create(request):
             # Firma base64 → ImageField
             b64 = request.POST.get("firma")
             if b64 and b64.startswith("data:image"):
-                # data:image/png;base64,XXXXX
-                header, data = b64.split(",", 1)
+                header, data = b64.split(",", 1)  # ej. data:image/png;base64,XXXXX
                 ext = "png" if "png" in header else "jpg"
                 file_data = base64.b64decode(data)
                 filename = f"{order.folio or 'firma'}.{ext}"
