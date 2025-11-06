@@ -17,7 +17,7 @@
     <div class="row">
       <div class="col-7">
         <h2 class="h5 mb-3">Datos del servicio</h2>
-        <dl class="row small">
+        <dl class="row small mb-0">
           <dt class="col-4">Folio</dt><dd class="col-8">{{ object.folio }}</dd>
           <dt class="col-4">Fecha</dt><dd class="col-8">{{ object.fecha_servicio|date:"Y-m-d" }}</dd>
           <dt class="col-4">Cliente</dt><dd class="col-8">{{ object.cliente_nombre }}</dd>
@@ -29,8 +29,9 @@
         </dl>
       </div>
       <div class="col-5 text-end">
-        <img src="{% static 'orders/logo.png' %}" alt="Logo" class="print-logo d-none d-print-inline-block">
-        <div class="small text-muted d-print-none">Generado: {{ object.actualizado|date:"Y-m-d H:i" }}</div>
+        <!-- Muestra logo solo en impresión -->
+        <img src="{% static 'orders/logo.png' %}" alt="Logo" class="print-logo d-none d-print-inline-block" style="max-height:48px;">
+        <div class="small text-muted d-print-none">Actualizado: {{ object.actualizado|date:"Y-m-d H:i" }}</div>
       </div>
     </div>
 
@@ -54,38 +55,46 @@
       </div>
     </div>
 
-    {% if object.equipos.all %}
     <h3 class="h6 mt-3">Equipos</h3>
-    <table class="table table-sm">
-      <thead><tr><th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th></tr></thead>
-      <tbody>
-        {% for e in object.equipos.all %}
-          <tr>
-            <td>{{ e.marca|default:"—" }}</td>
-            <td>{{ e.modelo|default:"—" }}</td>
-            <td>{{ e.serie|default:"—" }}</td>
-            <td>{{ e.descripcion|default:"—" }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead class="table-light">
+          <tr><th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th></tr>
+        </thead>
+        <tbody>
+          {% for e in object.equipos.all %}
+            <tr>
+              <td>{{ e.marca|default:"—" }}</td>
+              <td>{{ e.modelo|default:"—" }}</td>
+              <td>{{ e.serie|default:"—" }}</td>
+              <td>{{ e.descripcion|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="text-center text-muted">Sin equipos</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
-    {% if object.materiales.all %}
-    <h3 class="h6 mt-3">Materiales</h3>
-    <table class="table table-sm">
-      <thead><tr><th>Cant.</th><th>Descripción</th><th>Comentarios</th></tr></thead>
-      <tbody>
-        {% for m in object.materiales.all %}
-          <tr>
-            <td>{{ m.cantidad }}</td>
-            <td>{{ m.descripcion }}</td>
-            <td>{{ m.comentarios|default:"—" }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
+    <h3 class="h6 mt-4">Materiales</h3>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead class="table-light">
+          <tr><th style="width:100px;">Cant.</th><th>Descripción</th><th>Comentarios</th></tr>
+        </thead>
+        <tbody>
+          {% for m in object.materiales.all %}
+            <tr>
+              <td>{{ m.cantidad }}</td>
+              <td>{{ m.descripcion }}</td>
+              <td>{{ m.comentarios|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="text-center text-muted">Sin materiales</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
     <div class="row mt-3">
       <div class="col-md-6">
@@ -96,9 +105,17 @@
         <h3 class="h6">Costos y tiempo</h3>
         <table class="table table-sm mb-0">
           <tr><th>Horas</th><td>{{ object.horas }}</td></tr>
-          <tr><th>Costo (MXN)</th><td>
-            {% if object.costo_no_aplica %}No aplica{% elif object.costo_se_cotizara %}Se cotizará{% else %}${{ object.costo_mxn }}{% endif %}
-          </td></tr>
+          <tr><th>Costo (MXN)</th>
+            <td>
+              {% if object.costo_no_aplica %}
+                No aplica
+              {% elif object.costo_se_cotizara %}
+                Se cotizará
+              {% else %}
+                ${{ object.costo_mxn|floatformat:2 }}
+              {% endif %}
+            </td>
+          </tr>
         </table>
       </div>
     </div>

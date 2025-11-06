@@ -7,3 +7,9 @@
   table { page-break-inside: auto; }
   tr, img { page-break-inside: avoid; }
 }
+/* Opcional: estilos de impresión */
+@media print {
+  .navbar, .d-print-none { display: none !important; }
+  .print-card { box-shadow: none !important; border: none !important; }
+  .table { border-color: #000 !important; }
+}

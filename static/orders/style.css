@@ -86,3 +86,10 @@ body.signing {
 
 /* Bordes suaves */
 .card, .accordion-item { border-radius: .75rem; overflow: hidden; }
+/*order*/
+.table-hover tbody tr:hover { cursor: pointer; }
+.card-header .btn { height: 36px; }
+
+.card-header { border-bottom: 1px solid rgba(0,0,0,.06); }
+.card-header .btn { height: 36px; }
+.table-hover tbody tr:hover { background-color: rgba(0,0,0,.03); cursor: pointer; }

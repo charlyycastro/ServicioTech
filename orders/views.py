@@ -1,7 +1,7 @@
 # orders/views.py
 import base64
 from django.core.files.base import ContentFile
-
+from django.shortcuts import get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
@@ -13,6 +13,7 @@ from django.db.models import Q
 
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
+from django.views.generic import ListView, DetailView  # añade DetailView
 
 @require_POST
 @login_required
@@ -90,3 +91,30 @@ def order_create(request):
         "equipos_fs": equipos_fs,
         "materiales_fs": materiales_fs,
     })
+
+@login_required
+def order_detail(request, pk):
+    o = get_object_or_404(ServiceOrder, pk=pk)
+    # si quieres, precarga relaciones
+    equipos = o.equipos.all()
+    materiales = o.materiales.all()
+    return render(request, "orders/order_detail.html", {"o": o, "equipos": equipos, "materiales": materiales})
+
+@require_POST
+@login_required
+def order_bulk_delete(request):
+    ids = request.POST.getlist("selected")
+    if ids:
+        qs = ServiceOrder.objects.filter(pk__in=ids)
+        n = qs.count()
+        qs.delete()
+        messages.success(request, f"Se eliminaron {n} orden(es).")
+    else:
+        messages.warning(request, "Selecciona al menos una orden para eliminar.")
+    return redirect("orders:list")
+
+    @method_decorator(login_required, name="dispatch")
+class ServiceOrderDetailView(DetailView):
+    model = ServiceOrder
+    template_name = "orders/order_detail.html"
+    # context_object_name por defecto es "object", justo como usa tu template
