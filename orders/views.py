@@ -1,87 +1,75 @@
 # orders/views.py
-import base64
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.files.base import ContentFile
-from django.core.mail import EmailMessage
-from django.db import transaction
+from django.contrib.auth import logout
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST
+from django.views.generic import ListView
 from django.shortcuts import render, redirect
-from django.urls import reverse
-from django.views.generic import ListView, DetailView
-from django.template.loader import render_to_string
+from django.db.models import Q
 
-from .models import ServiceOrder
-from .forms import ServiceOrderForm, MaterialFormSet, EquipmentFormSet
+from .models import Order
+from .forms import OrderForm, EquipoFormSet, MaterialFormSet
 
+@require_POST
+@login_required
+def logout_view(request):
+    logout(request)
+    return redirect("login")
 
-class OrderListView(LoginRequiredMixin, ListView):
-    login_url = 'login'
-    redirect_field_name = 'next'
-    model = ServiceOrder
-    paginate_by = 20
-    template_name = 'orders/order_list.html'
+@method_decorator(login_required, name="dispatch")
+class OrderListView(ListView):
+    model = Order
+    template_name = "orders/order_list.html"
+    context_object_name = "ordenes"
+    paginate_by = 10
 
     def get_queryset(self):
-        qs = ServiceOrder.objects.all().order_by('-creado')
-        q = self.request.GET.get('q')
-        cliente = self.request.GET.get('cliente')
-        ingeniero = self.request.GET.get('ingeniero')
-        fmin = self.request.GET.get('fmin')
-        fmax = self.request.GET.get('fmax')
-        if q: qs = qs.filter(titulo__icontains=q)
-        if cliente: qs = qs.filter(cliente_nombre__icontains=cliente)
-        if ingeniero: qs = qs.filter(ingeniero_nombre__icontains=ingeniero)
-        if fmin: qs = qs.filter(fecha_servicio__gte=fmin)
-        if fmax: qs = qs.filter(fecha_servicio__lte=fmax)
+        qs = Order.objects.all().order_by("-fecha")
+        q = self.request.GET.get("q")
+        cliente = self.request.GET.get("cliente")
+        ingeniero = self.request.GET.get("ingeniero")
+        f_desde = self.request.GET.get("desde")
+        f_hasta = self.request.GET.get("hasta")
+
+        if q:
+            qs = qs.filter(
+                Q(folio__icontains=q) |
+                Q(titulo__icontains=q) |
+                Q(cliente__icontains=q) |
+                Q(ingeniero__icontains=q)
+            )
+        if cliente:
+            qs = qs.filter(cliente__icontains=cliente)
+        if ingeniero:
+            qs = qs.filter(ingeniero__icontains=ingeniero)
+        if f_desde:
+            qs = qs.filter(fecha__gte=f_desde)
+        if f_hasta:
+            qs = qs.filter(fecha__lte=f_hasta)
         return qs
 
-
-class OrderDetailView(LoginRequiredMixin, DetailView):
-    login_url = 'login'
-    redirect_field_name = 'next'
-    model = ServiceOrder
-    template_name = 'orders/order_detail.html'
-    slug_field = 'folio'
-    slug_url_kwarg = 'folio'
-
-
 @login_required
-@transaction.atomic
 def order_create(request):
     if request.method == "POST":
-        form = ServiceOrderForm(request.POST, request.FILES)
-        mat_fs = MaterialFormSet(request.POST, prefix="materiales")
-        eq_fs  = EquipmentFormSet(request.POST, prefix="equipos")   # ← prefix fijo
-
-        if form.is_valid() and mat_fs.is_valid() and eq_fs.is_valid():
-            order = form.save(commit=False)
-
-            # firma por canvas (igual que antes)
-            sig_data = request.POST.get("signature_data")
-            if sig_data and sig_data.startswith("data:image/png;base64,"):
-                b64 = sig_data.split(",")[1]
-                order.firma.save(
-                    f"{order.folio}_firma.png",
-                    ContentFile(base64.b64decode(b64)),
-                    save=False,
-                )
-            order.save()
-
-            # enlaza formsets a la orden y guarda
-            mat_fs.instance = order
-            mat_fs.save()
-            eq_fs.instance = order
-            eq_fs.save()
-
-            return redirect(reverse("orders:detail", kwargs={"folio": order.folio}))
+        form = OrderForm(request.POST, request.FILES)
+        equipos_fs = EquipoFormSet(request.POST, request.FILES, prefix="equipos")
+        materiales_fs = MaterialFormSet(request.POST, request.FILES, prefix="materiales")
+        if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
+            order = form.save()
+            equipos_fs.instance = order
+            equipos_fs.save()
+            materiales_fs.instance = order
+            materiales_fs.save()
+            messages.success(request, "Orden creada correctamente.")
+            return redirect("orders:list")
     else:
-        form = ServiceOrderForm()
-        mat_fs = MaterialFormSet(prefix="materiales")
-        eq_fs  = EquipmentFormSet(prefix="equipos")  # ← prefix fijo
+        form = OrderForm()
+        equipos_fs = EquipoFormSet(prefix="equipos")
+        materiales_fs = MaterialFormSet(prefix="materiales")
 
-    return render(
-        request,
-        "orders/order_form.html",
-        {"form": form, "formset": mat_fs, "equip_formset": eq_fs},
-    )
-    
+    return render(request, "orders/order_form.html", {
+        "form": form,
+        "equipos_fs": equipos_fs,
+        "materiales_fs": materiales_fs,
+    })

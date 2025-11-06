@@ -1,11 +1,11 @@
 # orders/urls.py
 from django.urls import path
-from .views import OrderListView, order_create, OrderDetailView
+from . import views
 
-app_name = "orders"
+app_name = "orders"  # requerido para el namespace
 
 urlpatterns = [
-    path("", OrderListView.as_view(), name="list"),
-    path("nuevo/", order_create, name="create"),
-    path("<slug:folio>/", OrderDetailView.as_view(), name="detail"),
+    path("", views.OrderListView.as_view(), name="list"),
+    path("orden/nueva/", views.order_create, name="create"),
+    path("logout/", views.logout_view, name="logout"),  # POST-only
 ]

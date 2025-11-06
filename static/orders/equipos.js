@@ -1,40 +1,57 @@
-// Dinámica del formset de equipos
-(function () {
-  const addBtn = document.getElementById("add-equipo");
-  const tbody = document.querySelector("#equipos-table tbody");
-  const tmpl = document.getElementById("equip-row-template");
-  const total = document.querySelector('input[name="equipos-TOTAL_FORMS"]');
+// static/orders/equipos.js
+(function() {
+  function addRow(prefix) {
+    const body = document.getElementById(prefix + '-body');
+    const total = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
+    const emptyProto = document.getElementById(prefix + '-empty');
+    const idx = parseInt(total.value, 10);
 
-  if (!addBtn || !tbody || !tmpl || !total) return;
+    let rowHtml = emptyProto.innerHTML;
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = rowHtml.trim();
+    const tr = tmp.firstElementChild;
 
-  function bindRemove(btn) {
-    btn.addEventListener("click", function () {
-      const row = this.closest("tr");
-      const del = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
-      if (del) {
-        del.checked = true;      // marca para borrar en el formset
-        row.style.display = "none";
-      } else {
-        row.remove();            // fila recién añadida
-        total.value = parseInt(total.value, 10) - 1;
-      }
+    const fields = ['tipo','marca','modelo','serie','falla','descripcion','cantidad','unidad'];
+    fields.forEach(function(name){
+      tr.querySelectorAll('td').forEach(function(td){
+        const marker = '__FIELD__:' + name;
+        if (td.textContent && td.textContent.indexOf(marker) !== -1) {
+          const html = getEmptyFieldHTML(prefix, name, idx);
+          if (html) td.innerHTML = html;
+        }
+      });
     });
+
+    body.appendChild(tr);
+    total.value = idx + 1;
   }
 
-  // Enlaza botones existentes
-  document.querySelectorAll("#equipos-table .btn-del-equipo").forEach(bindRemove);
+  function getEmptyFieldHTML(prefix, name, idx){
+    const id = `id_${prefix}-__prefix__-${name}`;
+    const baseName = `${prefix}-__prefix__-${name}`;
+    const input = document.createElement('input');
+    input.className = 'form-control';
+    input.name = baseName.replace('__prefix__', idx);
+    input.id = id.replace('__prefix__', idx);
+    input.type = (name === 'cantidad') ? 'number' : 'text';
+    return input.outerHTML;
+  }
 
-  // Agregar nueva fila
-  addBtn.addEventListener("click", () => {
-    const idx = parseInt(total.value, 10);
-    const html = tmpl.innerHTML.replace(/__prefix__/g, idx);
-    const tmp = document.createElement("tbody");
-    tmp.innerHTML = html.trim();
-    const row = tmp.firstElementChild;
-    tbody.appendChild(row);
-    total.value = idx + 1;
+  function removeRow(btn){
+    const row = btn.closest('.formset-row');
+    if (!row) return;
+    const del = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    if (del) {
+      del.checked = true;
+      row.style.display = 'none';
+    } else {
+      row.remove();
+    }
+  }
 
-    const delBtn = row.querySelector(".btn-del-equipo");
-    if (delBtn) bindRemove(delBtn);
+  document.addEventListener('click', function(e){
+    if (e.target.matches('[data-add-equipo]')) { e.preventDefault(); addRow('equipos'); }
+    if (e.target.matches('[data-add-material]')) { e.preventDefault(); addRow('materiales'); }
+    if (e.target.matches('[data-remove-row]')) { e.preventDefault(); removeRow(e.target); }
   });
 })();
