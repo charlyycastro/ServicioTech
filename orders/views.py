@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
+from django.contrib.auth import logout
+from django.views.decorators.http import require_POST
+
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
 
@@ -34,3 +37,9 @@ def order_create(request):
 
     ctx = {"form": form, "equipos_fs": equipos_fs, "materiales_fs": materiales_fs}
     return render(request, "orders/order_form.html", ctx)
+
+# ✅ Logout solo por POST, y redirige al login
+@require_POST
+def logout_view(request):
+    logout(request)
+    return redirect("login")

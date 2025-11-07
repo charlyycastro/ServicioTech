@@ -1,4 +1,3 @@
-# servicereports/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -6,8 +5,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("accounts/", include("django.contrib.auth.urls")),  # login/logout
-    path("", include("orders.urls", namespace="orders")),    # app principal con namespace
+    path("accounts/", include("django.contrib.auth.urls")),  # login/logout de Django
+    path("", include(("orders.urls", "orders"), namespace="orders")),
 ]
 
 if settings.DEBUG:
