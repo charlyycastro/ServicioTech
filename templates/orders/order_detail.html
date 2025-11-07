@@ -17,21 +17,28 @@
     <div class="row">
       <div class="col-7">
         <h2 class="h5 mb-3">Datos del servicio</h2>
-        <dl class="row small mb-0">
+        <dl class="row small">
           <dt class="col-4">Folio</dt><dd class="col-8">{{ object.folio }}</dd>
           <dt class="col-4">Fecha</dt><dd class="col-8">{{ object.fecha_servicio|date:"Y-m-d" }}</dd>
           <dt class="col-4">Cliente</dt><dd class="col-8">{{ object.cliente_nombre }}</dd>
           <dt class="col-4">Correo</dt><dd class="col-8">{{ object.cliente_email|default:"—" }}</dd>
           <dt class="col-4">Ubicación</dt><dd class="col-8">{{ object.ubicacion|default:"—" }}</dd>
           <dt class="col-4">Contacto</dt><dd class="col-8">{{ object.contacto_nombre|default:"—" }}</dd>
-          <dt class="col-4">Tipo</dt><dd class="col-8">{{ object.get_tipo_servicio_display }}</dd>
+          <dt class="col-4">Tipo(s)</dt>
+          <dd class="col-8">
+            {% if object.tipos_servicio %}
+              {{ object.tipos_servicio_labels|join:", " }}
+            {% else %}—{% endif %}
+            {% if object.tipo_servicio_otro %}
+              <br><em>Otro:</em> {{ object.tipo_servicio_otro }}
+            {% endif %}
+          </dd>
           <dt class="col-4">Ingeniero</dt><dd class="col-8">{{ object.ingeniero_nombre }}</dd>
         </dl>
       </div>
       <div class="col-5 text-end">
-        <!-- Muestra logo solo en impresión -->
-        <img src="{% static 'orders/logo.png' %}" alt="Logo" class="print-logo d-none d-print-inline-block" style="max-height:48px;">
-        <div class="small text-muted d-print-none">Actualizado: {{ object.actualizado|date:"Y-m-d H:i" }}</div>
+        <img src="{% static 'orders/logo.png' %}" alt="Logo" class="print-logo d-none d-print-inline-block">
+        <div class="small text-muted d-print-none">Generado: {{ object.actualizado|date:"Y-m-d H:i" }}</div>
       </div>
     </div>
 
@@ -43,99 +50,70 @@
     <div class="row">
       <div class="col-md-6">
         <h3 class="h6">Actividades</h3>
-        <div class="border rounded p-2 bg-light-subtle mb-3" style="min-height:100px;">
+        <div class="border rounded p-2 bg-light-subtle minh-100 mb-3">
           {{ object.actividades|linebreaksbr|default:"—" }}
         </div>
       </div>
       <div class="col-md-6">
         <h3 class="h6">Comentarios</h3>
-        <div class="border rounded p-2 bg-light-subtle mb-3" style="min-height:100px;">
+        <div class="border rounded p-2 bg-light-subtle minh-100 mb-3">
           {{ object.comentarios|linebreaksbr|default:"—" }}
         </div>
       </div>
     </div>
 
+    {% if object.equipos.all %}
     <h3 class="h6 mt-3">Equipos</h3>
-    <div class="table-responsive">
-      <table class="table table-sm mb-0">
-        <thead class="table-light">
-          <tr><th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th></tr>
-        </thead>
-        <tbody>
-          {% for e in object.equipos.all %}
-            <tr>
-              <td>{{ e.marca|default:"—" }}</td>
-              <td>{{ e.modelo|default:"—" }}</td>
-              <td>{{ e.serie|default:"—" }}</td>
-              <td>{{ e.descripcion|default:"—" }}</td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="4" class="text-center text-muted">Sin equipos</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <table class="table table-sm">
+      <thead><tr><th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th></tr></thead>
+      <tbody>
+        {% for e in object.equipos.all %}
+          <tr>
+            <td>{{ e.marca|default:"—" }}</td>
+            <td>{{ e.modelo|default:"—" }}</td>
+            <td>{{ e.serie|default:"—" }}</td>
+            <td>{{ e.descripcion|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
 
-    <h3 class="h6 mt-4">Materiales</h3>
-    <div class="table-responsive">
-      <table class="table table-sm mb-0">
-        <thead class="table-light">
-          <tr><th style="width:100px;">Cant.</th><th>Descripción</th><th>Comentarios</th></tr>
-        </thead>
-        <tbody>
-          {% for m in object.materiales.all %}
-            <tr>
-              <td>{{ m.cantidad }}</td>
-              <td>{{ m.descripcion }}</td>
-              <td>{{ m.comentarios|default:"—" }}</td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="3" class="text-center text-muted">Sin materiales</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    {% if object.materiales.all %}
+    <h3 class="h6 mt-3">Materiales</h3>
+    <table class="table table-sm">
+      <thead><tr><th>Cant.</th><th>Descripción</th><th>Comentarios</th></tr></thead>
+      <tbody>
+        {% for m in object.materiales.all %}
+          <tr>
+            <td>{{ m.cantidad }}</td>
+            <td>{{ m.descripcion }}</td>
+            <td>{{ m.comentarios|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
 
     <div class="row mt-3">
-      <div class="col-md-6">
-        <h3 class="h6">Resguardo</h3>
-        <div class="border rounded p-2" style="min-height:60px;">{{ object.resguardo|default:"—" }}</div>
-      </div>
       <div class="col-md-6">
         <h3 class="h6">Costos y tiempo</h3>
         <table class="table table-sm mb-0">
           <tr><th>Horas</th><td>{{ object.horas }}</td></tr>
-          <tr><th>Costo (MXN)</th>
-            <td>
-              {% if object.costo_no_aplica %}
-                No aplica
-              {% elif object.costo_se_cotizara %}
-                Se cotizará
-              {% else %}
-                ${{ object.costo_mxn|floatformat:2 }}
-              {% endif %}
-            </td>
-          </tr>
+          <tr><th>Costo (MXN)</th><td>
+            {% if object.costo_no_aplica %}No aplica{% elif object.costo_se_cotizara %}Se cotizará{% else %}${{ object.costo_mxn }}{% endif %}
+          </td></tr>
         </table>
       </div>
-    </div>
-
-    <div class="row mt-4 align-items-center">
-      <div class="col-md-7">
-        <h3 class="h6 mb-2">Firma del cliente</h3>
-        <div class="border rounded p-2 text-center" style="height:150px;">
+      <div class="col-md-6">
+        <h3 class="h6">Firma del cliente</h3>
+        <div class="border rounded p-2 text-center h-150">
           {% if object.firma %}
-            <img src="{{ object.firma.url }}" style="max-height:130px; max-width:100%;" alt="Firma">
+            <img src="{{ object.firma.url }}" class="img-sign" alt="Firma">
           {% else %}
             <span class="text-muted">Sin firma</span>
           {% endif %}
         </div>
-      </div>
-      <div class="col-md-5 small">
-        {% if object.reagenda %}
-          <strong>Reagendado:</strong> {{ object.reagenda_fecha|date:"Y-m-d" }} {{ object.reagenda_hora|time:"H:i" }}<br>
-          <strong>Motivo:</strong> {{ object.reagenda_motivo|default:"—" }}
-        {% endif %}
       </div>
     </div>
   </div>
