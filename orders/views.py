@@ -10,19 +10,23 @@ from django.utils.dateparse import parse_date
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
 
+# para firma base64 -> ImageField
+import base64, uuid
+from django.core.files.base import ContentFile
+
 
 @login_required
 def order_list(request):
     qs = ServiceOrder.objects.all()
 
-    # Filtros opcionales que usa tu template (q, desde, hasta)
+    # Filtros opcionales del listado (si los usas en la plantilla)
     q = (request.GET.get("q") or "").strip()
     if q:
         qs = qs.filter(
-            Q(folio__icontains=q)
-            | Q(cliente_nombre__icontains=q)
-            | Q(titulo__icontains=q)
-            | Q(ingeniero_nombre__icontains=q)
+            Q(folio__icontains=q) |
+            Q(cliente_nombre__icontains=q) |
+            Q(titulo__icontains=q) |
+            Q(ingeniero_nombre__icontains=q)
         )
 
     desde = parse_date(request.GET.get("desde") or "")
@@ -48,14 +52,35 @@ def order_create(request):
         form = ServiceOrderForm(request.POST, request.FILES)
         equipos_fs = EquipmentFormSet(request.POST, request.FILES, prefix="equipos")
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, prefix="materiales")
+
         if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
-            order = form.save()
+            # Guardar orden (y meter firma si viene en base64)
+            order = form.save(commit=False)
+
+            # El input hidden en el template se llama name="firma" (id="firma-base64")
+            firma_b64 = request.POST.get("firma") or ""
+            if firma_b64.startswith("data:image"):
+                try:
+                    header, data = firma_b64.split(",", 1)
+                    ext = "png" if "png" in header.lower() else "jpg"
+                    file_data = ContentFile(base64.b64decode(data), name=f"firma_{uuid.uuid4().hex}.{ext}")
+                    order.firma = file_data
+                except Exception:
+                    messages.warning(request, "No se pudo procesar la firma. Puedes intentar firmar de nuevo.")
+
+            order.save()
+
+            # Formsets
             equipos_fs.instance = order
             materiales_fs.instance = order
             equipos_fs.save()
             materiales_fs.save()
+
             messages.success(request, "Orden creada correctamente.")
             return redirect(reverse("orders:detail", args=[order.pk]))
+        else:
+            # Mostrar errores en pantalla
+            messages.error(request, "Revisa los errores del formulario marcado en rojo.")
     else:
         form = ServiceOrderForm()
         equipos_fs = EquipmentFormSet(prefix="equipos")
@@ -68,17 +93,11 @@ def order_create(request):
 @require_POST
 @login_required
 def bulk_delete(request):
-    """
-    Recibe una lista de IDs (checkbox name='ids') y elimina en bloque.
-    Tu template hace POST a {% url 'orders:bulk_delete' %}.
-    """
-    ids = request.POST.getlist("ids")  # p.ej. ["3","5","8"]
+    ids = request.POST.getlist("ids")
     if not ids:
         messages.warning(request, "No seleccionaste órdenes para eliminar.")
         return redirect("orders:list")
-
-    deleted, _ = ServiceOrder.objects.filter(pk__in=ids).delete()
-    # 'deleted' puede incluir objetos relacionados; solo mostramos un mensaje general
+    ServiceOrder.objects.filter(pk__in=ids).delete()
     messages.success(request, "Órdenes seleccionadas eliminadas.")
     return redirect("orders:list")
 

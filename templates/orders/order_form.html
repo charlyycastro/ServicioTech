@@ -7,6 +7,15 @@
 <form method="post" enctype="multipart/form-data" id="order-form">
   {% csrf_token %}
 
+  {% if form.errors or form.non_field_errors or equipos_fs.non_form_errors or materiales_fs.non_form_errors %}
+    <div class="alert alert-danger">
+      <strong>Hay errores en el formulario.</strong> Corrige los campos marcados.
+      {{ form.non_field_errors }}
+      {{ equipos_fs.non_form_errors }}
+      {{ materiales_fs.non_form_errors }}
+    </div>
+  {% endif %}
+
   <div class="accordion shadow-sm" id="ordenAccordion">
 
     <!-- A) DATOS DEL SERVICIO -->
@@ -53,6 +62,9 @@
             <div class="col-md-4 d-none" id="otro-wrapper">
               <label class="form-label">Otro (especifique)</label>
               {{ form.tipo_servicio_otro }}
+              {% if form.tipo_servicio_otro.errors %}
+                <div class="text-danger small mt-1">{{ form.tipo_servicio_otro.errors }}</div>
+              {% endif %}
             </div>
 
             <div class="col-md-4">
@@ -249,7 +261,7 @@
       </div>
     </div>
 
-       <!-- F) FIRMA -->
+    <!-- F) FIRMA -->
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingFirma">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma" aria-expanded="false" aria-controls="collapseFirma">
@@ -261,12 +273,9 @@
           <div class="d-flex gap-2 align-items-center mb-2">
             <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
           </div>
-
-          <!-- ✅ IDs que tu CSS/JS conocen -->
           <div id="signature-wrapper" class="w-100">
             <canvas id="signature-canvas"></canvas>
           </div>
-
           <input type="hidden" name="firma" id="firma-base64">
           <div class="form-text">Firme con el dedo o mouse. (Sin scroll accidental en móvil)</div>
         </div>
