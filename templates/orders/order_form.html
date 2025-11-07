@@ -41,24 +41,38 @@
               {{ form.contacto_nombre }}
             </div>
 
-            <div class="col-md-4">
-              <label class="form-label">Tipo de servicio</label>
-              {{ form.tipo_servicio }}
+            <!-- ✅ Tipo(s) de servicio (checkboxes) -->
+            <div class="col-md-8">
+              <label class="form-label d-block">Tipo(s) de servicio</label>
+              <div class="row g-2">
+                {% for cb in form.tipos_servicio %}
+                  <div class="col-6 col-md-4">
+                    <div class="form-check">
+                      {{ cb.tag }}
+                      <label class="form-check-label" for="{{ cb.id_for_label }}">{{ cb.choice_label }}</label>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
             </div>
+
+            <!-- ✅ Otro (especifique) -->
+            <div class="col-md-4 d-none" id="otro-wrapper">
+              <label class="form-label">Otro (especifique)</label>
+              {{ form.tipo_servicio_otro }}
+            </div>
+
             <div class="col-md-4">
               <label class="form-label">Ingeniero</label>
               {{ form.ingeniero_nombre }}
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Resguardo</label>
-              {{ form.resguardo }}
-            </div>
+            <!-- ❌ Resguardo eliminado -->
           </div>
         </div>
       </div>
     </div>
 
-    <!-- B) EQUIPOS (solo formset, SIN resumen) -->
+    <!-- B) EQUIPOS -->
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingEquipos">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipos" aria-expanded="false" aria-controls="collapseEquipos">
@@ -77,7 +91,7 @@
                 <table class="table table-sm table-striped mb-0 formset-table">
                   <thead class="table-light">
                     <tr>
-                      <th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th><th style="width:1%"></th>
+                      <th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th><th class="col-actions"></th>
                     </tr>
                   </thead>
                   <tbody id="equipos-body">
@@ -193,7 +207,7 @@
       </div>
     </div>
 
-    <!-- E) MATERIALES (antes de la firma) -->
+    <!-- E) MATERIALES -->
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingMateriales">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMateriales" aria-expanded="false" aria-controls="collapseMateriales">
@@ -212,7 +226,7 @@
                 <table class="table table-sm table-striped mb-0 formset-table">
                   <thead class="table-light">
                     <tr>
-                      <th>Descripción</th><th>Cantidad</th><th>Comentarios</th><th style="width:1%"></th>
+                      <th>Descripción</th><th>Cantidad</th><th>Comentarios</th><th class="col-actions"></th>
                     </tr>
                   </thead>
                   <tbody id="materiales-body">
@@ -220,7 +234,7 @@
                     {% for f in materiales_fs %}
                     <tr class="formset-row">
                       <td>{{ f.descripcion }}</td>
-                      <td style="max-width:120px;">{{ f.cantidad }}</td>
+                      <td class="max-w-120">{{ f.cantidad }}</td>
                       <td>{{ f.comentarios }}</td>
                       <td class="text-end">
                         {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
@@ -264,7 +278,7 @@
       </div>
     </div>
 
-  </div> <!-- /accordion -->
+  </div>
 
   <div class="d-flex gap-2 mt-3">
     <button class="btn btn-primary" type="submit">Guardar</button>
@@ -274,6 +288,21 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'orders/equipos.js' %}"></script>
-<script src="{% static 'orders/signature.js' %}"></script>
+<script>
+  // Mostrar/ocultar "Otro (especifique)" usando clases (sin inline styles)
+  document.addEventListener('DOMContentLoaded', function(){
+    const wrapper = document.getElementById('otro-wrapper');
+    const otroInput = document.getElementById('id_tipo_servicio_otro');
+
+    function refresh() {
+      const checks = document.querySelectorAll('input[name="tipos_servicio"]');
+      const otroOn = Array.from(checks).some(ch => ch.value === 'otro' && ch.checked);
+      wrapper.classList.toggle('d-none', !otroOn);
+      if (!otroOn && otroInput) otroInput.value = '';
+    }
+
+    document.querySelectorAll('input[name="tipos_servicio"]').forEach(ch => ch.addEventListener('change', refresh));
+    refresh();
+  });
+</script>
 {% endblock %}
