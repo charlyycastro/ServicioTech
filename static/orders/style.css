@@ -130,7 +130,18 @@ input[type="file"]::file-selector-button:hover {
 .minh-100 { min-height: 100px; }                    /* cajas de texto altas */
 .h-150 { height: 150px; }                           /* contenedor de firma */
 .img-sign { max-height: 130px; max-width: 100%; }   /* imagen de firma */
-
+/* Grid bonito para los checkboxes de tipos de servicio */
+.checkgrid ul { 
+  list-style: none; 
+  margin: 0; 
+  padding: 0; 
+  display: grid; 
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+  gap: .25rem .75rem; 
+}
+.checkgrid li { margin: 0; }
+.checkgrid input[type="checkbox"] { margin-right: .4rem; }
+.checkgrid label { margin-left: .1rem; }
 
 
 
