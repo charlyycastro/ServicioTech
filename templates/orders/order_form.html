@@ -249,7 +249,7 @@
       </div>
     </div>
 
-    <!-- F) FIRMA -->
+       <!-- F) FIRMA -->
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingFirma">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma" aria-expanded="false" aria-controls="collapseFirma">
@@ -261,9 +261,14 @@
           <div class="d-flex gap-2 align-items-center mb-2">
             <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
           </div>
-          <canvas id="signature" width="600" height="200" class="border rounded w-100"></canvas>
+
+          <!-- ✅ IDs que tu CSS/JS conocen -->
+          <div id="signature-wrapper" class="w-100">
+            <canvas id="signature-canvas"></canvas>
+          </div>
+
           <input type="hidden" name="firma" id="firma-base64">
-          <div class="form-text">Firme con el dedo o mouse. (El lienzo no hace scroll en móvil)</div>
+          <div class="form-text">Firme con el dedo o mouse. (Sin scroll accidental en móvil)</div>
         </div>
       </div>
     </div>
