@@ -23,7 +23,7 @@
 }
 .pretty-form textarea { min-height: 110px; }
 
-/* Firma */
+/* Firma: estable y con bloqueo de scroll mientras se firma */
 #signature-wrapper {
   height: 220px;
   border: 2px dashed #6c757d;
@@ -39,109 +39,73 @@ body.signing { height: 100vh; overflow: hidden; }
 .bg-light-subtle { background-color: #f8f9fa; }
 .table td .form-control,
 .table td textarea.form-control { min-width: 140px; }
-@media (max-width: 576px) { .table-responsive { overflow-x: auto; } }
 
-/* ---- Equipos (formset) ---- */
+@media (max-width: 576px) {
+  .table-responsive { overflow-x: auto; }
+}
+
+/* ---- Equipos (formset) -------------------------------------------- */
 .equipo-row input[type="checkbox"][name$="-DELETE"] { display: none !important; }
 #equipos-table td > .form-control,
 #equipos-table td > textarea.form-control { width: 100%; }
 #equipos-table .btn-del-equipo { padding: 0; line-height: 1; }
 #equipos-table thead.bg-light-subtle { background-color: #f8f9fa; }
 
-/* Secciones y tablas */
+/* Mejora visual de secciones */
 .accordion-button { font-weight: 600; }
 .form-label { color: #6c757d; font-size: 0.92rem; }
+
+/* Tablas de formset */
 .formset-table th, .formset-table td { vertical-align: middle; }
 .formset-table thead th { position: sticky; top: 0; z-index: 2; }
+
+/* Inputs compactos en tablas */
 .formset-table td .form-control { height: 38px; padding: .375rem .5rem; }
 
 /* Bordes suaves */
 .card, .accordion-item { border-radius: .75rem; overflow: hidden; }
 
-/* Lista de órdenes: estética */
-.card-header { border-bottom: 1px solid rgba(0,0,0,.06); }
+/* order list */
+.table-hover tbody tr:hover { cursor: pointer; }
 .card-header .btn { height: 36px; }
+.card-header { border-bottom: 1px solid rgba(0,0,0,.06); }
 .table-hover tbody tr:hover { background-color: rgba(0,0,0,.03); cursor: pointer; }
 
-/* --- Login: ojo y separación del botón --- */
-#login-form .btn-primary { margin-top: 12px; }   /* despega el botón del input */
-
+/* Login: botón ojo */
+#togglePassword { line-height: 1; padding: .25rem .5rem; }
 .input-eye-btn{
   position: absolute;
   top: 50%;
-  right: .65rem;               /* separación del borde derecho */
+  right: .5rem;
   transform: translateY(-50%);
   padding: .25rem;
   line-height: 1;
   border: 0;
   background: transparent;
   color: #6c757d;
-  z-index: 3;                  /* sobre el focus ring */
+  z-index: 3;
 }
-.input-eye-btn svg { width: 18px; height: 18px; }
-#id_password { padding-right: 2.4rem; }         /* deja espacio para el ojo */
+#id_password.pe-5, #id_password { padding-right: 2.25rem; }
 .input-eye-btn:focus { outline: none; box-shadow: none; }
-.input-eye-btn:hover { color: #495057; }
-/* --- Fin login --- */
-/* Estilo para los botones de acción en la lista de órdenes */
-.order-action-btn {
-  border: none;
-  background: transparent;
-  color: #6c757d;
-  padding: .25rem;                
-  line-height: 1;
-}
-.order-action-btn svg { width: 20px; height: 20px; }
-.order-action-btn:hover { color: #495057; }
-.order-action-btn:focus { outline: none; box-shadow: none; }
-/* Fin estilo botones de acción */
 
-/* Ajustes para inputs tipo file */
-input[type="file"] {
-  padding: .375rem .75rem;
-  border-radius: .5rem;
-}
-input[type="file"]::file-selector-button {
-  margin-right: .5rem;
-  padding: .375rem .75rem;
-  border: 1px solid #ced4da;
-  border-radius: .5rem;
-  background-color: #e9ecef;
-  cursor: pointer;
-}
-input[type="file"]::file-selector-button:hover {
-  background-color: #dee2e6;
-}
-/* Fin ajustes inputs file */
-/* Estilo para los mensajes de alerta */
-.alert {
-  border-radius: .5rem;
-  padding: .75rem 1.25rem;
-  font-size: 0.95rem;
-}
-.alert .btn-close {
-  padding: .25rem .5rem;
-  margin-top: -4px;
-}
-/* Fin estilo mensajes de alerta */
-/* ---- utilidades para reemplazar inline styles ---- */
-.col-actions { width: 1%; white-space: nowrap; }   /* columna de acciones en tablas */
-.max-w-120 { max-width: 120px; }                    /* celdas angostas */
-.minh-100 { min-height: 100px; }                    /* cajas de texto altas */
-.h-150 { height: 150px; }                           /* contenedor de firma */
-.img-sign { max-height: 130px; max-width: 100%; }   /* imagen de firma */
-/* Grid bonito para los checkboxes de tipos de servicio */
-.checkgrid ul { 
-  list-style: none; 
-  margin: 0; 
-  padding: 0; 
-  display: grid; 
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
-  gap: .25rem .75rem; 
-}
-.checkgrid li { margin: 0; }
-.checkgrid input[type="checkbox"] { margin-right: .4rem; }
-.checkgrid label { margin-left: .1rem; }
+/* ---- Utilidades que reemplazan inline styles ---- */
+.col-actions { width: 1%; white-space: nowrap; }
+.max-w-120 { max-width: 120px; }
+.minh-100 { min-height: 100px; }
+.h-150 { height: 150px; }
+.img-sign { max-height: 130px; max-width: 100%; }
 
+/* ✅ Grid para los checkboxes de Tipo(s) de servicio */
+.checkgrid ul{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .25rem .75rem;
+}
+.checkgrid li{ margin: 0; }
+.checkgrid input[type="checkbox"]{ margin-right: .4rem; }
+.checkgrid label{ margin-left: .1rem; }
 
 

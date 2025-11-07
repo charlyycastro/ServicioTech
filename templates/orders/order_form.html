@@ -42,25 +42,24 @@
             </div>
 
             <!-- ✅ Tipo(s) de servicio (múltiple) -->
-<div class="col-md-8">
-  <label class="form-label d-block">Tipo(s) de servicio</label>
-  <div class="checkgrid">
-    {{ form.tipos_servicio }}  {# imprime todos los checkboxes #}
-  </div>
-</div>
+            <div class="col-md-8">
+              <label class="form-label d-block">Tipo(s) de servicio</label>
+              <div class="checkgrid">
+                {{ form.tipos_servicio }}
+              </div>
+            </div>
 
-<!-- ✅ Otro (especifique) -->
-<div class="col-md-4 d-none" id="otro-wrapper">
-  <label class="form-label">Otro (especifique)</label>
-  {{ form.tipo_servicio_otro }}
-</div>
-
+            <!-- ✅ Otro (especifique) -->
+            <div class="col-md-4 d-none" id="otro-wrapper">
+              <label class="form-label">Otro (especifique)</label>
+              {{ form.tipo_servicio_otro }}
+            </div>
 
             <div class="col-md-4">
               <label class="form-label">Ingeniero</label>
               {{ form.ingeniero_nombre }}
             </div>
-            <!-- ❌ Resguardo eliminado -->
+            <!-- ❌ Resguardo NO se muestra -->
           </div>
         </div>
       </div>
@@ -167,12 +166,10 @@
             </div>
             <div class="col-md-6 d-flex align-items-center gap-4">
               <div class="form-check">
-                {{ form.costo_no_aplica }}
-                <label class="form-check-label">No aplica</label>
+                {{ form.costo_no_aplica }} <label class="form-check-label">No aplica</label>
               </div>
               <div class="form-check">
-                {{ form.costo_se_cotizara }}
-                <label class="form-check-label">Se cotizará</label>
+                {{ form.costo_se_cotizara }} <label class="form-check-label">Se cotizará</label>
               </div>
             </div>
 
@@ -180,8 +177,7 @@
 
             <div class="col-md-2 d-flex align-items-center">
               <div class="form-check">
-                {{ form.reagenda }}
-                <label class="form-check-label">Reagendar</label>
+                {{ form.reagenda }} <label class="form-check-label">Reagendar</label>
               </div>
             </div>
             <div class="col-md-3">
@@ -283,7 +279,7 @@
 
 {% block scripts %}
 <script>
-  // Mostrar/ocultar "Otro (especifique)" usando clases (sin inline styles)
+  // Mostrar/ocultar "Otro (especifique)"
   document.addEventListener('DOMContentLoaded', function(){
     const wrapper = document.getElementById('otro-wrapper');
     const otroInput = document.getElementById('id_tipo_servicio_otro');

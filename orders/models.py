@@ -1,4 +1,3 @@
-# orders/models.py
 from django.db import models
 from django.utils import timezone
 import uuid
@@ -12,35 +11,43 @@ SERVICE_TYPES = [
     ("capacitacion", "Capacitación"),
 ]
 
-def folio_default():
-    today = timezone.now().strftime("%Y%m%d")
-    short = uuid.uuid4().hex[:6].upper()
-    return f"SRV-{today}-{short}"
-
 class ServiceOrder(models.Model):
+    def folio_default():
+        today = timezone.now().strftime("%Y%m%d")
+        short = uuid.uuid4().hex[:6].upper()
+        return f"SRV-{today}-{short}"
+
     folio = models.CharField(max_length=32, unique=True, default=folio_default, editable=False)
 
-    # 1. Información general
+    # 1) Información general
     cliente_nombre = models.CharField(max_length=200)
     cliente_email = models.EmailField(blank=True)
     ubicacion = models.CharField(max_length=300, blank=True)
     fecha_servicio = models.DateField(default=timezone.now)
     contacto_nombre = models.CharField(max_length=200, blank=True)
-    tipo_servicio = models.CharField(max_length=20, choices=SERVICE_TYPES)
+
+    # Campo antiguo (compatibilidad). Ya no se usa en el form, lo dejamos opcional:
+    tipo_servicio = models.CharField(max_length=20, choices=SERVICE_TYPES, blank=True)
+
+    # ✅ Nuevos campos
+    tipos_servicio = models.JSONField(default=list, blank=True)   # p.ej. ["instalacion","mantenimiento"]
+    tipo_servicio_otro = models.CharField(max_length=200, blank=True)
+
     ingeniero_nombre = models.CharField(max_length=200)
 
-    # 2. Equipo (resumen)
+    # 2) Equipo (resumen opcional)
     equipo_marca = models.CharField(max_length=100, blank=True)
     equipo_modelo = models.CharField(max_length=100, blank=True)
     equipo_serie = models.CharField(max_length=100, blank=True)
     equipo_descripcion = models.TextField(blank=True)
 
-    # 3. Datos técnicos
+    # 3) Datos técnicos
     titulo = models.CharField(max_length=250)
     actividades = models.TextField(blank=True)
     comentarios = models.TextField(blank=True)
 
-    resguardo = models.CharField(max_length=200, blank=True, help_text="Ej. Ninguno / Adaptador / etc.")
+    # Resguardo: lo mantenemos para compatibilidad, pero NO se muestra en el form
+    resguardo = models.CharField(max_length=200, blank=True)
 
     horas = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     costo_mxn = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -59,8 +66,14 @@ class ServiceOrder(models.Model):
 
     email_enviado = models.BooleanField(default=False)
 
+    # Helpers
+    def tipos_servicio_labels(self):
+        mapa = dict(SERVICE_TYPES)
+        return [mapa.get(code, code) for code in (self.tipos_servicio or [])]
+
     def __str__(self):
         return f"{self.folio} - {self.cliente_nombre}"
+
 
 class Equipment(models.Model):
     order = models.ForeignKey("ServiceOrder", related_name="equipos", on_delete=models.CASCADE)
@@ -81,8 +94,9 @@ class Equipment(models.Model):
             base += f" ({self.serie})"
         return base or "Equipo"
 
+
 class ServiceMaterial(models.Model):
-    order = models.ForeignKey("ServiceOrder", on_delete=models.CASCADE, related_name="materiales")
+    order = models.ForeignKey(ServiceOrder, on_delete=models.CASCADE, related_name="materiales")
     cantidad = models.PositiveIntegerField(default=1)
     descripcion = models.CharField(max_length=200)
     comentarios = models.CharField(max_length=200, blank=True)
