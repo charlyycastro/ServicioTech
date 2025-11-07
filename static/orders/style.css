@@ -124,6 +124,12 @@ input[type="file"]::file-selector-button:hover {
   margin-top: -4px;
 }
 /* Fin estilo mensajes de alerta */
+/* ---- utilidades para reemplazar inline styles ---- */
+.col-actions { width: 1%; white-space: nowrap; }   /* columna de acciones en tablas */
+.max-w-120 { max-width: 120px; }                    /* celdas angostas */
+.minh-100 { min-height: 100px; }                    /* cajas de texto altas */
+.h-150 { height: 150px; }                           /* contenedor de firma */
+.img-sign { max-height: 130px; max-width: 100%; }   /* imagen de firma */
 
 
 
