@@ -96,3 +96,18 @@ body.signing {
 
 /* Ajuste fino del botón ojo en el login */
 #togglePassword { line-height: 1; padding: .25rem .5rem; }
+/* Botón ojo acomodado dentro del input */
+.input-eye-btn{
+  position: absolute;
+  top: 50%;
+  right: .5rem;           /* separación del borde derecho */
+  transform: translateY(-50%);
+  padding: .25rem;
+  line-height: 1;
+  border: 0;
+  background: transparent;
+  color: #6c757d;
+  z-index: 3;             /* encima del borde/focus ring */
+}
+#id_password.pe-5, #id_password { padding-right: 2.25rem; } /* espacio para el ojo */
+.input-eye-btn:focus { outline: none; box-shadow: none; }
