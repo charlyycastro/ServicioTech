@@ -24,21 +24,30 @@
 
       <div class="collapse navbar-collapse" id="mainNav">
         <ul class="navbar-nav ms-auto align-items-lg-center">
-          {% if user.is_authenticated %}
-            <!-- Logout por POST -->
-            <li class="nav-item">
-              <form action="{% url 'orders:logout' %}" method="post" class="d-inline">
-                {% csrf_token %}
-                <button class="btn btn-outline-light btn-sm" type="submit">Cerrar sesión</button>
-              </form>
-            </li>
-          {% else %}
-            <li class="nav-item">
-              <a class="btn btn-primary" href="{% url 'login' %}?next={% url 'orders:list' %}">Iniciar sesión</a>
-            </li>
-          {% endif %}
-          <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
-        </ul>
+
+  {% if user.is_authenticated %}
+    <!-- Logout por POST -->
+    <li class="nav-item">
+      <form method="post" action="{% url 'orders:logout' %}" class="d-inline">
+        {% csrf_token %}
+        <button class="btn btn-outline-light btn-sm" type="submit">Cerrar sesión</button>
+      </form>
+    </li>
+  {% else %}
+    {# En la página de login NO mostramos el botón "Iniciar sesión" #}
+    {% if request.resolver_match.url_name != 'login' %}
+    <li class="nav-item">
+      <a class="btn btn-primary" href="{% url 'login' %}?next={% url 'orders:list' %}">Iniciar sesión</a>
+    </li>
+    {% endif %}
+  {% endif %}
+
+  {# El enlace Admin solo para staff y nunca en la página de login #}
+  {% if user.is_authenticated and user.is_staff and request.resolver_match.url_name != 'login' %}
+  <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
+  {% endif %}
+
+</ul>
       </div>
     </div>
   </nav>

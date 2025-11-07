@@ -23,91 +23,108 @@
 }
 .pretty-form textarea { min-height: 110px; }
 
-/* Firma: estable y con bloqueo de scroll mientras se firma */
+/* Firma */
 #signature-wrapper {
   height: 220px;
   border: 2px dashed #6c757d;
   border-radius: .75rem;
-  touch-action: none;              /* evita scroll al firmar */
-  overscroll-behavior: contain;    /* evita bounce */
+  touch-action: none;
+  overscroll-behavior: contain;
   background: #fff;
 }
-#signature-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-body.signing {
-  height: 100vh;
-  overflow: hidden; /* sin scroll mientras se firma */
-}
+#signature-canvas { width: 100%; height: 100%; display: block; }
+body.signing { height: 100vh; overflow: hidden; }
 
 /* Ajustes menores */
 .bg-light-subtle { background-color: #f8f9fa; }
 .table td .form-control,
 .table td textarea.form-control { min-width: 140px; }
+@media (max-width: 576px) { .table-responsive { overflow-x: auto; } }
 
-@media (max-width: 576px) {
-  .table-responsive { overflow-x: auto; }
-}
-/* ---- Equipos (formset) -------------------------------------------- */
-
-/* Oculta el checkbox DELETE del formset (usamos el botón Eliminar) */
-.equipo-row input[type="checkbox"][name$="-DELETE"] {
-  display: none !important;
-}
-
-/* Que los inputs ocupen todo el ancho dentro de la tabla */
+/* ---- Equipos (formset) ---- */
+.equipo-row input[type="checkbox"][name$="-DELETE"] { display: none !important; }
 #equipos-table td > .form-control,
-#equipos-table td > textarea.form-control {
-  width: 100%;
-}
+#equipos-table td > textarea.form-control { width: 100%; }
+#equipos-table .btn-del-equipo { padding: 0; line-height: 1; }
+#equipos-table thead.bg-light-subtle { background-color: #f8f9fa; }
 
-/* Botón "Eliminar" más compacto y alineado */
-#equipos-table .btn-del-equipo {
-  padding: 0;
-  line-height: 1;
-}
-
-/* Encabezado clarito */
-#equipos-table thead.bg-light-subtle {
-  background-color: #f8f9fa;
-}
-/* Mejora visual de secciones */
+/* Secciones y tablas */
 .accordion-button { font-weight: 600; }
 .form-label { color: #6c757d; font-size: 0.92rem; }
-
-/* Tablas de formset */
 .formset-table th, .formset-table td { vertical-align: middle; }
 .formset-table thead th { position: sticky; top: 0; z-index: 2; }
-
-/* Inputs compactos en tablas */
 .formset-table td .form-control { height: 38px; padding: .375rem .5rem; }
 
 /* Bordes suaves */
 .card, .accordion-item { border-radius: .75rem; overflow: hidden; }
-/*order*/
-.table-hover tbody tr:hover { cursor: pointer; }
-.card-header .btn { height: 36px; }
-/*Eliminacion dde reporte boton*/
+
+/* Lista de órdenes: estética */
 .card-header { border-bottom: 1px solid rgba(0,0,0,.06); }
 .card-header .btn { height: 36px; }
 .table-hover tbody tr:hover { background-color: rgba(0,0,0,.03); cursor: pointer; }
 
-/* Ajuste fino del botón ojo en el login */
-#togglePassword { line-height: 1; padding: .25rem .5rem; }
-/* Botón ojo acomodado dentro del input */
+/* --- Login: ojo y separación del botón --- */
+#login-form .btn-primary { margin-top: 12px; }   /* despega el botón del input */
+
 .input-eye-btn{
   position: absolute;
   top: 50%;
-  right: .5rem;           /* separación del borde derecho */
+  right: .65rem;               /* separación del borde derecho */
   transform: translateY(-50%);
   padding: .25rem;
   line-height: 1;
   border: 0;
   background: transparent;
   color: #6c757d;
-  z-index: 3;             /* encima del borde/focus ring */
+  z-index: 3;                  /* sobre el focus ring */
 }
-#id_password.pe-5, #id_password { padding-right: 2.25rem; } /* espacio para el ojo */
+.input-eye-btn svg { width: 18px; height: 18px; }
+#id_password { padding-right: 2.4rem; }         /* deja espacio para el ojo */
 .input-eye-btn:focus { outline: none; box-shadow: none; }
+.input-eye-btn:hover { color: #495057; }
+/* --- Fin login --- */
+/* Estilo para los botones de acción en la lista de órdenes */
+.order-action-btn {
+  border: none;
+  background: transparent;
+  color: #6c757d;
+  padding: .25rem;                
+  line-height: 1;
+}
+.order-action-btn svg { width: 20px; height: 20px; }
+.order-action-btn:hover { color: #495057; }
+.order-action-btn:focus { outline: none; box-shadow: none; }
+/* Fin estilo botones de acción */
+
+/* Ajustes para inputs tipo file */
+input[type="file"] {
+  padding: .375rem .75rem;
+  border-radius: .5rem;
+}
+input[type="file"]::file-selector-button {
+  margin-right: .5rem;
+  padding: .375rem .75rem;
+  border: 1px solid #ced4da;
+  border-radius: .5rem;
+  background-color: #e9ecef;
+  cursor: pointer;
+}
+input[type="file"]::file-selector-button:hover {
+  background-color: #dee2e6;
+}
+/* Fin ajustes inputs file */
+/* Estilo para los mensajes de alerta */
+.alert {
+  border-radius: .5rem;
+  padding: .75rem 1.25rem;
+  font-size: 0.95rem;
+}
+.alert .btn-close {
+  padding: .25rem .5rem;
+  margin-top: -4px;
+}
+/* Fin estilo mensajes de alerta */
+
+
+
+
