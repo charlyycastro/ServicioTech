@@ -28,19 +28,12 @@
   height: 220px;
   border: 2px dashed #6c757d;
   border-radius: .75rem;
-  touch-action: none;              /* evita scroll al firmar */
-  overscroll-behavior: contain;    /* evita bounce */
+  touch-action: none;
+  overscroll-behavior: contain;
   background: #fff;
 }
-#signature-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-body.signing {
-  height: 100vh;
-  overflow: hidden; /* sin scroll mientras se firma */
-}
+#signature-canvas { width: 100%; height: 100%; display: block; }
+body.signing { height: 100vh; overflow: hidden; }
 
 /* Ajustes menores */
 .bg-light-subtle { background-color: #f8f9fa; }
@@ -50,26 +43,69 @@ body.signing {
 @media (max-width: 576px) {
   .table-responsive { overflow-x: auto; }
 }
+
 /* ---- Equipos (formset) -------------------------------------------- */
-
-/* Oculta el checkbox DELETE del formset (usamos el botón Eliminar) */
-.equipo-row input[type="checkbox"][name$="-DELETE"] {
-  display: none !important;
-}
-
-/* Que los inputs ocupen todo el ancho dentro de la tabla */
+.equipo-row input[type="checkbox"][name$="-DELETE"] { display: none !important; }
 #equipos-table td > .form-control,
-#equipos-table td > textarea.form-control {
-  width: 100%;
-}
+#equipos-table td > textarea.form-control { width: 100%; }
+#equipos-table .btn-del-equipo { padding: 0; line-height: 1; }
+#equipos-table thead.bg-light-subtle { background-color: #f8f9fa; }
 
-/* Botón "Eliminar" más compacto y alineado */
-#equipos-table .btn-del-equipo {
-  padding: 0;
+/* Mejora visual de secciones */
+.accordion-button { font-weight: 600; }
+.form-label { color: #6c757d; font-size: 0.92rem; }
+
+/* Tablas de formset */
+.formset-table th, .formset-table td { vertical-align: middle; }
+.formset-table thead th { position: sticky; top: 0; z-index: 2; }
+
+/* Inputs compactos en tablas */
+.formset-table td .form-control { height: 38px; padding: .375rem .5rem; }
+
+/* Bordes suaves */
+.card, .accordion-item { border-radius: .75rem; overflow: hidden; }
+
+/* order list */
+.table-hover tbody tr:hover { cursor: pointer; }
+.card-header .btn { height: 36px; }
+.card-header { border-bottom: 1px solid rgba(0,0,0,.06); }
+.table-hover tbody tr:hover { background-color: rgba(0,0,0,.03); cursor: pointer; }
+
+/* Login: botón ojo */
+#togglePassword { line-height: 1; padding: .25rem .5rem; }
+.input-eye-btn{
+  position: absolute;
+  top: 50%;
+  right: .5rem;
+  transform: translateY(-50%);
+  padding: .25rem;
   line-height: 1;
+  border: 0;
+  background: transparent;
+  color: #6c757d;
+  z-index: 3;
 }
+#id_password.pe-5, #id_password { padding-right: 2.25rem; }
+.input-eye-btn:focus { outline: none; box-shadow: none; }
 
-/* Encabezado clarito */
-#equipos-table thead.bg-light-subtle {
-  background-color: #f8f9fa;
+/* ---- Utilidades que reemplazan inline styles ---- */
+.col-actions { width: 1%; white-space: nowrap; }
+.max-w-120 { max-width: 120px; }
+.minh-100 { min-height: 100px; }
+.h-150 { height: 150px; }
+.img-sign { max-height: 130px; max-width: 100%; }
+
+/* ✅ Grid para los checkboxes de Tipo(s) de servicio */
+.checkgrid ul{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .25rem .75rem;
 }
+.checkgrid li{ margin: 0; }
+.checkgrid input[type="checkbox"]{ margin-right: .4rem; }
+.checkgrid label{ margin-left: .1rem; }
+
+
