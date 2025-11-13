@@ -21,15 +21,17 @@ from django.core.files.base import ContentFile
 def order_list(request):
     qs = ServiceOrder.objects.all().order_by('-id')  # nuevas arriba
 
+    # DEBUG en consola: confirma cuántos trae y qué DB está usando
+    print("ORDER_LIST count:", qs.count())
+    print("DB:", settings.DATABASES['default'])
+
     ctx = {
-        'orders': qs,
-        'ordenes': qs,       # alias por si la plantilla usa 'ordenes'
-        'object_list': qs,   # alias genérico
-        'page_obj': None,
-        'paginator': None,
-        'is_paginated': False,
+        "orders": qs,          # <- ÚNICO nombre que usará la plantilla
+        "page_obj": None,
+        "paginator": None,
+        "is_paginated": False,
     }
-    return render(request, 'orders/order_list.html', ctx)
+    return render(request, "orders/order_list.html", ctx)
 
 
 @login_required
