@@ -19,47 +19,17 @@ from django.core.files.base import ContentFile
 
 @login_required
 def order_list(request):
-    qs = ServiceOrder.objects.all()
+    qs = ServiceOrder.objects.all().order_by('-id')  # nuevas arriba
 
-    # --- filtros opcionales ---
-    q = (request.GET.get("q") or "").strip()
-    if q:
-        qs = qs.filter(
-            Q(folio__icontains=q) |
-            Q(cliente_nombre__icontains=q) |
-            Q(titulo__icontains=q) |
-            Q(ingeniero_nombre__icontains=q)
-        )
-
-    desde = parse_date(request.GET.get("desde") or "")
-    hasta = parse_date(request.GET.get("hasta") or "")
-
-    # incluye NULLs para no esconder órdenes sin fecha
-    if desde:
-        qs = qs.filter(Q(fecha_servicio__gte=desde) | Q(fecha_servicio__isnull=True))
-    if hasta:
-        qs = qs.filter(Q(fecha_servicio__lte=hasta) | Q(fecha_servicio__isnull=True))
-
-    # orden: si no hay filtros, muestra las más nuevas arriba
-    if not (q or desde or hasta):
-        qs = qs.order_by("-id")
-    else:
-        qs = qs.order_by(F("fecha_servicio").desc(nulls_last=True), "-id")
-
-    # paginación + alias de contexto (orders / ordenes / object_list)
-    paginator = Paginator(qs, 15)
-    page_obj = paginator.get_page(request.GET.get("page") or 1)
-
-    context = {
-        "orders": page_obj.object_list,
-        "ordenes": page_obj.object_list,       # <-- alias para tu plantilla
-        "object_list": page_obj.object_list,   # <-- alias por si se usa genérica
-        "page_obj": page_obj,
-        "paginator": paginator,
-        "is_paginated": page_obj.has_other_pages(),
+    ctx = {
+        'orders': qs,
+        'ordenes': qs,       # alias por si la plantilla usa 'ordenes'
+        'object_list': qs,   # alias genérico
+        'page_obj': None,
+        'paginator': None,
+        'is_paginated': False,
     }
-    return render(request, "orders/order_list.html", context)
-
+    return render(request, 'orders/order_list.html', ctx)
 
 
 @login_required
