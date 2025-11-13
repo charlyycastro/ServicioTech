@@ -4,42 +4,38 @@ from django.views.decorators.http import require_POST
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth import logout
-from django.db.models import Q,F
-from django.utils.dateparse import parse_date
-from django.core.paginator import Paginator
-from django.utils.dateparse import parse_date
+from django.http import HttpResponse
+
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
-from django.shortcuts import render
 
 # para firma base64 -> ImageField
 import base64, uuid
 from django.core.files.base import ContentFile
 
 
+# =========================
+# LISTA (MODO DIAGNÓSTICO)
+# =========================
 @login_required
 def order_list(request):
-    qs = ServiceOrder.objects.all().order_by('-id')  # nuevas arriba
-
-    # DEBUG en consola: confirma cuántos trae y qué DB está usando
-    print("ORDER_LIST count:", qs.count())
-    print("DB:", settings.DATABASES['default'])
-
-    ctx = {
-        "orders": qs,          # <- ÚNICO nombre que usará la plantilla
-        "page_obj": None,
-        "paginator": None,
-        "is_paginated": False,
-    }
-    return render(request, "orders/order_list.html", ctx)
+    n = ServiceOrder.objects.count()
+    # Si llegas a esta vista, debe mostrar "HIT..." con el total real
+    return HttpResponse(f"HIT order_list — count={n}")
 
 
+# =========================
+# DETALLE
+# =========================
 @login_required
 def order_detail(request, pk):
     obj = get_object_or_404(ServiceOrder, pk=pk)
     return render(request, "orders/order_detail.html", {"object": obj})
 
 
+# =========================
+# CREAR
+# =========================
 @login_required
 def order_create(request):
     if request.method == "POST":
@@ -73,7 +69,6 @@ def order_create(request):
             messages.success(request, "Orden creada correctamente.")
             return redirect(reverse("orders:detail", args=[order.pk]))
         else:
-            # Mostrar errores en pantalla
             messages.error(request, "Revisa los errores del formulario marcado en rojo.")
     else:
         form = ServiceOrderForm()
@@ -84,10 +79,13 @@ def order_create(request):
     return render(request, "orders/order_form.html", ctx)
 
 
+# =========================
+# BORRADO MASIVO
+# =========================
 @require_POST
 @login_required
 def bulk_delete(request):
-    ids = request.POST.getlist("ids")
+    ids = request.POST.getlist("ids")  # ojo: en la plantilla los checkboxes deben ser name="ids"
     if not ids:
         messages.warning(request, "No seleccionaste órdenes para eliminar.")
         return redirect("orders:list")
@@ -96,7 +94,11 @@ def bulk_delete(request):
     return redirect("orders:list")
 
 
+# =========================
+# LOGOUT
+# =========================
 @require_POST
 def logout_view(request):
     logout(request)
     return redirect("login")
+
