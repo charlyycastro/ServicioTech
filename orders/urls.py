@@ -10,5 +10,4 @@ urlpatterns = [
     path("<int:pk>/", views.order_detail, name="detail"),
     path("bulk-delete/", views.bulk_delete, name="bulk_delete"),
     path("logout/", views.logout_view, name="logout"),
-    path("diag/", views.order_list_diag, name="diag"),  # diagnóstico
 ]

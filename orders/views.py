@@ -16,7 +16,19 @@ import base64, uuid
 from django.core.files.base import ContentFile
 
 # ===== LISTA (robusta a nombres de campos) =====
+def order_list_diag(request):
+    n = ServiceOrder.objects.count()
+    tpl = get_template("orders/order_list.html").origin.name
+    db = settings.DATABASES["default"]
+    return HttpResponse(
+        "DIAG\n"
+        f"count={n}\n"
+        f"db={db}\n"
+        f"template={tpl}\n",
+        content_type="text/plain; charset=utf-8"
+    )
 @login_required
+
 def order_list(request):
     qs = ServiceOrder.objects.all()
 
