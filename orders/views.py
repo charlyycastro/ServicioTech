@@ -11,27 +11,16 @@ from django.conf import settings
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
 
-import base64
-import uuid
+import base64, uuid
 from django.core.files.base import ContentFile
 
-
-# =========================
-# LISTA
-# =========================
+# ===== LISTA =====
 @login_required
 def order_list(request):
-    qs = ServiceOrder.objects.all().order_by('-id')  # nuevas arriba
-    context = {
-        "orders": qs,
-        "ordenes": qs,  # alias por si la plantilla itera 'ordenes'
-    }
-    return render(request, "orders/order_list.html", context)
+    qs = ServiceOrder.objects.all().order_by('-id')
+    return render(request, "orders/order_list.html", {"orders": qs, "ordenes": qs})
 
-
-# =========================
-# DIAGNÓSTICO (texto plano)
-# =========================
+# ===== DIAGNÓSTICO =====
 @login_required
 def order_list_diag(request):
     n = ServiceOrder.objects.count()
@@ -45,19 +34,13 @@ def order_list_diag(request):
         content_type="text/plain; charset=utf-8"
     )
 
-
-# =========================
-# DETALLE
-# =========================
+# ===== DETALLE =====
 @login_required
 def order_detail(request, pk):
     obj = get_object_or_404(ServiceOrder, pk=pk)
     return render(request, "orders/order_detail.html", {"object": obj})
 
-
-# =========================
-# CREAR
-# =========================
+# ===== CREAR =====
 @login_required
 def order_create(request):
     if request.method == "POST":
@@ -66,9 +49,7 @@ def order_create(request):
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, prefix="materiales")
 
         if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
-            # Guardar orden (y firma si viene en base64)
             order = form.save(commit=False)
-
             firma_b64 = request.POST.get("firma") or ""
             if firma_b64.startswith("data:image"):
                 try:
@@ -78,14 +59,11 @@ def order_create(request):
                     order.firma = file_data
                 except Exception:
                     messages.warning(request, "No se pudo procesar la firma. Puedes intentar firmar de nuevo.")
-
             order.save()
-
             equipos_fs.instance = order
             materiales_fs.instance = order
             equipos_fs.save()
             materiales_fs.save()
-
             messages.success(request, "Orden creada correctamente.")
             return redirect(reverse("orders:detail", args=[order.pk]))
         else:
@@ -94,18 +72,15 @@ def order_create(request):
         form = ServiceOrderForm()
         equipos_fs = EquipmentFormSet(prefix="equipos")
         materiales_fs = ServiceMaterialFormSet(prefix="materiales")
+    return render(request, "orders/order_form.html", {
+        "form": form, "equipos_fs": equipos_fs, "materiales_fs": materiales_fs
+    })
 
-    ctx = {"form": form, "equipos_fs": equipos_fs, "materiales_fs": materiales_fs}
-    return render(request, "orders/order_form.html", ctx)
-
-
-# =========================
-# BORRADO MASIVO
-# =========================
+# ===== BORRADO MASIVO =====
 @require_POST
 @login_required
 def bulk_delete(request):
-    ids = request.POST.getlist("ids")  # en la plantilla los checkboxes deben ser name="ids"
+    ids = request.POST.getlist("ids")
     if not ids:
         messages.warning(request, "No seleccionaste órdenes para eliminar.")
         return redirect("orders:list")
@@ -113,10 +88,7 @@ def bulk_delete(request):
     messages.success(request, "Órdenes seleccionadas eliminadas.")
     return redirect("orders:list")
 
-
-# =========================
-# LOGOUT
-# =========================
+# ===== LOGOUT =====
 @require_POST
 def logout_view(request):
     logout(request)
