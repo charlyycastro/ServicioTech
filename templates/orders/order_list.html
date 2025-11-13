@@ -61,22 +61,24 @@
               <th>Título</th>
             </tr>
           </thead>
-          <tbody>
-            {% for o in orders %}
-            <tr class="clickable-row" data-href="{% url 'orders:detail' o.pk %}">
-              <td>
-                <input class="form-check-input row-check" type="checkbox" name="selected" value="{{ o.id }}" onclick="event.stopPropagation();">
-              </td>
-              <td><a href="{% url 'orders:detail' o.pk %}" class="link-underline link-underline-opacity-0">{{ o.folio }}</a></td>
-              <td>{{ o.fecha_servicio|date:'Y-m-d' }}</td>
-              <td>{{ o.cliente_nombre }}</td>
-              <td>{{ o.ingeniero_nombre }}</td>
-              <td>{{ o.titulo }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="6" class="text-center text-muted">Sin resultados</td></tr>
-            {% endfor %}
-          </tbody>
+          <p style="opacity:.6">DEBUG total: {{ orders|length }}</p>
+
+<tbody>
+{% for o in orders %}
+  <tr class="clickable-row" data-href="{% url 'orders:detail' o.pk %}">
+    <td>
+      <input class="form-check-input row-check" type="checkbox" name="ids" value="{{ o.id }}" onclick="event.stopPropagation();">
+    </td>
+    <td><a href="{% url 'orders:detail' o.pk %}" class="link-underline link-underline-opacity-0">{{ o.folio }}</a></td>
+    <td>{{ o.fecha_servicio|date:'Y-m-d' }}</td>
+    <td>{{ o.cliente_nombre }}</td>
+    <td>{{ o.ingeniero_nombre }}</td>
+    <td>{{ o.titulo }}</td>
+  </tr>
+{% empty %}
+  <tr><td colspan="6" class="text-center text-muted">Sin resultados</td></tr>
+{% endfor %}
+</tbody>
         </table>
       </div>
     </form>
