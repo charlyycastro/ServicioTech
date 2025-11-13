@@ -5,14 +5,34 @@ from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.http import HttpResponse
-
+from django.template.loader import get_template
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
-
+from django.conf import settings
 # para firma base64 -> ImageField
 import base64, uuid
 from django.core.files.base import ContentFile
+# =========================
+# LISTA (MODO MÍNIMO)
+# =========================
+@login_required
+def order_list(request):
+    # Versión mínima que SIEMPRE debe mostrar tus órdenes
+    qs = ServiceOrder.objects.all().order_by('-id')
+    return render(request, "orders/order_list.html", {"orders": qs})
 
+@login_required
+def order_list_diag(request):
+    # Diagnóstico en vivo: cuenta, DB y plantilla efectiva
+    n = ServiceOrder.objects.count()
+    tpl = get_template("orders/order_list.html").origin.name
+    db = settings.DATABASES["default"]
+    return HttpResponse(
+        "DIAG\n"
+        f"count={n}\n"
+        f"db={db}\n"
+        f"template={tpl}\n"
+    , content_type="text/plain; charset=utf-8")
 
 # =========================
 # LISTA (MODO DIAGNÓSTICO)
