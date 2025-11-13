@@ -10,6 +10,7 @@ from django.core.paginator import Paginator
 from django.utils.dateparse import parse_date
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
+from django.shortcuts import render
 
 # para firma base64 -> ImageField
 import base64, uuid
@@ -33,27 +34,29 @@ def order_list(request):
     desde = parse_date(request.GET.get("desde") or "")
     hasta = parse_date(request.GET.get("hasta") or "")
 
-    # Incluye NULLs para no esconder órdenes nuevas sin fecha_servicio
+    # incluye NULLs para no esconder órdenes sin fecha
     if desde:
         qs = qs.filter(Q(fecha_servicio__gte=desde) | Q(fecha_servicio__isnull=True))
     if hasta:
         qs = qs.filter(Q(fecha_servicio__lte=hasta) | Q(fecha_servicio__isnull=True))
 
-    # --- orden ---
+    # orden: si no hay filtros, muestra las más nuevas arriba
     if not (q or desde or hasta):
-        qs = qs.order_by("-id")  # nuevas arriba si no hay filtros
+        qs = qs.order_by("-id")
     else:
         qs = qs.order_by(F("fecha_servicio").desc(nulls_last=True), "-id")
 
-    # --- paginación + alias usados por plantillas ---
+    # paginación + alias de contexto (orders / ordenes / object_list)
     paginator = Paginator(qs, 15)
     page_obj = paginator.get_page(request.GET.get("page") or 1)
 
     context = {
-        "orders": page_obj.object_list,      # nombre que usa tu plantilla
-        "object_list": page_obj.object_list, # alias por si la plantilla usa este
+        "orders": page_obj.object_list,
+        "ordenes": page_obj.object_list,       # <-- alias para tu plantilla
+        "object_list": page_obj.object_list,   # <-- alias por si se usa genérica
         "page_obj": page_obj,
         "paginator": paginator,
+        "is_paginated": page_obj.has_other_pages(),
     }
     return render(request, "orders/order_list.html", context)
 
