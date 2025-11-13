@@ -62,7 +62,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for o in ordenes %}
+            {% for o in orders %}
             <tr class="clickable-row" data-href="{% url 'orders:detail' o.pk %}">
               <td>
                 <input class="form-check-input row-check" type="checkbox" name="selected" value="{{ o.id }}" onclick="event.stopPropagation();">

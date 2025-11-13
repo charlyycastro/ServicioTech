@@ -4,9 +4,10 @@ from django.views.decorators.http import require_POST
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth import logout
-from django.db.models import Q
+from django.db.models import Q,F
 from django.utils.dateparse import parse_date
-
+from django.core.paginator import Paginator
+from django.utils.dateparse import parse_date
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
 
@@ -19,7 +20,7 @@ from django.core.files.base import ContentFile
 def order_list(request):
     qs = ServiceOrder.objects.all()
 
-    # Filtros opcionales del listado (si los usas en la plantilla)
+    # --- filtros opcionales ---
     q = (request.GET.get("q") or "").strip()
     if q:
         qs = qs.filter(
@@ -31,13 +32,31 @@ def order_list(request):
 
     desde = parse_date(request.GET.get("desde") or "")
     hasta = parse_date(request.GET.get("hasta") or "")
-    if desde:
-        qs = qs.filter(fecha_servicio__gte=desde)
-    if hasta:
-        qs = qs.filter(fecha_servicio__lte=hasta)
 
-    qs = qs.order_by("-fecha_servicio", "-id")
-    return render(request, "orders/order_list.html", {"orders": qs})
+    # Incluye NULLs para no esconder órdenes nuevas sin fecha_servicio
+    if desde:
+        qs = qs.filter(Q(fecha_servicio__gte=desde) | Q(fecha_servicio__isnull=True))
+    if hasta:
+        qs = qs.filter(Q(fecha_servicio__lte=hasta) | Q(fecha_servicio__isnull=True))
+
+    # --- orden ---
+    if not (q or desde or hasta):
+        qs = qs.order_by("-id")  # nuevas arriba si no hay filtros
+    else:
+        qs = qs.order_by(F("fecha_servicio").desc(nulls_last=True), "-id")
+
+    # --- paginación + alias usados por plantillas ---
+    paginator = Paginator(qs, 15)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    context = {
+        "orders": page_obj.object_list,      # nombre que usa tu plantilla
+        "object_list": page_obj.object_list, # alias por si la plantilla usa este
+        "page_obj": page_obj,
+        "paginator": paginator,
+    }
+    return render(request, "orders/order_list.html", context)
+
 
 
 @login_required
