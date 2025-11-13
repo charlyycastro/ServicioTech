@@ -17,13 +17,17 @@ from django.core.files.base import ContentFile
 # =========================
 @login_required
 def order_list(request):
-    # Versión mínima que SIEMPRE debe mostrar tus órdenes
+    # Vista normal, pero enviando ambos nombres por si la plantilla usa 'ordenes'
     qs = ServiceOrder.objects.all().order_by('-id')
-    return render(request, "orders/order_list.html", {"orders": qs})
+    ctx = {
+        "orders": qs,
+        "ordenes": qs,   # alias por si tu template itera 'ordenes'
+    }
+    return render(request, "orders/order_list.html", ctx)
 
 @login_required
 def order_list_diag(request):
-    # Diagnóstico en vivo: cuenta, DB y plantilla efectiva
+    # Diagnóstico en texto plano: cuántos registros, DB usada y plantilla efectiva
     n = ServiceOrder.objects.count()
     tpl = get_template("orders/order_list.html").origin.name
     db = settings.DATABASES["default"]
@@ -31,8 +35,9 @@ def order_list_diag(request):
         "DIAG\n"
         f"count={n}\n"
         f"db={db}\n"
-        f"template={tpl}\n"
-    , content_type="text/plain; charset=utf-8")
+        f"template={tpl}\n",
+        content_type="text/plain; charset=utf-8"
+    )
 
 # =========================
 # LISTA (MODO DIAGNÓSTICO)
