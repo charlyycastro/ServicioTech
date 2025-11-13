@@ -5,10 +5,10 @@ app_name = "orders"
 
 urlpatterns = [
     path("", views.order_list, name="list"),
-    path("new/", views.order_create, name="create"),     # opcional: atajo en inglés
-    path("nueva/", views.order_create, name="create_es"),# opcional: atajo en español
+    path("new/", views.order_create, name="create"),
+    path("nueva/", views.order_create, name="create_es"),
     path("<int:pk>/", views.order_detail, name="detail"),
     path("bulk-delete/", views.bulk_delete, name="bulk_delete"),
     path("logout/", views.logout_view, name="logout"),
-    path("diag/", views.order_list_diag, name="diag"),   # <-- diagnóstico
+    path("diag/", views.order_list_diag, name="diag"),  # <-- diagnóstico
 ]

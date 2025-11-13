@@ -6,28 +6,34 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.http import HttpResponse
 from django.template.loader import get_template
+from django.conf import settings
+
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
-from django.conf import settings
-# para firma base64 -> ImageField
-import base64, uuid
+
+import base64
+import uuid
 from django.core.files.base import ContentFile
+
+
 # =========================
-# LISTA (MODO MÍNIMO)
+# LISTA
 # =========================
 @login_required
 def order_list(request):
-    # Vista normal, pero enviando ambos nombres por si la plantilla usa 'ordenes'
-    qs = ServiceOrder.objects.all().order_by('-id')
-    ctx = {
+    qs = ServiceOrder.objects.all().order_by('-id')  # nuevas arriba
+    context = {
         "orders": qs,
-        "ordenes": qs,   # alias por si tu template itera 'ordenes'
+        "ordenes": qs,  # alias por si la plantilla itera 'ordenes'
     }
-    return render(request, "orders/order_list.html", ctx)
+    return render(request, "orders/order_list.html", context)
 
+
+# =========================
+# DIAGNÓSTICO (texto plano)
+# =========================
 @login_required
 def order_list_diag(request):
-    # Diagnóstico en texto plano: cuántos registros, DB usada y plantilla efectiva
     n = ServiceOrder.objects.count()
     tpl = get_template("orders/order_list.html").origin.name
     db = settings.DATABASES["default"]
@@ -38,15 +44,6 @@ def order_list_diag(request):
         f"template={tpl}\n",
         content_type="text/plain; charset=utf-8"
     )
-
-# =========================
-# LISTA (MODO DIAGNÓSTICO)
-# =========================
-@login_required
-def order_list(request):
-    n = ServiceOrder.objects.count()
-    # Si llegas a esta vista, debe mostrar "HIT..." con el total real
-    return HttpResponse(f"HIT order_list — count={n}")
 
 
 # =========================
@@ -69,10 +66,9 @@ def order_create(request):
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, prefix="materiales")
 
         if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
-            # Guardar orden (y meter firma si viene en base64)
+            # Guardar orden (y firma si viene en base64)
             order = form.save(commit=False)
 
-            # El input hidden en el template se llama name="firma" (id="firma-base64")
             firma_b64 = request.POST.get("firma") or ""
             if firma_b64.startswith("data:image"):
                 try:
@@ -85,7 +81,6 @@ def order_create(request):
 
             order.save()
 
-            # Formsets
             equipos_fs.instance = order
             materiales_fs.instance = order
             equipos_fs.save()
@@ -110,7 +105,7 @@ def order_create(request):
 @require_POST
 @login_required
 def bulk_delete(request):
-    ids = request.POST.getlist("ids")  # ojo: en la plantilla los checkboxes deben ser name="ids"
+    ids = request.POST.getlist("ids")  # en la plantilla los checkboxes deben ser name="ids"
     if not ids:
         messages.warning(request, "No seleccionaste órdenes para eliminar.")
         return redirect("orders:list")
@@ -126,4 +121,3 @@ def bulk_delete(request):
 def logout_view(request):
     logout(request)
     return redirect("login")
-
