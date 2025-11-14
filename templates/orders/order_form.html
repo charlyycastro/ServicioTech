@@ -1,7 +1,7 @@
 {% extends 'orders/base.html' %}
 {% load static %}
 
-{% block content %}
+{# ---- CSS específico para este template ---- #}
 {% block extra_css %}
 <style>
   #signature-wrapper{
@@ -11,6 +11,8 @@
   #signature-canvas{ width:100%; height:100%; display:block; }
 </style>
 {% endblock %}
+
+{% block content %}
 <h1 class="h4 mb-3">Nueva orden</h1>
 
 <form method="post" enctype="multipart/form-data" id="order-form" novalidate>
@@ -27,7 +29,7 @@
 
   <div class="accordion shadow-sm" id="ordenAccordion">
 
-    <!-- A) DATOS DEL SERVICIO -->
+    {# A) DATOS DEL SERVICIO #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingDatos">
         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatos" aria-expanded="true" aria-controls="collapseDatos">
@@ -59,7 +61,6 @@
               {{ form.contacto_nombre }}
             </div>
 
-            <!-- ✅ Tipo(s) de servicio (múltiple) -->
             <div class="col-md-8">
               <label class="form-label d-block">Tipo(s) de servicio</label>
               <div class="checkgrid">
@@ -67,7 +68,6 @@
               </div>
             </div>
 
-            <!-- ✅ Otro (especifique) -->
             <div class="col-md-4 d-none" id="otro-wrapper">
               <label class="form-label">Otro (especifique)</label>
               {{ form.tipo_servicio_otro }}
@@ -80,13 +80,12 @@
               <label class="form-label">Ingeniero</label>
               {{ form.ingeniero_nombre }}
             </div>
-            <!-- ❌ Resguardo NO se muestra -->
           </div>
         </div>
       </div>
     </div>
 
-    <!-- B) EQUIPOS -->
+    {# B) EQUIPOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingEquipos">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipos" aria-expanded="false" aria-controls="collapseEquipos">
@@ -140,7 +139,7 @@
       </div>
     </div>
 
-    <!-- C) ACTIVIDADES Y COMENTARIOS -->
+    {# C) ACTIVIDADES Y COMENTARIOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingActividades">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividades" aria-expanded="false" aria-controls="collapseActividades">
@@ -167,7 +166,7 @@
       </div>
     </div>
 
-    <!-- D) COSTOS Y PROGRAMACIÓN -->
+    {# D) COSTOS Y PROGRAMACIÓN #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingCostos">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCostos" aria-expanded="false" aria-controls="collapseCostos">
@@ -218,7 +217,7 @@
       </div>
     </div>
 
-    <!-- E) MATERIALES -->
+    {# E) MATERIALES #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingMateriales">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMateriales" aria-expanded="false" aria-controls="collapseMateriales">
@@ -270,8 +269,7 @@
       </div>
     </div>
 
-    <!-- F) FIRMA -->
-
+    {# F) FIRMA #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingFirma">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma" aria-expanded="false" aria-controls="collapseFirma">
@@ -299,71 +297,12 @@
     <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Cancelar</a>
   </div>
 </form>
-<script>
-(function(){
-  const wrapper = document.getElementById('signature-wrapper');
-  const canvas  = document.getElementById('signature-canvas');
-  const hidden  = document.getElementById('firma-base64');
-  const clearBtn= document.getElementById('clear-signature');
-  if (!wrapper || !canvas || !hidden) return;
-
-  const ctx = canvas.getContext('2d');
-
-  // Ajusta el canvas a tamaño real del contenedor (nítido en HiDPI)
-  function resizeCanvas(){
-    const dpr  = window.devicePixelRatio || 1;
-    const rect = wrapper.getBoundingClientRect();
-    const w    = Math.max(300, Math.floor(rect.width  * dpr));
-    const h    = Math.max(150, Math.floor(rect.height * dpr));
-    canvas.width = w; canvas.height = h;
-    ctx.setTransform(dpr,0,0,dpr,0,0); // escala lógica
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap  = 'round';
-    ctx.strokeStyle = '#111';
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-  }
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-
-  // Dibujo con puntero (mouse/touch/pen)
-  let drawing = false, last = null;
-  function pos(e){
-    const r = canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  }
-  function start(e){ drawing = true; last = pos(e); e.preventDefault(); }
-  function move(e){
-    if(!drawing) return;
-    const p = pos(e);
-    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-    last = p; e.preventDefault();
-  }
-  function end(e){ drawing = false; e.preventDefault(); }
-
-  canvas.addEventListener('pointerdown', start);
-  canvas.addEventListener('pointermove', move);
-  canvas.addEventListener('pointerup', end);
-  canvas.addEventListener('pointerleave', end);
-  canvas.addEventListener('pointercancel', end);
-
-  // Limpiar
-  clearBtn?.addEventListener('click', function(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    hidden.value = '';
-  });
-
-  // Antes de enviar el form, guardar PNG base64 en el input hidden
-  document.querySelector('form').addEventListener('submit', function(){
-    try { hidden.value = canvas.toDataURL('image/png'); } catch(e) {}
-  });
-})();
-</script>
 {% endblock %}
 
+{# ---- SCRIPTS específicos ---- #}
 {% block scripts %}
 <script>
-  // Mostrar/ocultar "Otro (especifique)"
+  // Mostrar/ocultar "Otro (especifique)" según check "otro"
   document.addEventListener('DOMContentLoaded', function(){
     const wrapper = document.getElementById('otro-wrapper');
     const otroInput = document.getElementById('id_tipo_servicio_otro');
@@ -380,16 +319,13 @@
   });
 </script>
 
-
-// firma cliente 
-
 <script>
 (function(){
   const form    = document.getElementById('order-form');
   const wrapper = document.getElementById('signature-wrapper');
   const canvas  = document.getElementById('signature-canvas');
   const hidden  = document.getElementById('firma-base64');
-  const clearBtn= document.getElementById('clear-signature'); // si existe
+  const clearBtn= document.getElementById('clear-signature');
   if (!form || !wrapper || !canvas || !hidden) return;
 
   const ctx = canvas.getContext('2d');
@@ -407,7 +343,8 @@
   }
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
-  // Si está en acordeón Bootstrap, recalcula al abrir
+
+  // Recalcular al abrir la sección de firma (si está en acordeón)
   const collapse = document.getElementById('collapseFirma');
   if (collapse) collapse.addEventListener('shown.bs.collapse', resizeCanvas);
 
@@ -433,19 +370,11 @@
     hidden.value=''; hasInk=false;
   });
 
-  // CLAVE: meter el PNG base64 en el <input hidden> antes de enviar
+  // CLAVE: volcar el PNG base64 al hidden justo antes de enviar
   form.addEventListener('submit', function(){
     hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
-    // Debug opcional:
-    // console.log('firma len:', hidden.value.length, hidden.value.slice(0,30));
   });
-
-  // (opcional) si tienes un botón submit con id="btn-guardar", fuerza el volcado también en click
-  // document.getElementById('btn-guardar')?.addEventListener('click', () => {
-  //   hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
-  // });
 })();
 </script>
-
-
 {% endblock %}
+
