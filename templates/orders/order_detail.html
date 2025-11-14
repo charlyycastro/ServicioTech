@@ -2,6 +2,12 @@
 {% load static %}
 
 {% block title %}{{ object.folio }} · ServicioTech{% endblock %}
+{% block extra_css %}
+<style>
+  .sig-box{ height:180px; background:#fff; }
+  .img-sign{ max-height:160px; width:auto; object-fit:contain; }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="d-print-none d-flex justify-content-between align-items-center mb-3">
@@ -105,15 +111,23 @@
           </td></tr>
         </table>
       </div>
-      <div class="col-md-6">
-        <h3 class="h6">Firma del cliente</h3>
-        <div class="border rounded p-2 text-center h-150">
-          {% if object.firma %}
-            <img src="{{ object.firma.url }}" class="img-sign" alt="Firma">
-          {% else %}
-            <span class="text-muted">Sin firma</span>
-          {% endif %}
-        </div>
+     <div class="col-md-6">
+  <h3 class="h6">Firma del cliente</h3>
+  <div class="border rounded p-2 text-center sig-box">
+    {% if object.firma %}
+      <img
+        src="{{ object.firma.url }}"
+        class="img-sign"
+        alt="Firma"
+        onerror="this.closest('.sig-box').innerHTML='<span class=&quot;text-muted&quot;>Archivo de firma no disponible</span>';">
+      {% if debug %}
+        <div class="small text-muted mt-1">{{ object.firma.url }}</div>
+      {% endif %}
+    {% else %}
+      <span class="text-muted">Sin firma</span>
+    {% endif %}
+  </div>
+</div>
       </div>
     </div>
   </div>
