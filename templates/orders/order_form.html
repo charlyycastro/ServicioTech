@@ -326,20 +326,17 @@
   if (!form || !wrapper || !canvas || !hidden) return;
 
   const ctx = canvas.getContext('2d');
-  // Importante para táctil
-  canvas.style.touchAction = 'none';
 
   function resizeCanvas(){
     const rect = wrapper.getBoundingClientRect();
     const dpr  = window.devicePixelRatio || 1;
-    const wCSS = Math.max(300, rect.width  || 600);
-    const hCSS = Math.max(150, rect.height || 180);
+    const wCSS = rect.width  && rect.width  > 0 ? rect.width  : 600;
+    const hCSS = rect.height && rect.height > 0 ? rect.height : 180;
+
     canvas.width  = Math.floor(wCSS * dpr);
     canvas.height = Math.floor(hCSS * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.lineWidth = 2;
-    ctx.lineJoin  = 'round';
-    ctx.lineCap   = 'round';
+    ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     ctx.strokeStyle = '#111';
     ctx.clearRect(0,0,canvas.width,canvas.height);
   }
@@ -350,32 +347,30 @@
   let drawing=false, last=null, hasInk=false;
   function pos(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
 
-  canvas.addEventListener('pointerdown', e => {
-    drawing=true; last=pos(e); hasInk=true; e.preventDefault();  // <- marcamos tinta desde el down
-    // pintamos un punto para taps sin movimiento
-    ctx.beginPath(); ctx.arc(last.x, last.y, 0.5, 0, Math.PI*2); ctx.fillStyle='#111'; ctx.fill();
-  });
+  canvas.addEventListener('pointerdown', e => { drawing=true; last=pos(e); e.preventDefault(); });
   canvas.addEventListener('pointermove',  e => {
     if(!drawing) return;
     const p=pos(e);
     ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke();
-    last=p; e.preventDefault();
-  }, {passive:false});
-  ['pointerup','pointerleave','pointercancel'].forEach(t =>
-    canvas.addEventListener(t, e => { drawing=false; e.preventDefault(); })
-  );
+    last=p; hasInk=true; e.preventDefault();
+  });
+  ['pointerup','pointerleave','pointercancel'].forEach(t => canvas.addEventListener(t, e => { drawing=false; e.preventDefault(); }));
 
   clearBtn?.addEventListener('click', () => {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     hidden.value=''; hasInk=false;
   });
 
-  function dumpSignature(){
-    // Si no hubo tinta, de todas formas guardamos PNG (evita que llegue vacío)
-    try { hidden.value = canvas.toDataURL('image/png'); } catch(e) { hidden.value=''; }
-  }
-  form.addEventListener('submit', dumpSignature);
-  document.querySelector('button[type="submit"]')?.addEventListener('click', dumpSignature);
+  // ANTES DE ENVIAR: volcar base64 al hidden
+  form.addEventListener('submit', () => {
+    hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
+    // Debug opcional en el navegador:
+    // console.log('firma base64 len:', hidden.value.length, hidden.value.slice(0,30));
+  });
 })();
 </script>
 {% endblock %}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}

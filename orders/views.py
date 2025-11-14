@@ -85,13 +85,6 @@ def order_detail(request, pk):
 @login_required
 def order_create(request):
     if request.method == "POST":
-        # DEBUG: ver qué trae el POST (firma)
-        raw_firma = request.POST.get("firma") or ""
-        try:
-            print("DEBUG POST firma len:", len(raw_firma), "head:", raw_firma[:32])
-        except Exception:
-            pass
-
         form = ServiceOrderForm(request.POST, request.FILES)
         equipos_fs = EquipmentFormSet(request.POST, request.FILES, prefix="equipos")
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, prefix="materiales")
@@ -99,24 +92,34 @@ def order_create(request):
         if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
             order = form.save(commit=False)
 
-            # Guardar firma si llegó en base64
+            # --- Firma en base64 desde el input hidden ---
+            firma_b64 = request.POST.get("firma") or ""
             try:
-                if raw_firma.startswith("data:image"):
-                    header, data = raw_firma.split(",", 1)
+                if firma_b64.startswith("data:image"):
+                    # DEBUG visible en consola del servidor
+                    print("DEBUG firma_b64 head:", firma_b64[:30], "len=", len(firma_b64))
+
+                    header, data = firma_b64.split(",", 1)
                     ext = "png"
-                    hl = header.lower()
-                    if "jpeg" in hl or "jpg" in hl:
+                    if "jpeg" in header.lower() or "jpg" in header.lower():
                         ext = "jpg"
+
                     file_data = ContentFile(base64.b64decode(data), name=f"firma_{uuid.uuid4().hex}.{ext}")
                     order.firma = file_data
                 else:
-                    messages.warning(request, "No recibí la firma. Asegúrate de dibujar y que el bloque esté abierto.")
+                    # Aviso útil si llega vacío o sin prefijo
+                    from django.contrib import messages
+                    msg = "No recibí la firma (input hidden vacío o formato no reconocido)."
+                    print("DEBUG:", msg, "valor:", firma_b64[:30])
+                    messages.warning(request, msg)
             except Exception as e:
+                from django.contrib import messages
                 print("ERROR decodificando firma:", e)
-                messages.error(request, "No se pudo procesar la firma. Intenta de nuevo.")
+                messages.error(request, "No se pudo procesar la firma. Intente firmar de nuevo.")
 
             order.save()
 
+            # Guardar formsets
             equipos_fs.instance = order
             materiales_fs.instance = order
             equipos_fs.save()
@@ -125,6 +128,7 @@ def order_create(request):
             messages.success(request, "Orden creada correctamente.")
             return redirect(reverse("orders:detail", args=[order.pk]))
         else:
+            from django.contrib import messages
             messages.error(request, "Revisa los errores del formulario marcado en rojo.")
     else:
         form = ServiceOrderForm()
