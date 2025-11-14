@@ -270,25 +270,35 @@
     </div>
 
     {# F) FIRMA #}
-    <div class="accordion-item">
-      <h2 class="accordion-header" id="headingFirma">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma" aria-expanded="false" aria-controls="collapseFirma">
-          F) Firma del cliente
-        </button>
-      </h2>
-      <div id="collapseFirma" class="accordion-collapse collapse" aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
-        <div class="accordion-body">
-          <div class="d-flex gap-2 align-items-center mb-2">
-            <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
-          </div>
-          <div id="signature-wrapper" class="w-100">
-            <canvas id="signature-canvas"></canvas>
-          </div>
-          <input type="hidden" name="firma" id="firma-base64">
-          <div class="form-text">Firme con el dedo o mouse.</div>
-        </div>
+<div class="accordion-item">
+  <h2 class="accordion-header" id="headingFirma">
+    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma" aria-expanded="false" aria-controls="collapseFirma">
+      F) Firma del cliente
+    </button>
+  </h2>
+  <div id="collapseFirma" class="accordion-collapse collapse" aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
+    <div class="accordion-body">
+      <div class="d-flex gap-2 align-items-center mb-2">
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
+      </div>
+      <div id="signature-wrapper" class="w-100">
+        <canvas id="signature-canvas"></canvas>
+      </div>
+
+      {# IMPORTANTE: renombrado a firma_b64 #}
+      <input type="hidden" name="firma_b64" id="firma-b64">
+
+      <div class="form-text">Firme con el dedo o mouse. (Abra el panel F) antes de firmar)</div>
+
+      {# Vista previa opcional para que veas si ya se capturó #}
+      <div class="mt-2">
+        <small class="text-muted">Vista previa:</small><br>
+        <img id="firma-preview" alt="Preview firma" style="max-height:120px; border:1px dashed #ccc; padding:4px; background:#fff">
       </div>
     </div>
+  </div>
+</div>
+
 
   </div>
 
@@ -305,8 +315,9 @@
   const form    = document.getElementById('order-form');
   const wrapper = document.getElementById('signature-wrapper');
   const canvas  = document.getElementById('signature-canvas');
-  const hidden  = document.getElementById('firma-base64');
+  const hidden  = document.getElementById('firma-b64');   // <- NUEVO ID
   const clearBtn= document.getElementById('clear-signature');
+  const preview = document.getElementById('firma-preview');
 
   if (!form || !wrapper || !canvas || !hidden) return;
 
@@ -326,6 +337,8 @@
     ctx.lineCap   = 'round';
     ctx.strokeStyle = '#111';
     ctx.clearRect(0,0,canvas.width,canvas.height);
+    // al redimensionar, limpia la preview
+    if (preview) preview.removeAttribute('src');
   }
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
@@ -346,30 +359,27 @@
   clearBtn?.addEventListener('click', () => {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     hidden.value=''; hasInk=false;
+    if (preview) preview.removeAttribute('src');
   });
 
-  // Volcar firma PNG base64 en el hidden antes de enviar
+  // Actualiza hidden y preview cada que terminas un trazo
+  canvas.addEventListener('pointerup', () => {
+    try {
+      const data = canvas.toDataURL('image/png');
+      hidden.value = data;         // <- SIEMPRE guardamos (con o sin tinta)
+      if (preview) preview.src = data;
+    } catch(_) {}
+  });
+
+  // Y antes de enviar, por si acaso
   form.addEventListener('submit', () => {
-    hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
+    try {
+      const data = canvas.toDataURL('image/png');
+      hidden.value = data;         // <- SIEMPRE guardamos (evita que llegue vacío)
+      if (preview && !preview.src) preview.src = data;
+    } catch(_) {}
   });
 })();
 </script>
 
-<script>
-// Mostrar/ocultar "Otro (especifique)"
-document.addEventListener('DOMContentLoaded', function(){
-  const wrapper = document.getElementById('otro-wrapper');
-  const otroInput = document.getElementById('id_tipo_servicio_otro');
-
-  function refresh() {
-    const checks = document.querySelectorAll('input[name="tipos_servicio"]');
-    const otroOn = Array.from(checks).some(ch => ch.value === 'otro' && ch.checked);
-    wrapper.classList.toggle('d-none', !otroOn);
-    if (!otroOn && otroInput) otroInput.value = '';
-  }
-
-  document.querySelectorAll('input[name="tipos_servicio"]').forEach(ch => ch.addEventListener('change', refresh));
-  refresh();
-});
-</script>
 {% endblock %}

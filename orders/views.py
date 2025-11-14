@@ -92,34 +92,24 @@ def order_create(request):
         if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
             order = form.save(commit=False)
 
-            # --- Firma en base64 desde el input hidden ---
-            firma_b64 = request.POST.get("firma") or ""
-            try:
-                if firma_b64.startswith("data:image"):
-                    # DEBUG visible en consola del servidor
-                    print("DEBUG firma_b64 head:", firma_b64[:30], "len=", len(firma_b64))
-
+            # --- Firma en base64 (renombramos a 'firma_b64' para evitar colisiones) ---
+            firma_b64 = (request.POST.get("firma_b64") or "").strip()
+            if firma_b64.startswith("data:image"):
+                try:
                     header, data = firma_b64.split(",", 1)
                     ext = "png"
                     if "jpeg" in header.lower() or "jpg" in header.lower():
                         ext = "jpg"
-
                     file_data = ContentFile(base64.b64decode(data), name=f"firma_{uuid.uuid4().hex}.{ext}")
                     order.firma = file_data
-                else:
-                    # Aviso útil si llega vacío o sin prefijo
-                    from django.contrib import messages
-                    msg = "No recibí la firma (input hidden vacío o formato no reconocido)."
-                    print("DEBUG:", msg, "valor:", firma_b64[:30])
-                    messages.warning(request, msg)
-            except Exception as e:
-                from django.contrib import messages
-                print("ERROR decodificando firma:", e)
-                messages.error(request, "No se pudo procesar la firma. Intente firmar de nuevo.")
+                except Exception:
+                    messages.warning(request, "No pude procesar la firma. Intenta firmar de nuevo.")
+            else:
+                # No bloquear el guardado; solo avisar en DEBUG
+                messages.warning(request, "No recibí la firma (input hidden vacío o formato no reconocido).")
 
             order.save()
 
-            # Guardar formsets
             equipos_fs.instance = order
             materiales_fs.instance = order
             equipos_fs.save()
@@ -128,7 +118,6 @@ def order_create(request):
             messages.success(request, "Orden creada correctamente.")
             return redirect(reverse("orders:detail", args=[order.pk]))
         else:
-            from django.contrib import messages
             messages.error(request, "Revisa los errores del formulario marcado en rojo.")
     else:
         form = ServiceOrderForm()
