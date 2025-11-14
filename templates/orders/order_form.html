@@ -297,7 +297,7 @@
     <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Cancelar</a>
   </div>
 </form>
-
+{% endblock %}  {# <<< CERRAMOS el bloque content AQUÍ #}
 
 {% block scripts %}
 <script>
@@ -312,7 +312,6 @@
 
   const ctx = canvas.getContext('2d');
 
-  // Ajusta tamaño real (soporta HiDPI) y limpia
   function resizeCanvas(){
     const rect = wrapper.getBoundingClientRect();
     const dpr  = window.devicePixelRatio || 1;
@@ -322,16 +321,12 @@
     canvas.width  = Math.floor(wCSS * dpr);
     canvas.height = Math.floor(hCSS * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.lineWidth = 2;
-    ctx.lineJoin  = 'round';
-    ctx.lineCap   = 'round';
+    ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     ctx.strokeStyle = '#111';
     ctx.clearRect(0,0,canvas.width,canvas.height);
   }
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
-
-  // Si está dentro de un acordeón Bootstrap, recalcular al abrir
   document.getElementById('collapseFirma')?.addEventListener('shown.bs.collapse', resizeCanvas);
 
   let drawing=false, last=null, hasInk=false;
@@ -351,9 +346,11 @@
     hidden.value=''; hasInk=false;
   });
 
-  // CLAVE: antes de enviar, volcamos la firma al <input hidden>
+  // ANTES DE ENVIAR: volcar base64 al hidden
   form.addEventListener('submit', () => {
     hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
+    // Debug opcional en el navegador:
+    // console.log('firma base64 len:', hidden.value.length, hidden.value.slice(0,30));
   });
 })();
 </script>
