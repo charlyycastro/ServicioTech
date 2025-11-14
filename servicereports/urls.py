@@ -10,7 +10,6 @@ urlpatterns = [
     path("", include(("orders.urls", "orders"), namespace="orders")),
 ]
 
-# Para ver firmas (MEDIA) también en Render:
-# Setea en Render un env var: SERVE_MEDIA=1
+# Servir archivos de MEDIA (firmas) en desarrollo o si fuerzas SERVE_MEDIA=1
 if settings.DEBUG or os.environ.get("SERVE_MEDIA", "0") == "1":
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
