@@ -2,6 +2,15 @@
 {% load static %}
 
 {% block content %}
+{% block extra_css %}
+<style>
+  #signature-wrapper{
+    border:1px solid #dee2e6; border-radius:.5rem; height:180px;
+    background:#fff; touch-action:none; user-select:none;
+  }
+  #signature-canvas{ width:100%; height:100%; display:block; }
+</style>
+{% endblock %}
 <h1 class="h4 mb-3">Nueva orden</h1>
 
 <form method="post" enctype="multipart/form-data" id="order-form" novalidate>
@@ -262,13 +271,6 @@
     </div>
 
     <!-- F) FIRMA -->
-     <style>
-  #signature-wrapper{
-    border:1px solid #dee2e6; border-radius:.5rem; height:180px;
-    background:#fff; touch-action:none; user-select:none;
-  }
-  #signature-canvas{ width:100%; height:100%; display:block; }
-</style>
 
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingFirma">
@@ -387,7 +389,7 @@
   const wrapper = document.getElementById('signature-wrapper');
   const canvas  = document.getElementById('signature-canvas');
   const hidden  = document.getElementById('firma-base64');
-  const clearBtn= document.getElementById('clear-signature'); // si lo tienes
+  const clearBtn= document.getElementById('clear-signature'); // si existe
   if (!form || !wrapper || !canvas || !hidden) return;
 
   const ctx = canvas.getContext('2d');
@@ -400,32 +402,25 @@
     canvas.width = Math.floor(wCSS * dpr);
     canvas.height= Math.floor(hCSS * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap  = 'round';
-    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = '#111';
     ctx.clearRect(0,0,canvas.width,canvas.height);
   }
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
-
-  // Si la firma está en un acordeón Bootstrap:
+  // Si está en acordeón Bootstrap, recalcula al abrir
   const collapse = document.getElementById('collapseFirma');
   if (collapse) collapse.addEventListener('shown.bs.collapse', resizeCanvas);
 
-  let drawing = false, last = null, hasInk = false;
-  function pos(e){
-    const r = canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  }
-  function start(e){ drawing = true; last = pos(e); e.preventDefault(); }
+  let drawing=false, last=null, hasInk=false;
+  function pos(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+  function start(e){ drawing=true; last=pos(e); e.preventDefault(); }
   function move(e){
     if(!drawing) return;
-    const p = pos(e);
-    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-    last = p; hasInk = true; e.preventDefault();
+    const p=pos(e);
+    ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+    last=p; hasInk=true; e.preventDefault();
   }
-  function end(e){ drawing = false; e.preventDefault(); }
+  function end(e){ drawing=false; e.preventDefault(); }
 
   canvas.addEventListener('pointerdown', start);
   canvas.addEventListener('pointermove',  move);
@@ -435,14 +430,20 @@
 
   clearBtn?.addEventListener('click', function(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    hidden.value = '';
-    hasInk = false;
+    hidden.value=''; hasInk=false;
   });
 
-  // ¡Clave! Guardar PNG base64 en el hidden al enviar
+  // CLAVE: meter el PNG base64 en el <input hidden> antes de enviar
   form.addEventListener('submit', function(){
     hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
+    // Debug opcional:
+    // console.log('firma len:', hidden.value.length, hidden.value.slice(0,30));
   });
+
+  // (opcional) si tienes un botón submit con id="btn-guardar", fuerza el volcado también en click
+  // document.getElementById('btn-guardar')?.addEventListener('click', () => {
+  //   hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
+  // });
 })();
 </script>
 
