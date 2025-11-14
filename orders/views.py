@@ -139,14 +139,20 @@ def order_create(request):
 @require_POST
 @login_required
 def bulk_delete(request):
-    ids = request.POST.getlist("ids")  # ojo: en la plantilla los checkboxes deben ser name="ids"
+    ids = (
+        request.POST.getlist("ids")
+        or request.POST.getlist("selected")
+        or request.POST.getlist("order_ids")
+    )
     if not ids:
         messages.warning(request, "No seleccionaste órdenes para eliminar.")
         return redirect("orders:list")
-    ServiceOrder.objects.filter(pk__in=ids).delete()
-    messages.success(request, "Órdenes seleccionadas eliminadas.")
-    return redirect("orders:list")
 
+    # Asegura enteros
+    ids = [int(x) for x in ids if str(x).isdigit()]
+    deleted, _ = ServiceOrder.objects.filter(pk__in=ids).delete()
+    messages.success(request, f"Órdenes eliminadas: {deleted}.")
+    return redirect("orders:list")
 
 # ===== LOGOUT =====
 @require_POST

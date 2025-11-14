@@ -65,7 +65,8 @@
             {% for o in ordenes %}
             <tr class="clickable-row" data-href="{% url 'orders:detail' o.pk %}">
               <td>
-                <input class="form-check-input row-check" type="checkbox" name="selected" value="{{ o.id }}" onclick="event.stopPropagation();">
+                <!-- 👇 cambio clave: name="ids" -->
+                <input class="form-check-input row-check" type="checkbox" name="ids" value="{{ o.id }}" onclick="event.stopPropagation();">
               </td>
               <td><a href="{% url 'orders:detail' o.pk %}" class="link-underline link-underline-opacity-0">{{ o.folio }}</a></td>
               <td>{{ o.fecha_servicio|date:'Y-m-d' }}</td>
