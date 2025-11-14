@@ -4,17 +4,11 @@
 {# ---- CSS específico para este template ---- #}
 {% block extra_css %}
 <style>
-  /* Caja y canvas de firma */
   #signature-wrapper{
     border:1px solid #dee2e6; border-radius:.5rem; height:180px;
     background:#fff; touch-action:none; user-select:none;
   }
   #signature-canvas{ width:100%; height:100%; display:block; }
-
-  /* Rejilla simple para tipos de servicio */
-  .checkgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:.25rem .75rem; }
-  .max-w-120{ max-width:120px; }
-  .col-actions{ width:1%; white-space:nowrap; }
 </style>
 {% endblock %}
 
@@ -130,17 +124,13 @@
                   </tbody>
                 </table>
               </div>
-
-              {# plantilla para JS dinámico (si usas tu script de formsets) #}
               <template id="equipos-empty">
                 <tr class="formset-row">
                   <td>__FIELD__:marca</td>
                   <td>__FIELD__:modelo</td>
                   <td>__FIELD__:serie</td>
                   <td>__FIELD__:descripcion</td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-                  </td>
+                  <td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
                 </tr>
               </template>
             </div>
@@ -265,16 +255,12 @@
                   </tbody>
                 </table>
               </div>
-
-              {# plantilla para JS dinámico (si usas tu script de formsets) #}
               <template id="materiales-empty">
                 <tr class="formset-row">
                   <td>__FIELD__:descripcion</td>
                   <td>__FIELD__:cantidad</td>
                   <td>__FIELD__:comentarios</td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-                  </td>
+                  <td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
                 </tr>
               </template>
             </div>
@@ -283,15 +269,14 @@
       </div>
     </div>
 
-    {# F) FIRMA (ABIERTO por defecto) #}
+    {# F) FIRMA #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingFirma">
-        <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                data-bs-target="#collapseFirma" aria-expanded="true" aria-controls="collapseFirma">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma" aria-expanded="false" aria-controls="collapseFirma">
           F) Firma del cliente
         </button>
       </h2>
-      <div id="collapseFirma" class="accordion-collapse collapse show" aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
+      <div id="collapseFirma" class="accordion-collapse collapse" aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="d-flex gap-2 align-items-center mb-2">
             <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
@@ -300,7 +285,7 @@
             <canvas id="signature-canvas"></canvas>
           </div>
           <input type="hidden" name="firma" id="firma-base64">
-          <div class="form-text">Firme con el dedo o mouse (mantén este bloque abierto al guardar).</div>
+          <div class="form-text">Firme con el dedo o mouse.</div>
         </div>
       </div>
     </div>
@@ -336,7 +321,9 @@
     canvas.width  = Math.floor(wCSS * dpr);
     canvas.height = Math.floor(hCSS * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.lineWidth = 2;
+    ctx.lineJoin  = 'round';
+    ctx.lineCap   = 'round';
     ctx.strokeStyle = '#111';
     ctx.clearRect(0,0,canvas.width,canvas.height);
   }
@@ -361,16 +348,28 @@
     hidden.value=''; hasInk=false;
   });
 
-  // ANTES DE ENVIAR: volcar base64 al hidden
+  // Volcar firma PNG base64 en el hidden antes de enviar
   form.addEventListener('submit', () => {
     hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
-    // Debug opcional en el navegador:
-    // console.log('firma base64 len:', hidden.value.length, hidden.value.slice(0,30));
   });
 })();
 </script>
-{% endblock %}
-{% extends 'base.html' %}
-{% load static %}
 
-{% block content %}
+<script>
+// Mostrar/ocultar "Otro (especifique)"
+document.addEventListener('DOMContentLoaded', function(){
+  const wrapper = document.getElementById('otro-wrapper');
+  const otroInput = document.getElementById('id_tipo_servicio_otro');
+
+  function refresh() {
+    const checks = document.querySelectorAll('input[name="tipos_servicio"]');
+    const otroOn = Array.from(checks).some(ch => ch.value === 'otro' && ch.checked);
+    wrapper.classList.toggle('d-none', !otroOn);
+    if (!otroOn && otroInput) otroInput.value = '';
+  }
+
+  document.querySelectorAll('input[name="tipos_servicio"]').forEach(ch => ch.addEventListener('change', refresh));
+  refresh();
+});
+</script>
+{% endblock %}
