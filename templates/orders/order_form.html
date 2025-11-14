@@ -378,3 +378,62 @@
 </script>
 {% endblock %}
 
+{% block scripts %}
+<script>
+(function(){
+  const form    = document.getElementById('order-form');
+  const wrapper = document.getElementById('signature-wrapper');
+  const canvas  = document.getElementById('signature-canvas');
+  const hidden  = document.getElementById('firma-base64');
+  const clearBtn= document.getElementById('clear-signature');
+
+  if (!form || !wrapper || !canvas || !hidden) return;
+
+  const ctx = canvas.getContext('2d');
+
+  // Ajusta tamaño real (soporta HiDPI) y limpia
+  function resizeCanvas(){
+    const rect = wrapper.getBoundingClientRect();
+    const dpr  = window.devicePixelRatio || 1;
+    const wCSS = rect.width  && rect.width  > 0 ? rect.width  : 600;
+    const hCSS = rect.height && rect.height > 0 ? rect.height : 180;
+
+    canvas.width  = Math.floor(wCSS * dpr);
+    canvas.height = Math.floor(hCSS * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.lineWidth = 2;
+    ctx.lineJoin  = 'round';
+    ctx.lineCap   = 'round';
+    ctx.strokeStyle = '#111';
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // Si está dentro de un acordeón Bootstrap, recalcular al abrir
+  document.getElementById('collapseFirma')?.addEventListener('shown.bs.collapse', resizeCanvas);
+
+  let drawing=false, last=null, hasInk=false;
+  function pos(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
+
+  canvas.addEventListener('pointerdown', e => { drawing=true; last=pos(e); e.preventDefault(); });
+  canvas.addEventListener('pointermove',  e => {
+    if(!drawing) return;
+    const p=pos(e);
+    ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+    last=p; hasInk=true; e.preventDefault();
+  });
+  ['pointerup','pointerleave','pointercancel'].forEach(t => canvas.addEventListener(t, e => { drawing=false; e.preventDefault(); }));
+
+  clearBtn?.addEventListener('click', () => {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    hidden.value=''; hasInk=false;
+  });
+
+  // CLAVE: antes de enviar, volcamos la firma al <input hidden>
+  form.addEventListener('submit', () => {
+    hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
+  });
+})();
+</script>
+{% endblock %}
