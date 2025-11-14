@@ -293,7 +293,7 @@
   </div>
 
   <div class="d-flex gap-2 mt-3">
-    <button class="btn btn-primary" type="submit">Guardar</button>
+    <button class="btn btn-primary" id="btn-guardar" type="submit">Guardar</button>
     <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Cancelar</a>
   </div>
 </form>
@@ -307,6 +307,7 @@
   const canvas  = document.getElementById('signature-canvas');
   const hidden  = document.getElementById('firma-base64');
   const clearBtn= document.getElementById('clear-signature');
+  const btnGuardar = document.getElementById('btn-guardar');
 
   if (!form || !wrapper || !canvas || !hidden) return;
 
@@ -317,7 +318,6 @@
     const dpr  = window.devicePixelRatio || 1;
     const wCSS = rect.width  && rect.width  > 0 ? rect.width  : 600;
     const hCSS = rect.height && rect.height > 0 ? rect.height : 180;
-
     canvas.width  = Math.floor(wCSS * dpr);
     canvas.height = Math.floor(hCSS * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -346,12 +346,16 @@
     hidden.value=''; hasInk=false;
   });
 
-  // ANTES DE ENVIAR: volcar base64 al hidden
-  form.addEventListener('submit', () => {
+  function dumpSignature(){
+    // Si hay tinta, volcamos PNG base64; si no, dejamos vacío
     hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
-    // Debug opcional en el navegador:
+    // Debug en navegador (opcional):
     // console.log('firma base64 len:', hidden.value.length, hidden.value.slice(0,30));
-  });
+  }
+
+  // Doble seguro: al enviar el form y al hacer click en Guardar
+  form.addEventListener('submit', dumpSignature);
+  btnGuardar?.addEventListener('click', dumpSignature);
 })();
 </script>
 {% endblock %}

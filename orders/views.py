@@ -101,6 +101,13 @@ def order_detail(request, pk):
 @login_required
 def order_create(request):
     if request.method == "POST":
+        # DEBUG: ver qué trae el POST
+        raw_firma = request.POST.get("firma") or ""
+        try:
+            print("DEBUG POST firma len:", len(raw_firma), "head:", raw_firma[:32])
+        except Exception:
+            pass
+
         form = ServiceOrderForm(request.POST, request.FILES)
         equipos_fs = EquipmentFormSet(request.POST, request.FILES, prefix="equipos")
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, prefix="materiales")
@@ -108,34 +115,28 @@ def order_create(request):
         if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
             order = form.save(commit=False)
 
-            # --- Firma en base64 desde el input hidden ---
-            firma_b64 = request.POST.get("firma") or ""
+            firma_b64 = raw_firma
             try:
                 if firma_b64.startswith("data:image"):
-                    # DEBUG visible en consola del servidor
-                    print("DEBUG firma_b64 head:", firma_b64[:30], "len=", len(firma_b64))
-
+                    print("DEBUG firma válida, len:", len(firma_b64))
                     header, data = firma_b64.split(",", 1)
                     ext = "png"
-                    if "jpeg" in header.lower() or "jpg" in header.lower():
+                    hl = header.lower()
+                    if "jpeg" in hl or "jpg" in hl:
                         ext = "jpg"
-
                     file_data = ContentFile(base64.b64decode(data), name=f"firma_{uuid.uuid4().hex}.{ext}")
                     order.firma = file_data
                 else:
-                    # Aviso útil si llega vacío o sin prefijo
                     from django.contrib import messages
-                    msg = "No recibí la firma (input hidden vacío o formato no reconocido)."
-                    print("DEBUG:", msg, "valor:", firma_b64[:30])
-                    messages.warning(request, msg)
+                    print("DEBUG firma vacía o sin prefijo. Valor head:", firma_b64[:32])
+                    messages.warning(request, "No recibí la firma. Asegúrate de dibujar y que el bloque esté abierto.")
             except Exception as e:
                 from django.contrib import messages
                 print("ERROR decodificando firma:", e)
-                messages.error(request, "No se pudo procesar la firma. Intente firmar de nuevo.")
+                messages.error(request, "No se pudo procesar la firma. Intenta de nuevo.")
 
             order.save()
 
-            # Guardar formsets
             equipos_fs.instance = order
             materiales_fs.instance = order
             equipos_fs.save()
@@ -153,6 +154,39 @@ def order_create(request):
 
     ctx = {"form": form, "equipos_fs": equipos_fs, "materiales_fs": materiales_fs}
     return render(request, "orders/order_form.html", ctx)
+# ===== EDITAR =====
+@login_required
+def order_edit(request, pk):
+    order = get_object_or_404(ServiceOrder, pk=pk)
+    if request.method == "POST":
+        form = ServiceOrderForm(request.POST, request.FILES, instance=order)
+        equipos_fs = EquipmentFormSet(request.POST, request.FILES, instance=order, prefix="equipos")
+        materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, instance=order, prefix="materiales")
+
+        if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
+            form.save()
+            equipos_fs.save()
+            materiales_fs.save()
+            messages.success(request, "Orden actualizada correctamente.")
+            return redirect(reverse("orders:detail", args=[order.pk]))
+        else:
+            messages.error(request, "Revisa los errores del formulario marcado en rojo.")
+    else:
+        form = ServiceOrderForm(instance=order)
+        equipos_fs = EquipmentFormSet(instance=order, prefix="equipos")
+        materiales_fs = ServiceMaterialFormSet(instance=order, prefix="materiales")
+
+    ctx = {"form": form, "equipos_fs": equipos_fs, "materiales_fs": materiales_fs, "object": order}
+    return render(request, "orders/order_form.html", ctx)
+# ===== BORRAR =====
+@require_POST
+@login_required
+def order_delete(request, pk):
+    order = get_object_or_404(ServiceOrder, pk=pk)
+    order.delete()
+    messages.success(request, "Orden eliminada correctamente.")
+    return redirect("orders:list")
+|
 
 # ===== BORRADO MASIVO =====
 @require_POST
