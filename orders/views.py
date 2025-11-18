@@ -8,6 +8,7 @@ from django.http import HttpResponse
 from django.template.loader import get_template
 from django.db.models import Q
 from django.conf import settings
+from django.core.paginator import Paginator
 
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet

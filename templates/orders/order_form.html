@@ -268,33 +268,27 @@
         </div>
       </div>
     </div>
-
-    {# F) FIRMA #}
+{# F) FIRMA #}
 <div class="accordion-item">
   <h2 class="accordion-header" id="headingFirma">
-    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma" aria-expanded="false" aria-controls="collapseFirma">
+    <button class="accordion-button collapsed" type="button"
+            data-bs-toggle="collapse" data-bs-target="#collapseFirma"
+            aria-expanded="false" aria-controls="collapseFirma">
       F) Firma del cliente
     </button>
   </h2>
-  <div id="collapseFirma" class="accordion-collapse collapse" aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
+  <div id="collapseFirma" class="accordion-collapse collapse"
+       aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
     <div class="accordion-body">
       <div class="d-flex gap-2 align-items-center mb-2">
         <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
       </div>
-      <div id="signature-wrapper" class="w-100">
-        <canvas id="signature-canvas"></canvas>
+      <div id="signature-wrapper" class="w-100" style="border:1px solid #dee2e6; border-radius:.5rem; height:180px; background:#fff; touch-action:none; user-select:none;">
+        <canvas id="signature-canvas" style="width:100%; height:100%; display:block;"></canvas>
       </div>
-
-      {# IMPORTANTE: renombrado a firma_b64 #}
-      <input type="hidden" name="firma_b64" id="firma-b64">
-
-      <div class="form-text">Firme con el dedo o mouse. (Abra el panel F) antes de firmar)</div>
-
-      {# Vista previa opcional para que veas si ya se capturó #}
-      <div class="mt-2">
-        <small class="text-muted">Vista previa:</small><br>
-        <img id="firma-preview" alt="Preview firma" style="max-height:120px; border:1px dashed #ccc; padding:4px; background:#fff">
-      </div>
+      <!-- 👇 OJO: name y id deben ser firma_b64 -->
+      <input type="hidden" name="firma_b64" id="firma_b64">
+      <div class="form-text">Firme con el dedo o mouse.</div>
     </div>
   </div>
 </div>
@@ -315,10 +309,8 @@
   const form    = document.getElementById('order-form');
   const wrapper = document.getElementById('signature-wrapper');
   const canvas  = document.getElementById('signature-canvas');
-  const hidden  = document.getElementById('firma-b64');   // <- NUEVO ID
+  const hidden  = document.getElementById('firma_b64'); // 👈 mismo id que el input
   const clearBtn= document.getElementById('clear-signature');
-  const preview = document.getElementById('firma-preview');
-
   if (!form || !wrapper || !canvas || !hidden) return;
 
   const ctx = canvas.getContext('2d');
@@ -326,19 +318,13 @@
   function resizeCanvas(){
     const rect = wrapper.getBoundingClientRect();
     const dpr  = window.devicePixelRatio || 1;
-    const wCSS = rect.width  && rect.width  > 0 ? rect.width  : 600;
-    const hCSS = rect.height && rect.height > 0 ? rect.height : 180;
-
+    const wCSS = rect.width  > 0 ? rect.width  : 600;
+    const hCSS = rect.height > 0 ? rect.height : 180;
     canvas.width  = Math.floor(wCSS * dpr);
     canvas.height = Math.floor(hCSS * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.lineWidth = 2;
-    ctx.lineJoin  = 'round';
-    ctx.lineCap   = 'round';
-    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = '#111';
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    // al redimensionar, limpia la preview
-    if (preview) preview.removeAttribute('src');
   }
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
@@ -346,7 +332,6 @@
 
   let drawing=false, last=null, hasInk=false;
   function pos(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
-
   canvas.addEventListener('pointerdown', e => { drawing=true; last=pos(e); e.preventDefault(); });
   canvas.addEventListener('pointermove',  e => {
     if(!drawing) return;
@@ -359,27 +344,12 @@
   clearBtn?.addEventListener('click', () => {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     hidden.value=''; hasInk=false;
-    if (preview) preview.removeAttribute('src');
   });
 
-  // Actualiza hidden y preview cada que terminas un trazo
-  canvas.addEventListener('pointerup', () => {
-    try {
-      const data = canvas.toDataURL('image/png');
-      hidden.value = data;         // <- SIEMPRE guardamos (con o sin tinta)
-      if (preview) preview.src = data;
-    } catch(_) {}
-  });
-
-  // Y antes de enviar, por si acaso
+  // Volcar el PNG base64 en el hidden justo antes de enviar
   form.addEventListener('submit', () => {
-    try {
-      const data = canvas.toDataURL('image/png');
-      hidden.value = data;         // <- SIEMPRE guardamos (evita que llegue vacío)
-      if (preview && !preview.src) preview.src = data;
-    } catch(_) {}
+    hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
   });
 })();
 </script>
-
 {% endblock %}
