@@ -2,14 +2,255 @@
 {% load static %}
 
 {% block title %}{{ object.folio }} · ServicioTech{% endblock %}
+
 {% block extra_css %}
 <style>
-  .sig-box{ height:180px; background:#fff; }
-  .img-sign{ max-height:160px; width:auto; object-fit:contain; }
+  .sig-box{
+    height:180px;
+    background:#fff;
+  }
+  .img-sign{
+    max-height:160px;
+    width:auto;
+    object-fit:contain;
+  }
+
+  /* Pantalla normal */
+  .screen-layout { display:block; }
+  .print-sheet  { display:none; }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  @media print {
+    html, body{
+      margin:0;
+      padding:0;
+      background:#ffffff;
+    }
+
+    /* 1) Ocultar TODO por defecto en impresión */
+    body *{
+      visibility:hidden;
+    }
+
+    /* 2) Mostrar solo la hoja de impresión */
+    .print-sheet,
+    .print-sheet *{
+      visibility:visible;
+    }
+
+    /* 3) Ocultar navbar, botones y layout normal */
+    .navbar,
+    .d-print-none,
+    .screen-layout{
+      display:none !important;
+    }
+
+    /* 4) Quitar márgenes del container Bootstrap */
+    main.container{
+      max-width:100%;
+      margin:0;
+      padding:0;
+    }
+
+    /* 5) La hoja de impresión */
+    .print-sheet{
+      display:block;
+    }
+
+    .sheet{
+      background:#ffffff;
+      padding:14px 18px 20px;
+      border:1px solid #d0d4da;
+      font-size:11px;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:#212529;
+    }
+
+    /* ====== estilos internos de la hoja ====== */
+
+    .sheet-header{
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      column-gap:16px;
+      margin-bottom:10px;
+    }
+    .sheet-header .logo img{
+      max-height:30px;
+    }
+    .sheet-header .title{
+      text-align:center;
+      font-weight:600;
+      font-size:14px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .folio-box{
+      border:1px solid #333;
+      padding:4px 6px;
+      font-size:10px;
+      text-align:center;
+      border-radius:4px;
+    }
+    .folio-label{
+      font-weight:600;
+      margin-bottom:2px;
+    }
+    .folio-value{
+      border:1px solid #333;
+      padding:2px 6px;
+      min-width:120px;
+      display:inline-block;
+      font-weight:600;
+      background:#f8f9fa;
+    }
+
+    .section-title{
+      margin-top:10px;
+      margin-bottom:4px;
+      font-weight:600;
+      text-transform:uppercase;
+      font-size:11px;
+      padding:4px 6px;
+      background:#0d6efd10;
+      border-left:4px solid #0d6efd;
+    }
+    .section-title span.num{
+      margin-right:4px;
+    }
+
+    .grid{
+      width:100%;
+      border-collapse:collapse;
+      margin-bottom:4px;
+    }
+    .grid th,
+    .grid td{
+      border:1px solid #c4c8ce;
+      padding:3px 4px;
+      vertical-align:top;
+    }
+    .grid th{
+      background:#e9ecef;
+      font-weight:600;
+      text-align:center;
+      font-size:10px;
+    }
+    .label-cell{
+      width:22%;
+      font-weight:600;
+      background:#f8f9fa;
+    }
+    .value-cell{
+      width:28%;
+    }
+    .field-value{
+      display:block;
+      min-height:14px;
+      padding:2px 4px;
+      background:#ffffff;
+      border:1px solid #d7dbdf;
+      border-radius:3px;
+    }
+
+    .checkbox-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px 12px;
+      align-items:center;
+      font-size:10px;
+    }
+    .chk{
+      display:inline-block;
+      width:9px;
+      height:9px;
+      border:1px solid #666;
+      margin-right:3px;
+    }
+    .chk--on{
+      background:#0d6efd;
+      border-color:#0d6efd;
+    }
+
+    .equip-table,
+    .materials-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:2px;
+      margin-bottom:4px;
+      font-size:10px;
+    }
+    .equip-table th,.equip-table td,
+    .materials-table th,.materials-table td{
+      border:1px solid #c4c8ce;
+      padding:3px 4px;
+      vertical-align:top;
+    }
+    .equip-table th,
+    .materials-table th{
+      background:#e9ecef;
+      font-weight:600;
+      text-align:left;
+    }
+
+    .textarea-block{
+      border:1px solid #c4c8ce;
+      min-height:60px;
+      padding:4px 5px;
+      background:#ffffff;
+      border-radius:3px;
+      white-space:pre-wrap;
+    }
+
+    .terms-box{
+      border:1px solid #c4c8ce;
+      padding:5px 7px;
+      font-size:8.5px;
+      line-height:1.3;
+      background:#ffffff;
+      border-radius:3px;
+      text-align:justify;
+    }
+
+    .signature-row{
+      margin-top:18px;
+    }
+    .signature-grid{
+      width:100%;
+      border-collapse:collapse;
+      text-align:center;
+      font-size:10px;
+    }
+    .signature-grid td{
+      border:1px solid #c4c8ce;
+      padding:14px 4px 6px;
+    }
+    .signature-space{
+      height:28px;
+      border-bottom:1px solid #999;
+      margin-bottom:6px;
+    }
+    .signature-label{
+      font-size:9px;
+    }
+
+    .footer{
+      margin-top:6px;
+      text-align:center;
+      font-size:8px;
+      color:#6c757d;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
+
+{# ================= ENCABEZADO NORMAL (PANTALLA) ================= #}
 <div class="d-print-none d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 m-0">Orden {{ object.folio }}</h1>
   <div class="d-flex gap-2">
@@ -18,118 +259,392 @@
   </div>
 </div>
 
-<div class="card shadow-sm print-card">
-  <div class="card-body">
-    <div class="row">
-      <div class="col-7">
-        <h2 class="h5 mb-3">Datos del servicio</h2>
-        <dl class="row small">
-          <dt class="col-4">Folio</dt><dd class="col-8">{{ object.folio }}</dd>
-          <dt class="col-4">Fecha</dt><dd class="col-8">{{ object.fecha_servicio|date:"Y-m-d" }}</dd>
-          <dt class="col-4">Cliente</dt><dd class="col-8">{{ object.cliente_nombre }}</dd>
-          <dt class="col-4">Correo</dt><dd class="col-8">{{ object.cliente_email|default:"—" }}</dd>
-          <dt class="col-4">Ubicación</dt><dd class="col-8">{{ object.ubicacion|default:"—" }}</dd>
-          <dt class="col-4">Contacto</dt><dd class="col-8">{{ object.contacto_nombre|default:"—" }}</dd>
-          <dt class="col-4">Tipo(s)</dt>
-          <dd class="col-8">
-            {% if object.tipos_servicio %}
-              {{ object.tipos_servicio_labels|join:", " }}
-            {% else %}—{% endif %}
-            {% if object.tipo_servicio_otro %}
-              <br><em>Otro:</em> {{ object.tipo_servicio_otro }}
-            {% endif %}
-          </dd>
-          <dt class="col-4">Ingeniero</dt><dd class="col-8">{{ object.ingeniero_nombre }}</dd>
-        </dl>
-      </div>
-      <div class="col-5 text-end">
-        <img src="{% static 'orders/logo.png' %}" alt="Logo" class="print-logo d-none d-print-inline-block">
-        <div class="small text-muted d-print-none">Generado: {{ object.actualizado|date:"Y-m-d H:i" }}</div>
-      </div>
-    </div>
+{# ================= LAYOUT NORMAL (PANTALLA) ================= #}
+<div class="screen-layout">
+  <div class="card shadow-sm print-card">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-7">
+          <h2 class="h5 mb-3">Datos del servicio</h2>
+          <dl class="row small">
+            <dt class="col-4">Folio</dt>
+            <dd class="col-8">{{ object.folio }}</dd>
 
-    <hr>
+            <dt class="col-4">Fecha</dt>
+            <dd class="col-8">{{ object.fecha_servicio|date:"Y-m-d" }}</dd>
 
-    <h3 class="h6">Título</h3>
-    <p class="mb-3">{{ object.titulo|default:"(sin título)" }}</p>
+            <dt class="col-4">Cliente</dt>
+            <dd class="col-8">{{ object.cliente_nombre }}</dd>
 
-    <div class="row">
-      <div class="col-md-6">
-        <h3 class="h6">Actividades</h3>
-        <div class="border rounded p-2 bg-light-subtle minh-100 mb-3">
-          {{ object.actividades|linebreaksbr|default:"—" }}
+            <dt class="col-4">Correo</dt>
+            <dd class="col-8">{{ object.cliente_email|default:"—" }}</dd>
+
+            <dt class="col-4">Ubicación</dt>
+            <dd class="col-8">{{ object.ubicacion|default:"—" }}</dd>
+
+            <dt class="col-4">Contacto</dt>
+            <dd class="col-8">{{ object.contacto_nombre|default:"—" }}</dd>
+
+            <dt class="col-4">Tipo(s)</dt>
+            <dd class="col-8">
+              {% if object.tipos_servicio %}
+                {{ object.tipos_servicio_labels|join:", " }}
+              {% else %}—{% endif %}
+              {% if object.tipo_servicio_otro %}
+                <br><em>Otro:</em> {{ object.tipo_servicio_otro }}
+              {% endif %}
+            </dd>
+
+            <dt class="col-4">Ingeniero</dt>
+            <dd class="col-8">{{ object.ingeniero_nombre }}</dd>
+          </dl>
+        </div>
+
+        <div class="col-5 text-end">
+          <img src="{% static 'orders/logo.png' %}" alt="Logo"
+               class="print-logo d-none d-print-inline-block">
+          <div class="small text-muted d-print-none">
+            Generado: {{ object.actualizado|date:"Y-m-d H:i" }}
+          </div>
         </div>
       </div>
-      <div class="col-md-6">
-        <h3 class="h6">Comentarios</h3>
-        <div class="border rounded p-2 bg-light-subtle minh-100 mb-3">
-          {{ object.comentarios|linebreaksbr|default:"—" }}
+
+      <hr>
+
+      <h3 class="h6">Título</h3>
+      <p class="mb-3">{{ object.titulo|default:"(sin título)" }}</p>
+
+      <div class="row">
+        <div class="col-md-6">
+          <h3 class="h6">Actividades</h3>
+          <div class="border rounded p-2 bg-light-subtle minh-100 mb-3">
+            {{ object.actividades|linebreaksbr|default:"—" }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h3 class="h6">Comentarios</h3>
+          <div class="border rounded p-2 bg-light-subtle minh-100 mb-3">
+            {{ object.comentarios|linebreaksbr|default:"—" }}
+          </div>
         </div>
       </div>
-    </div>
 
-    {% if object.equipos.all %}
-    <h3 class="h6 mt-3">Equipos</h3>
-    <table class="table table-sm">
-      <thead><tr><th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th></tr></thead>
-      <tbody>
-        {% for e in object.equipos.all %}
+      {% if object.equipos.all %}
+      <h3 class="h6 mt-3">Equipos</h3>
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Serie</th>
+            <th>Descripción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in object.equipos.all %}
           <tr>
             <td>{{ e.marca|default:"—" }}</td>
             <td>{{ e.modelo|default:"—" }}</td>
             <td>{{ e.serie|default:"—" }}</td>
             <td>{{ e.descripcion|default:"—" }}</td>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
 
-    {% if object.materiales.all %}
-    <h3 class="h6 mt-3">Materiales</h3>
-    <table class="table table-sm">
-      <thead><tr><th>Cant.</th><th>Descripción</th><th>Comentarios</th></tr></thead>
-      <tbody>
-        {% for m in object.materiales.all %}
+      {% if object.materiales.all %}
+      <h3 class="h6 mt-3">Materiales</h3>
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Cant.</th>
+            <th>Descripción</th>
+            <th>Comentarios</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in object.materiales.all %}
           <tr>
             <td>{{ m.cantidad }}</td>
             <td>{{ m.descripcion }}</td>
             <td>{{ m.comentarios|default:"—" }}</td>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
-
-    <div class="row mt-3">
-      <div class="col-md-6">
-        <h3 class="h6">Costos y tiempo</h3>
-        <table class="table table-sm mb-0">
-          <tr><th>Horas</th><td>{{ object.horas }}</td></tr>
-          <tr><th>Costo (MXN)</th><td>
-            {% if object.costo_no_aplica %}No aplica{% elif object.costo_se_cotizara %}Se cotizará{% else %}${{ object.costo_mxn }}{% endif %}
-          </td></tr>
-        </table>
-      </div>
-     <div class="col-md-6">
-  <h3 class="h6">Firma del cliente</h3>
-  <div class="border rounded p-2 text-center sig-box">
-    {% if object.firma %}
-      <img
-        src="{{ object.firma.url }}"
-        class="img-sign"
-        alt="Firma"
-        onerror="this.closest('.sig-box').innerHTML='<span class=&quot;text-muted&quot;>Archivo de firma no disponible</span>';">
-      {% if debug %}
-        <div class="small text-muted mt-1">{{ object.firma.url }}</div>
+          {% endfor %}
+        </tbody>
+      </table>
       {% endif %}
-    {% else %}
-      <span class="text-muted">Sin firma</span>
-    {% endif %}
-  </div>
-</div>
+
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <h3 class="h6">Costos y tiempo</h3>
+          <table class="table table-sm mb-0">
+            <tr>
+              <th>Horas</th>
+              <td>{{ object.horas }}</td>
+            </tr>
+            <tr>
+              <th>Costo (MXN)</th>
+              <td>
+                {% if object.costo_no_aplica %}
+                  No aplica
+                {% elif object.costo_se_cotizara %}
+                  Se cotizará
+                {% else %}
+                  ${{ object.costo_mxn }}
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="col-md-6">
+          <h3 class="h6">Firma del cliente</h3>
+          <div class="border rounded p-2 text-center sig-box">
+            {% if object.firma %}
+              <img
+                src="{{ object.firma.url }}"
+                class="img-sign"
+                alt="Firma"
+                onerror="this.closest('.sig-box').innerHTML='<span class=&quot;text-muted&quot;>Archivo de firma no disponible</span>';">
+            {% else %}
+              <span class="text-muted">Sin firma</span>
+            {% endif %}
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
 </div>
+
+{# ================= FORMATO ESPECIAL SOLO PARA IMPRESIÓN ================= #}
+<div class="print-sheet">
+  <div class="sheet">
+
+    <!-- ENCABEZADO -->
+    <div class="sheet-header">
+  <div class="logo">
+    <img src="{% static 'orders/inovatech-logo.png' %}" alt="Inovatech">
+  </div>
+  <div class="title">
+    ORDEN DE SERVICIO TÉCNICO
+  </div>
+  <div class="folio-box">
+    <div class="folio-label">FOLIO</div>
+    <div class="folio-value">{{ object.folio }}</div>
+  </div>
+</div>
+
+    <!-- 1. INFORMACIÓN GENERAL -->
+    <div class="section-title">
+      <span class="num">1.</span> Información general
+    </div>
+
+    <table class="grid">
+      <tr>
+        <td class="label-cell">1. Cliente</td>
+        <td class="value-cell">
+          <span class="field-value">{{ object.cliente_nombre }}</span>
+        </td>
+        <td class="label-cell">2. Ubicación del servicio</td>
+        <td class="value-cell">
+          <span class="field-value">{{ object.ubicacion }}</span>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-cell">3. Fecha</td>
+        <td class="value-cell">
+          <span class="field-value">{{ object.fecha_servicio|date:"d/m/Y" }}</span>
+        </td>
+        <td class="label-cell">4. Contacto del servicio</td>
+        <td class="value-cell">
+          <span class="field-value">{{ object.contacto_nombre }}</span>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-cell">5. Tipo de servicio solicitado</td>
+        <td class="value-cell">
+          <div class="checkbox-row">
+            <span><span class="chk {% if 'instalacion'   in object.tipos_servicio %}chk--on{% endif %}"></span> Instalación</span>
+            <span><span class="chk {% if 'configuracion' in object.tipos_servicio %}chk--on{% endif %}"></span> Configuración</span>
+            <span><span class="chk {% if 'mantenimiento' in object.tipos_servicio %}chk--on{% endif %}"></span> Mantenimiento</span>
+            <span><span class="chk {% if 'garantia'      in object.tipos_servicio %}chk--on{% endif %}"></span> Garantía</span>
+            <span><span class="chk {% if 'revision'      in object.tipos_servicio %}chk--on{% endif %}"></span> Falla/Revisión</span>
+            <span><span class="chk {% if 'capacitacion'  in object.tipos_servicio %}chk--on{% endif %}"></span> Capacitación</span>
+          </div>
+          {% if object.tipo_servicio_otro %}
+          <div style="margin-top:4px;">
+            <strong>Otro:</strong>
+            <span class="field-value" style="display:inline-block; margin-top:2px;">
+              {{ object.tipo_servicio_otro }}
+            </span>
+          </div>
+          {% endif %}
+        </td>
+        <td class="label-cell">6. Ingeniero de soporte</td>
+        <td class="value-cell">
+          <span class="field-value">{{ object.ingeniero_nombre }}</span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- 7. DATOS DEL EQUIPO -->
+    <div class="section-title">
+      <span class="num">7.</span> Datos del equipo del servicio
+    </div>
+
+    <table class="equip-table">
+      <thead>
+        <tr>
+          <th>Marca</th>
+          <th>Modelo</th>
+          <th>Serie</th>
+          <th>Descripción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for equipo in object.equipos.all %}
+        <tr>
+          <td>{{ equipo.marca }}</td>
+          <td>{{ equipo.modelo }}</td>
+          <td>{{ equipo.serie }}</td>
+          <td>{{ equipo.descripcion }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4">&nbsp;</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- 2. DATOS TÉCNICOS -->
+    <div class="section-title">
+      <span class="num">2.</span> Datos técnicos
+    </div>
+
+    <table class="grid">
+      <tr>
+        <td class="label-cell">8. Título del servicio</td>
+        <td colspan="3">
+          <span class="field-value">{{ object.titulo }}</span>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-cell">Actividades realizadas</td>
+        <td colspan="3">
+          <div class="textarea-block">
+            {{ object.actividades|default:""|linebreaksbr }}
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-cell">Comentarios y/o incidencias</td>
+        <td colspan="3">
+          <div class="textarea-block">
+            {{ object.comentarios|default:""|linebreaksbr }}
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- COSTOS / MATERIALES -->
+    <div class="section-title">
+      <span class="num">3.</span> Costos y materiales
+    </div>
+
+    <table class="grid">
+      <tr>
+        <td class="label-cell">11. Tiempo del servicio (hrs)</td>
+        <td class="value-cell">
+          <span class="field-value">{{ object.horas|default:"" }}</span>
+        </td>
+        <td class="label-cell">12. Costo del servicio (MXN)</td>
+        <td class="value-cell">
+          <span class="field-value">
+            {% if object.costo_no_aplica %}
+              No aplica
+            {% elif object.costo_se_cotizara %}
+              Se cotizará
+            {% else %}
+              {{ object.costo_mxn|floatformat:2 }}
+            {% endif %}
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <div class="section-title">
+      <span class="num">14.</span> Se requirió material y/o piezas adicionales
+    </div>
+
+    <table class="materials-table">
+      <thead>
+        <tr>
+          <th>Cantidad</th>
+          <th>Descripción</th>
+          <th>Comentarios</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mat in object.materiales.all %}
+        <tr>
+          <td>{{ mat.cantidad }}</td>
+          <td>{{ mat.descripcion }}</td>
+          <td>{{ mat.comentarios }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3">&nbsp;</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- TÉRMINOS -->
+    <div class="section-title">
+      <span class="num">3.</span> Términos del servicio
+    </div>
+
+    <div class="terms-box">
+      Al firmar este documento se da por aceptada la conformidad de la entrega y finalización de los servicios
+      y/o trabajos realizados. Este documento será comprobante del servicio realizado. Cualquier cambio posterior
+      a la instalación (reinstalación, modificaciones, reubicación, reconfiguración o implementación adicional)
+      podrá generar cargos extra. Es responsabilidad del cliente realizar el respaldo de la información contenida
+      en los equipos antes de la atención del servicio.
+    </div>
+
+    <!-- FIRMAS -->
+    <div class="signature-row">
+      <table class="signature-grid">
+        <tr>
+          <td>
+            <div class="signature-space"></div>
+            <div class="signature-label">Ingeniero de soporte</div>
+          </td>
+          <td>
+            <div class="signature-space">
+              {% if object.firma %}
+                <img src="{{ object.firma.url }}" alt="Firma cliente" style="max-height:40px;">
+              {% endif %}
+            </div>
+            <div class="signature-label">Cliente</div>
+          </td>
+          <td>
+            <div class="signature-space"></div>
+            <div class="signature-label">Contacto ventas</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="footer">
+      It Soluciones de Innovación Tecnológica Avanzada S.A. de C.V. · Monterrey, N.L.
+    </div>
+
+  </div>
+</div>
+
 {% endblock %}
+
