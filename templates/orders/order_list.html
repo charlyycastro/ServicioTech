@@ -3,7 +3,7 @@
 
 {% block extra_css %}
 <style>
-  .card--compact .card-body { padding: 1rem; }
+  .card--compact .card-body { padding: 1.25rem; }
   .table-compact td,
   .table-compact th {
     padding: .4rem .6rem;
@@ -29,13 +29,15 @@
 
   <div class="card-body">
 
-    <!-- Filtro (GET) con ancho compacto -->
-    <div class="mb-3">
-      <label class="form-label mb-1">Buscar</label>
-      <form method="get" class="d-flex gap-2 flex-wrap" style="max-width: 480px;">
-        <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm"
-               placeholder="folio, título, cliente…">
-        <button class="btn btn-dark btn-sm" type="submit">Filtrar</button>
+    <!-- Filtro (GET) más grande y más largo, centrado -->
+    <div class="mb-4">
+      <form method="get" class="d-flex justify-content-center">
+        <div class="input-group" style="max-width: 880px; width: 100%;">
+          <span class="input-group-text">Buscar</span>
+          <input type="text" name="q" value="{{ request.GET.q }}" class="form-control"
+                 placeholder="folio, título, cliente…">
+          <button class="btn btn-dark" type="submit">Filtrar</button>
+        </div>
       </form>
     </div>
 
