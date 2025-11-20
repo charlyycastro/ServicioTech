@@ -11,29 +11,91 @@ SERVICE_TYPES = [
     ("capacitacion", "Capacitación"),
 ]
 
-class ServiceOrder(models.Model):
-    def folio_default():
-        today = timezone.now().strftime("%Y%m%d")
-        short = uuid.uuid4().hex[:6].upper()
-        return f"SRV-{today}-{short}"
 
-    folio = models.CharField(max_length=32, unique=True, default=folio_default, editable=False)
+# En orders/models.py
+
+# En orders/models.py
+
+class ServiceOrder(models.Model):
+    folio = models.CharField(max_length=32, unique=True, editable=False, blank=True)
+    
+    # ... tus otros campos ...
+
+    def save(self, *args, **kwargs):
+        if not self.folio:
+            # 1. Base: OS-YYYYMMDD
+            today = timezone.now().strftime("%Y%m%d")
+            prefix = f"OS-{today}"
+            
+            # 2. Inicial del ingeniero (C, A, etc.)
+            if self.ingeniero_nombre:
+                initial = self.ingeniero_nombre[0].upper()
+            else:
+                initial = "X"
+
+            # 3. Buscar la última orden DE HOY (sin importar la letra del ingeniero)
+            last_order = ServiceOrder.objects.filter(folio__startswith=prefix).order_by("-creado").first()
+
+            if last_order:
+                try:
+                    # El folio anterior es tipo: OS-20251120-A005
+                    last_suffix = last_order.folio.split("-")[-1] # Toma "A005"
+                    
+                    # Quitamos la letra (primer caracter) y convertimos el resto a número
+                    last_num = int(last_suffix[1:]) 
+                    new_num = last_num + 1
+                except (IndexError, ValueError):
+                    # Por si hay basura en la BD
+                    new_num = 1
+            else:
+                # Primera orden del día
+                new_num = 1
+
+            # 4. Construir folio: OS-20251120-C001
+            # {initial} pone la letra (C)
+            # {new_num:03d} pone el número con 3 dígitos (001, 010, 100)
+            self.folio = f"{prefix}-{initial}{new_num:03d}"
+
+        super().save(*args, **kwargs)
+
 
     # 1) Información general
+    # Cliente (empresa)
     cliente_nombre = models.CharField(max_length=200)
+
+    # Nuevo: persona de contacto del cliente
+    cliente_contacto = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Nombre de la persona de contacto del cliente.",
+    )
+
+    # Correo del cliente
     cliente_email = models.EmailField(blank=True)
+
+    # Nuevo: teléfono del cliente
+    cliente_telefono = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Número de teléfono del cliente.",
+    )
+
     ubicacion = models.CharField(max_length=300, blank=True)
     fecha_servicio = models.DateField(default=timezone.now)
+
+    # Ahora será “Contacto interno”
     contacto_nombre = models.CharField(max_length=200, blank=True)
 
     # Campo antiguo (compatibilidad). Ya no se usa en el form, lo dejamos opcional:
     tipo_servicio = models.CharField(max_length=20, choices=SERVICE_TYPES, blank=True)
 
-    # ✅ Nuevos campos
+    # Nuevos campos
     tipos_servicio = models.JSONField(default=list, blank=True)   # p.ej. ["instalacion","mantenimiento"]
     tipo_servicio_otro = models.CharField(max_length=200, blank=True)
 
     ingeniero_nombre = models.CharField(max_length=200)
+
+    ticket_id = models.CharField("ID Ticket", max_length=50, blank=True)
 
     # 2) Equipo (resumen opcional)
     equipo_marca = models.CharField(max_length=100, blank=True)
@@ -60,6 +122,12 @@ class ServiceOrder(models.Model):
     reagenda_motivo = models.TextField(blank=True)
 
     firma = models.ImageField(upload_to="signatures/", null=True, blank=True)
+
+    # Nuevo: indicaciones internas (no se imprimen)
+    indicaciones_especiales = models.TextField(
+        blank=True,
+        help_text="Indicaciones internas (EPP, credencial, pruebas, etc.). No se imprime.",
+    )
 
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)

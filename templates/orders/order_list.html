@@ -1,165 +1,155 @@
-{% extends 'orders/base.html' %}
-{% load static %}
+{% extends "orders/base.html" %}
 
-{% block extra_css %}
-<style>
-  .card--compact .card-body { padding: 1.25rem; }
-  .table-compact td,
-  .table-compact th {
-    padding: .4rem .6rem;
-    vertical-align: middle;
-  }
-  .clickable-row { cursor: pointer; }
-</style>
-{% endblock %}
+{% block title %}Lista de Órdenes{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm card--compact">
-  <div class="card-header bg-white d-flex flex-wrap gap-2 justify-content-between align-items-center">
-    <h1 class="h5 mb-0">Órdenes</h1>
-    <div class="d-flex gap-2">
-      <a class="btn btn-primary btn-sm" href="{% url 'orders:create' %}">Nueva orden</a>
-      <!-- Este botón envía el form de borrado masivo -->
-      <button class="btn btn-danger btn-sm" form="bulkDeleteForm" type="submit" id="btnDelete" disabled
-              onclick="return confirm('¿Eliminar las órdenes seleccionadas? Esta acción no se puede deshacer.');">
-        Eliminar seleccionadas
-      </button>
-    </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3">Órdenes</h1>
+  <div class="d-flex gap-2">
+    <a href="{% url 'orders:create' %}" class="btn btn-primary">Nueva orden</a>
+    <button type="submit" form="bulkDeleteForm" class="btn btn-danger" id="btn-delete" disabled>
+      Eliminar seleccionadas
+    </button>
   </div>
+</div>
 
+<div class="card mb-4">
   <div class="card-body">
+    <form method="get" class="row g-2">
+      <div class="col-md-10">
+        <input type="text" name="q" class="form-control" 
+               placeholder="Buscar por folio, título, cliente, ticket..." 
+               value="{{ q }}">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-dark w-100">Filtrar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-    <!-- Filtro (GET) más grande y más largo, centrado -->
-    <div class="mb-4">
-      <form method="get" class="d-flex justify-content-center">
-        <div class="input-group" style="max-width: 880px; width: 100%;">
-          <span class="input-group-text">Buscar</span>
-          <input type="text" name="q" value="{{ request.GET.q }}" class="form-control"
-                 placeholder="folio, título, cliente…">
-          <button class="btn btn-dark" type="submit">Filtrar</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Tabla dentro del form de borrado (POST) -->
-    <form id="bulkDeleteForm" method="post" action="{% url 'orders:bulk_delete' %}">
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <form method="post" action="{% url 'orders:bulk_delete' %}" id="bulkDeleteForm">
       {% csrf_token %}
       <div class="table-responsive">
-        <table class="table table-hover table-sm table-compact align-middle">
+        <table class="table table-hover mb-0 align-middle">
           <thead class="table-light">
             <tr>
-              <th style="width:1%">
-                <input class="form-check-input" type="checkbox" id="selectAll">
+              <th scope="col" style="width: 40px;" class="text-center">
+                <input type="checkbox" class="form-check-input" id="select-all">
               </th>
-              <th>Folio</th>
-              <th>Fecha</th>
-              <th>Cliente</th>
-              <th>Ingeniero</th>
-              <th>Título</th>
+              <th scope="col">Folio</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">ID Ticket</th> <th scope="col">Título</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Ingeniero</th>
+              <th scope="col">Estado</th>
             </tr>
           </thead>
           <tbody>
-            {% for o in ordenes %}
-            <tr class="clickable-row" data-href="{% url 'orders:detail' o.pk %}">
-              <td>
-                <!-- name="ids" para que lo consuma bulk_delete -->
-                <input class="form-check-input row-check" type="checkbox" name="ids" value="{{ o.id }}"
-                       onclick="event.stopPropagation();">
+            {% for orden in ordenes %}
+            <tr style="cursor:pointer;" onclick="window.location='{% url 'orders:detail' orden.pk %}';">
+              <td class="text-center" onclick="event.stopPropagation();">
+                <input type="checkbox" name="ids" value="{{ orden.pk }}" class="form-check-input order-check">
               </td>
-              <td>
-                <a href="{% url 'orders:detail' o.pk %}"
-                   class="link-underline link-underline-opacity-0">
-                  {{ o.folio }}
-                </a>
+              
+              <td class="fw-bold text-primary text-nowrap">
+                {{ orden.folio }}
               </td>
-              <td>{{ o.fecha_servicio|date:'Y-m-d' }}</td>
-              <td>{{ o.cliente_nombre }}</td>
-              <td>{{ o.ingeniero_nombre }}</td>
-              <td class="text-truncate" style="max-width: 420px">{{ o.titulo }}</td>
+              
+              <td>{{ orden.cliente_nombre }}</td>
+
+              <td>
+                {% if orden.ticket_id %}
+                  <span class="badge bg-secondary text-light">{{ orden.ticket_id }}</span>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              
+              <td>{{ orden.titulo }}</td>
+              
+              <td class="text-nowrap">{{ orden.fecha_servicio|date:"d/M/Y" }}</td>
+              
+              <td>{{ orden.ingeniero_nombre }}</td>
+              
+              <td>
+                {% if orden.costo_no_aplica %}
+                  <span class="badge bg-secondary">N/A</span>
+                {% elif orden.costo_se_cotizara %}
+                  <span class="badge bg-warning text-dark">Cotizar</span>
+                {% else %}
+                  <span class="badge bg-success">${{ orden.costo_mxn }}</span>
+                {% endif %}
+              </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="6" class="text-center text-muted py-4">Sin resultados</td>
+              <td colspan="8" class="text-center py-4 text-muted">
+                No se encontraron órdenes.
+              </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </form>
-
-    {% if is_paginated %}
-    <nav class="mt-2">
-      <ul class="pagination pagination-sm mb-0">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-          <a class="page-link"
-             href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">
-            «
-          </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">«</span></li>
-        {% endif %}
-
-        <li class="page-item active">
-          <span class="page-link">
-            {{ page_obj.number }} / {{ paginator.num_pages }}
-          </span>
-        </li>
-
-        {% if page_obj.has_next %}
-        <li class="page-item">
-          <a class="page-link"
-             href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">
-            »
-          </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">»</span></li>
-        {% endif %}
-      </ul>
-    </nav>
-    {% endif %}
-
   </div>
 </div>
+
+{% if is_paginated %}
+<nav class="mt-4">
+  <ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}">Anterior</a>
+    </li>
+    {% endif %}
+    
+    <li class="page-item disabled">
+      <span class="page-link">
+        Página {{ page_obj.number }} de {{ paginator.num_pages }}
+      </span>
+    </li>
+
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}">Siguiente</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  // Fila clickeable (ignorando clicks en inputs/botones/enlaces)
-  document.querySelectorAll('.clickable-row').forEach(function (row) {
-    row.addEventListener('click', function (e) {
-      if (e.target.closest('input, a, button, label')) return;
-      const href = this.dataset.href;
-      if (href) window.location = href;
+  // Script para manejo de checkboxes "Seleccionar todo"
+  document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('select-all');
+    const checks = document.querySelectorAll('.order-check');
+    const btnDelete = document.getElementById('btn-delete');
+
+    function toggleBtn() {
+      const anyChecked = Array.from(checks).some(c => c.checked);
+      btnDelete.disabled = !anyChecked;
+    }
+
+    if(selectAll) {
+      selectAll.addEventListener('change', function() {
+        checks.forEach(c => c.checked = selectAll.checked);
+        toggleBtn();
+      });
+    }
+
+    checks.forEach(c => {
+      c.addEventListener('change', function() {
+        if (!this.checked) selectAll.checked = false;
+        toggleBtn();
+      });
     });
   });
-
-  // Selección masiva y habilitar botón de borrar
-  const selectAll = document.getElementById('selectAll');
-  const btnDelete = document.getElementById('btnDelete');
-  const checks = Array.from(document.querySelectorAll('.row-check'));
-
-  function refreshDeleteState() {
-    const any = checks.some(ch => ch.checked);
-    if (btnDelete) {
-      btnDelete.disabled = !any;
-    }
-  }
-
-  if (selectAll) {
-    selectAll.addEventListener('change', function () {
-      checks.forEach(ch => ch.checked = this.checked);
-      refreshDeleteState();
-    });
-  }
-
-  checks.forEach(ch => ch.addEventListener('change', refreshDeleteState));
-
-  // Estado inicial
-  refreshDeleteState();
-});
 </script>
 {% endblock %}

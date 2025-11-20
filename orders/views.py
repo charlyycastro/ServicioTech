@@ -27,6 +27,7 @@ def order_list(request):
     if q:
         qs = qs.filter(
             Q(folio__icontains=q) |
+            Q(ticket_id__icontains=q) |
             Q(cliente_nombre__icontains=q) |
             Q(titulo__icontains=q)
         )

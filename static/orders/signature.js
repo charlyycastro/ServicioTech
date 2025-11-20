@@ -1,18 +1,28 @@
-// Firma con mouse/táctil + guardado en hidden input
+// static/orders/signature.js - VERSIÓN FINAL LIMPIA
 (function () {
-  const canvas = document.getElementById('signature-canvas');
-  const wrapper = document.getElementById('signature-wrapper');
-  const clearBtn = document.getElementById('clear-signature');
-  const hiddenInput = document.getElementById('firma-base64');
-  const form = document.getElementById('order-form');
+  // CONFIGURACIÓN
+  const CANVAS_ID = 'signature-canvas';
+  const WRAPPER_ID = 'signature-wrapper';
+  const INPUT_ID = 'firma_b64';
+  const CLEAR_BTN_ID = 'clear-signature';
+  const FORM_ID = 'order-form';
 
-  if (!canvas || !wrapper) return;
+  const canvas = document.getElementById(CANVAS_ID);
+  const wrapper = document.getElementById(WRAPPER_ID);
+  const hiddenInput = document.getElementById(INPUT_ID);
+  const form = document.getElementById(FORM_ID);
+
+  // Si no existe el canvas (ej. estamos en "Ver Detalle"), salimos silenciosamente.
+  if (!canvas || !wrapper || !hiddenInput) return;
+
+  // Si llegamos aquí, es porque ESTAMOS en la pantalla de crear/editar
+  console.log("✅ Sistema de firma activado.");
 
   const ctx = canvas.getContext('2d');
+  const clearBtn = document.getElementById(CLEAR_BTN_ID);
   let drawing = false;
   let hasStroke = false;
 
-  // Estilo de trazo
   function setStrokeStyle() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -20,13 +30,12 @@
     ctx.strokeStyle = '#111';
   }
 
-  // Ajuste retina y tamaño del lienzo al contenedor
   function resizeCanvas() {
     const rect = wrapper.getBoundingClientRect();
     const width = Math.max(300, Math.floor(rect.width));
-    const height = Math.max(160, Math.floor(rect.height)); // wrapper controla altura por CSS
-
+    const height = Math.max(160, Math.floor(rect.height)); 
     const dpr = window.devicePixelRatio || 1;
+
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);
     canvas.style.width = width + 'px';
@@ -37,33 +46,25 @@
 
   function getPos(e) {
     const rect = canvas.getBoundingClientRect();
-    if (e.touches && e.touches.length) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
-      };
-    } else {
-      return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      };
-    }
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
   function start(e) {
     e.preventDefault();
-    const { x, y } = getPos(e);
     drawing = true;
     hasStroke = true;
+    const pos = getPos(e);
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(pos.x, pos.y);
   }
 
   function move(e) {
     if (!drawing) return;
     e.preventDefault();
-    const { x, y } = getPos(e);
-    ctx.lineTo(x, y);
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
   }
 
@@ -73,31 +74,21 @@
     drawing = false;
   }
 
-  // Eventos mouse
-  canvas.addEventListener('mousedown', start);
-  canvas.addEventListener('mousemove', move);
-  window.addEventListener('mouseup', end);
+  ['mousedown', 'touchstart'].forEach(evt => canvas.addEventListener(evt, start, { passive: false }));
+  ['mousemove', 'touchmove'].forEach(evt => canvas.addEventListener(evt, move, { passive: false }));
+  ['mouseup', 'touchend', 'touchcancel', 'mouseleave'].forEach(evt => canvas.addEventListener(evt, end));
 
-  // Eventos touch (mobile)
-  canvas.addEventListener('touchstart', start, { passive: false });
-  canvas.addEventListener('touchmove', move,   { passive: false });
-  canvas.addEventListener('touchend', end,     { passive: false });
-  canvas.addEventListener('touchcancel', end,  { passive: false });
-
-  // Limpiar
   if (clearBtn) {
     clearBtn.addEventListener('click', function () {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       hasStroke = false;
-      if (hiddenInput) hiddenInput.value = '';
+      hiddenInput.value = '';
     });
   }
 
-  // Guardar al enviar
-  if (form && hiddenInput) {
+  if (form) {
     form.addEventListener('submit', function () {
       if (hasStroke) {
-        // Exporta PNG Base64
         hiddenInput.value = canvas.toDataURL('image/png');
       } else {
         hiddenInput.value = '';
@@ -105,24 +96,10 @@
     });
   }
 
-  // Redimensionar al mostrar el acordeón (Bootstrap)
+  // Inicializar al abrir acordeón y resize
   document.addEventListener('shown.bs.collapse', function (ev) {
-    const target = ev.target;
-    if (target && target.id === 'collapseFirma') {
-      // Espera un tick para que el layout esté listo
-      setTimeout(resizeCanvas, 50);
-    }
+    if (ev.target.id === 'collapseFirma') resizeCanvas();
   });
-
-  // Resize on window
-  window.addEventListener('resize', function () {
-    const prevImage = hasStroke ? canvas.toDataURL() : null;
-    resizeCanvas();
-    // Nota: reponer la imagen tras resize es complejo; optamos por redibujar nuevo trazo.
-    // Si necesitas conservar el trazo al redimensionar, implementamos un buffer de puntos.
-  });
-
-  // Init
   resizeCanvas();
-  setStrokeStyle();
+  window.addEventListener('resize', resizeCanvas);
 })();

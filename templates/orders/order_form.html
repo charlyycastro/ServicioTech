@@ -4,13 +4,76 @@
 {# ---- CSS específico para este template ---- #}
 {% block extra_css %}
 <style>
-  #signature-wrapper{
-    border:1px solid #dee2e6; border-radius:.5rem; height:180px;
-    background:#fff; touch-action:none; user-select:none;
+  /* Estilo general de campos dentro del acordeón */
+  .accordion-body input[type="text"],
+  .accordion-body input[type="email"],
+  .accordion-body input[type="tel"],
+  .accordion-body input[type="number"],
+  .accordion-body input[type="date"],
+  .accordion-body textarea,
+  .accordion-body select {
+    width: 100%;
+    padding: .375rem .5rem;
+    font-size: .9rem;
+    border-radius: .35rem;
+    border: 1px solid #ced4da;
+    box-sizing: border-box;
   }
-  #signature-canvas{ width:100%; height:100%; display:block; }
+
+  .accordion-body textarea {
+    min-height: 2.5rem;
+    resize: vertical;
+  }
+
+  .accordion-body .form-label {
+    font-weight: 500;
+    font-size: .85rem;
+    margin-bottom: .15rem;
+  }
+
+  /* Grid de checkboxes de tipos de servicio */
+  .checkgrid {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+  }
+
+  .checkgrid .form-check input[type="checkbox"] {
+    margin-right: .35rem;
+    width: 1rem;
+    height: 1rem;
+    vertical-align: middle;
+  }
+ /* Motivo de reagenda: tamaño parecido a un input */
+  #id_reagenda_motivo {
+    min-height: 2.25rem;
+    max-height: 2.25rem;
+    resize: none;
+  }
+  /* Firma */
+  #signature-wrapper{
+    border:1px solid #dee2e6;
+    border-radius:.5rem;
+    height:180px;
+    background:#fff;
+    touch-action:none;
+    user-select:none;
+  }
+  #signature-canvas{
+    width:100%;
+    height:100%;
+    display:block;
+  }
+
+  /* Textareas dentro de las tablas (equipos/materiales) con formato de input */
+  .formset-table textarea {
+    min-height: 2.25rem;
+    max-height: 2.25rem;
+    resize: none;
+  }
 </style>
 {% endblock %}
+
 
 {% block content %}
 <h1 class="h4 mb-3">Nueva orden</h1>
@@ -32,22 +95,34 @@
     {# A) DATOS DEL SERVICIO #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingDatos">
-        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatos" aria-expanded="true" aria-controls="collapseDatos">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                data-bs-target="#collapseDatos" aria-expanded="true" aria-controls="collapseDatos">
           A) Datos del servicio
         </button>
       </h2>
-      <div id="collapseDatos" class="accordion-collapse collapse show" aria-labelledby="headingDatos" data-bs-parent="#ordenAccordion">
-        <div class="accordion-body">
+      <div id="collapseDatos" class="accordion-collapse collapse show"
+           aria-labelledby="headingDatos" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body section-datos">
           <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Cliente</label>
+            <!-- Fila 1: Cliente + persona + correo + teléfono -->
+            <div class="col-md-3">
+              <label class="form-label">Empresa</label>
               {{ form.cliente_nombre }}
             </div>
-            <div class="col-md-6">
+            <div class="col-md-3">
+              <label class="form-label">Nombre del Cliente </label>
+              {{ form.cliente_contacto }}
+            </div>
+            <div class="col-md-3">
               <label class="form-label">Correo del cliente</label>
               {{ form.cliente_email }}
             </div>
+            <div class="col-md-3">
+              <label class="form-label">Número de teléfono del cliente</label>
+              {{ form.cliente_telefono }}
+            </div>
 
+            <!-- Fila 2: ubicación + fecha + contacto interno -->
             <div class="col-md-6">
               <label class="form-label">Ubicación</label>
               {{ form.ubicacion }}
@@ -57,16 +132,35 @@
               {{ form.fecha_servicio }}
             </div>
             <div class="col-md-3">
-              <label class="form-label">Contacto</label>
+              <label class="form-label">Contacto interno</label>
               {{ form.contacto_nombre }}
             </div>
 
-            <div class="col-md-8">
-              <label class="form-label d-block">Tipo(s) de servicio</label>
-              <div class="checkgrid">
-                {{ form.tipos_servicio }}
-              </div>
-            </div>
+            <!-- Fila 3: tipos de servicio + Otro -->
+            {# Fila 3: tipos de servicio + Otro #}
+<div class="col-md-8">
+  <label class="form-label d-block">Tipo(s) de servicio</label>
+  <div class="checkgrid">
+    {# Renderizamos cada opción con el mismo HTML #}
+    {% for cb in form.tipos_servicio %}
+      <div class="form-check">
+        {{ cb.tag }}
+        <label class="form-check-label" for="{{ cb.id_for_label }}">
+          {{ cb.choice_label }}
+        </label>
+      </div>
+    {% endfor %}
+
+    {# Checkbox "Otro servicio" con el MISMO estilo #}
+    <div class="form-check mt-1">
+      <input type="checkbox" id="chk-otro-servicio">
+      <label class="form-check-label" for="chk-otro-servicio">
+        Otro servicio
+      </label>
+    </div>
+  </div>
+</div>
+
 
             <div class="col-md-4 d-none" id="otro-wrapper">
               <label class="form-label">Otro (especifique)</label>
@@ -76,10 +170,31 @@
               {% endif %}
             </div>
 
+            <!-- Fila 4: ingeniero + indicaciones especiales -->
             <div class="col-md-4">
               <label class="form-label">Ingeniero</label>
               {{ form.ingeniero_nombre }}
             </div>
+            <div class="col-md-4">
+  <label class="form-label">Ingeniero</label>
+  {{ form.ingeniero_nombre }}
+</div>
+
+<div class="col-md-4">
+  <label class="form-label">ID Ticket</label>
+  {{ form.ticket_id }}
+</div>
+
+
+
+            <div class="col-md-8">
+              <label class="form-label">Indicaciones especiales (uso interno, no se imprime)</label>
+              {{ form.indicaciones_especiales }}
+              <div class="form-text">
+                Ejemplo: EPP requerido, credencial de elector, pruebas de laboratorio, etc.
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -88,23 +203,32 @@
     {# B) EQUIPOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingEquipos">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipos" aria-expanded="false" aria-controls="collapseEquipos">
+        <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse" data-bs-target="#collapseEquipos"
+                aria-expanded="false" aria-controls="collapseEquipos">
           B) Datos de los equipos
         </button>
       </h2>
-      <div id="collapseEquipos" class="accordion-collapse collapse" aria-labelledby="headingEquipos" data-bs-parent="#ordenAccordion">
+      <div id="collapseEquipos" class="accordion-collapse collapse"
+           aria-labelledby="headingEquipos" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="card border-0">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <strong>Listado de equipos</strong>
-              <button class="btn btn-sm btn-primary" type="button" data-add-equipo>Agregar equipo</button>
+              <button class="btn btn-sm btn-primary" type="button" data-add-equipo>
+                Agregar equipo
+              </button>
             </div>
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0 formset-table">
                   <thead class="table-light">
                     <tr>
-                      <th>Marca</th><th>Modelo</th><th>Serie</th><th>Descripción</th><th class="col-actions"></th>
+                      <th>Marca</th>
+                      <th>Modelo</th>
+                      <th>Serie</th>
+                      <th>Descripción</th>
+                      <th class="col-actions"></th>
                     </tr>
                   </thead>
                   <tbody id="equipos-body">
@@ -117,7 +241,9 @@
                       <td>{{ f.descripcion }}</td>
                       <td class="text-end">
                         {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>
+                          &times;
+                        </button>
                       </td>
                     </tr>
                     {% endfor %}
@@ -130,7 +256,11 @@
                   <td>__FIELD__:modelo</td>
                   <td>__FIELD__:serie</td>
                   <td>__FIELD__:descripcion</td>
-                  <td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>
+                      &times;
+                    </button>
+                  </td>
                 </tr>
               </template>
             </div>
@@ -142,11 +272,14 @@
     {# C) ACTIVIDADES Y COMENTARIOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingActividades">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividades" aria-expanded="false" aria-controls="collapseActividades">
+        <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse" data-bs-target="#collapseActividades"
+                aria-expanded="false" aria-controls="collapseActividades">
           C) Actividades y comentarios
         </button>
       </h2>
-      <div id="collapseActividades" class="accordion-collapse collapse" aria-labelledby="headingActividades" data-bs-parent="#ordenAccordion">
+      <div id="collapseActividades" class="accordion-collapse collapse"
+           aria-labelledby="headingActividades" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="row g-3">
             <div class="col-12">
@@ -166,16 +299,21 @@
       </div>
     </div>
 
-    {# D) COSTOS Y PROGRAMACIÓN #}
+            {# D) COSTOS Y PROGRAMACIÓN #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingCostos">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCostos" aria-expanded="false" aria-controls="collapseCostos">
+        <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse" data-bs-target="#collapseCostos"
+                aria-expanded="false" aria-controls="collapseCostos">
           D) Costos y programación
         </button>
       </h2>
-      <div id="collapseCostos" class="accordion-collapse collapse" aria-labelledby="headingCostos" data-bs-parent="#ordenAccordion">
+      <div id="collapseCostos" class="accordion-collapse collapse"
+           aria-labelledby="headingCostos" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
-          <div class="row g-3">
+          <div class="row g-3 align-items-end">
+
+            <!-- Horas y costo -->
             <div class="col-md-3">
               <label class="form-label">Horas</label>
               {{ form.horas }}
@@ -184,34 +322,50 @@
               <label class="form-label">Costo (MXN)</label>
               {{ form.costo_mxn }}
             </div>
-            <div class="col-md-6 d-flex align-items-center gap-4">
-              <div class="form-check">
-                {{ form.costo_no_aplica }} <label class="form-check-label">No aplica</label>
-              </div>
-              <div class="form-check">
-                {{ form.costo_se_cotizara }} <label class="form-check-label">Se cotizará</label>
+
+            <!-- Estatus del costo -->
+            <div class="col-md-6">
+              <label class="form-label d-block">Estatus del costo</label>
+              <div class="d-flex align-items-center gap-4">
+                <div class="form-check mb-0">
+                  {{ form.costo_no_aplica }}
+                  <label class="form-check-label" for="id_costo_no_aplica">
+                    No aplica
+                  </label>
+                </div>
+                <div class="form-check mb-0">
+                  {{ form.costo_se_cotizara }}
+                  <label class="form-check-label" for="id_costo_se_cotizara">
+                    Se cotizará
+                  </label>
+                </div>
               </div>
             </div>
 
             <div class="col-12"><hr></div>
 
-            <div class="col-md-2 d-flex align-items-center">
-              <div class="form-check">
-                {{ form.reagenda }} <label class="form-check-label">Reagendar</label>
+            <!-- Reagenda en UNA sola línea -->
+            <div class="col-md-2">
+              <div class="form-check mb-0 mt-1">
+                {{ form.reagenda }}
+                <label class="form-check-label" for="id_reagenda">
+                  Reagendar
+                </label>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <label class="form-label">Fecha</label>
               {{ form.reagenda_fecha }}
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <label class="form-label">Hora</label>
               {{ form.reagenda_hora }}
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="form-label">Motivo</label>
               {{ form.reagenda_motivo }}
             </div>
+
           </div>
         </div>
       </div>
@@ -220,23 +374,31 @@
     {# E) MATERIALES #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingMateriales">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMateriales" aria-expanded="false" aria-controls="collapseMateriales">
+        <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse" data-bs-target="#collapseMateriales"
+                aria-expanded="false" aria-controls="collapseMateriales">
           E) Materiales utilizados
         </button>
       </h2>
-      <div id="collapseMateriales" class="accordion-collapse collapse" aria-labelledby="headingMateriales" data-bs-parent="#ordenAccordion">
+      <div id="collapseMateriales" class="accordion-collapse collapse"
+           aria-labelledby="headingMateriales" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="card border-0">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <strong>Listado de materiales</strong>
-              <button class="btn btn-sm btn-primary" type="button" data-add-material>Agregar material</button>
+              <button class="btn btn-sm btn-primary" type="button" data-add-material>
+                Agregar material
+              </button>
             </div>
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0 formset-table">
                   <thead class="table-light">
                     <tr>
-                      <th>Descripción</th><th>Cantidad</th><th>Comentarios</th><th class="col-actions"></th>
+                      <th>Descripción</th>
+                      <th>Cantidad</th>
+                      <th>Comentarios</th>
+                      <th class="col-actions"></th>
                     </tr>
                   </thead>
                   <tbody id="materiales-body">
@@ -248,7 +410,9 @@
                       <td>{{ f.comentarios }}</td>
                       <td class="text-end">
                         {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>
+                          &times;
+                        </button>
                       </td>
                     </tr>
                     {% endfor %}
@@ -260,7 +424,11 @@
                   <td>__FIELD__:descripcion</td>
                   <td>__FIELD__:cantidad</td>
                   <td>__FIELD__:comentarios</td>
-                  <td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button></td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>
+                      &times;
+                    </button>
+                  </td>
                 </tr>
               </template>
             </div>
@@ -268,33 +436,35 @@
         </div>
       </div>
     </div>
-{# F) FIRMA #}
-<div class="accordion-item">
-  <h2 class="accordion-header" id="headingFirma">
-    <button class="accordion-button collapsed" type="button"
-            data-bs-toggle="collapse" data-bs-target="#collapseFirma"
-            aria-expanded="false" aria-controls="collapseFirma">
-      F) Firma del cliente
-    </button>
-  </h2>
-  <div id="collapseFirma" class="accordion-collapse collapse"
-       aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
-    <div class="accordion-body">
-      <div class="d-flex gap-2 align-items-center mb-2">
-        <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
+
+    {# F) FIRMA #}
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingFirma">
+        <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse" data-bs-target="#collapseFirma"
+                aria-expanded="false" aria-controls="collapseFirma">
+          F) Firma del cliente
+        </button>
+      </h2>
+      <div id="collapseFirma" class="accordion-collapse collapse"
+           aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body">
+          <div class="d-flex gap-2 align-items-center mb-2">
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">
+              Limpiar
+            </button>
+          </div>
+          <div id="signature-wrapper" class="w-100">
+            <canvas id="signature-canvas"></canvas>
+          </div>
+          <!-- 👇 OJO: name y id deben ser firma_b64 -->
+          <input type="hidden" name="firma_b64" id="firma_b64">
+          <div class="form-text">Firme con el dedo o mouse.</div>
+        </div>
       </div>
-      <div id="signature-wrapper" class="w-100" style="border:1px solid #dee2e6; border-radius:.5rem; height:180px; background:#fff; touch-action:none; user-select:none;">
-        <canvas id="signature-canvas" style="width:100%; height:100%; display:block;"></canvas>
-      </div>
-      <!-- 👇 OJO: name y id deben ser firma_b64 -->
-      <input type="hidden" name="firma_b64" id="firma_b64">
-      <div class="form-text">Firme con el dedo o mouse.</div>
     </div>
-  </div>
-</div>
 
-
-  </div>
+  </div> {# fin accordion #}
 
   <div class="d-flex gap-2 mt-3">
     <button class="btn btn-primary" type="submit">Guardar</button>
@@ -305,51 +475,52 @@
 
 {% block scripts %}
 <script>
-(function(){
-  const form    = document.getElementById('order-form');
-  const wrapper = document.getElementById('signature-wrapper');
-  const canvas  = document.getElementById('signature-canvas');
-  const hidden  = document.getElementById('firma_b64'); // 👈 mismo id que el input
-  const clearBtn= document.getElementById('clear-signature');
-  if (!form || !wrapper || !canvas || !hidden) return;
+document.addEventListener('DOMContentLoaded', function () {
+  
+  /* ----- LÓGICA: OTRO SERVICIO ----- */
+  const chkOtro     = document.getElementById('chk-otro-servicio');
+  const inputOtro   = document.getElementById('id_tipo_servicio_otro');
+  const wrapperOtro = document.getElementById('otro-wrapper');
 
-  const ctx = canvas.getContext('2d');
+  if (chkOtro && inputOtro && wrapperOtro) {
+    function actualizarVisibilidad() {
+      if (chkOtro.checked) {
+        wrapperOtro.classList.remove('d-none');
+      } else {
+        wrapperOtro.classList.add('d-none');
+        // Opcional: limpiar el campo al ocultarlo
+        // inputOtro.value = '';
+      }
+    }
 
-  function resizeCanvas(){
-    const rect = wrapper.getBoundingClientRect();
-    const dpr  = window.devicePixelRatio || 1;
-    const wCSS = rect.width  > 0 ? rect.width  : 600;
-    const hCSS = rect.height > 0 ? rect.height : 180;
-    canvas.width  = Math.floor(wCSS * dpr);
-    canvas.height = Math.floor(hCSS * dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = '#111';
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    // Si ya traía datos (al editar), marcar el checkbox
+    if (inputOtro.value.trim() !== '') {
+      chkOtro.checked = true;
+    }
+
+    chkOtro.addEventListener('change', actualizarVisibilidad);
+    actualizarVisibilidad();
   }
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-  document.getElementById('collapseFirma')?.addEventListener('shown.bs.collapse', resizeCanvas);
 
-  let drawing=false, last=null, hasInk=false;
-  function pos(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
-  canvas.addEventListener('pointerdown', e => { drawing=true; last=pos(e); e.preventDefault(); });
-  canvas.addEventListener('pointermove',  e => {
-    if(!drawing) return;
-    const p=pos(e);
-    ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke();
-    last=p; hasInk=true; e.preventDefault();
-  });
-  ['pointerup','pointerleave','pointercancel'].forEach(t => canvas.addEventListener(t, e => { drawing=false; e.preventDefault(); }));
+  /* ----- LÓGICA: COSTOS MUTUAMENTE EXCLUYENTES ----- */
+  const chkNoAplica = document.getElementById('id_costo_no_aplica');
+  const chkSeCotiza = document.getElementById('id_costo_se_cotizara');
 
-  clearBtn?.addEventListener('click', () => {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    hidden.value=''; hasInk=false;
-  });
+  if (chkNoAplica && chkSeCotiza) {
+    // Si marca "No aplica", desmarca "Se cotizará"
+    chkNoAplica.addEventListener('change', function () {
+      if (this.checked) {
+        chkSeCotiza.checked = false;
+      }
+    });
 
-  // Volcar el PNG base64 en el hidden justo antes de enviar
-  form.addEventListener('submit', () => {
-    hidden.value = hasInk ? canvas.toDataURL('image/png') : '';
-  });
-})();
+    // Si marca "Se cotizará", desmarca "No aplica"
+    chkSeCotiza.addEventListener('change', function () {
+      if (this.checked) {
+        chkNoAplica.checked = false;
+      }
+    });
+  }
+});
 </script>
 {% endblock %}

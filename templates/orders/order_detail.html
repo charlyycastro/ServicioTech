@@ -101,12 +101,16 @@
       margin-bottom:2px;
     }
     .folio-value{
-      border:1px solid #333;
-      padding:2px 6px;
-      min-width:120px;
-      display:inline-block;
-      font-weight:600;
-      background:#f8f9fa;
+      border: 2px solid #333; /* Opcional: borde un poco más grueso también */
+      padding: 2px 6px;
+      min-width: 120px;
+      display: inline-block;
+      background: #f8f9fa;
+      
+      /* === CAMBIOS PARA ROJO Y GRUESO === */
+      font-weight: 800;       /* Letra muy gruesa */
+      color: #d60000;         /* Rojo intenso */
+      font-size: 12px;        /* Un pelín más grande para que destaque */
     }
 
     .section-title{
@@ -266,6 +270,7 @@
       <div class="row">
         <div class="col-7">
           <h2 class="h5 mb-3">Datos del servicio</h2>
+
           <dl class="row small">
             <dt class="col-4">Folio</dt>
             <dd class="col-8">{{ object.folio }}</dd>
@@ -273,23 +278,31 @@
             <dt class="col-4">Fecha</dt>
             <dd class="col-8">{{ object.fecha_servicio|date:"Y-m-d" }}</dd>
 
-            <dt class="col-4">Cliente</dt>
+            <dt class="col-4">Cliente (empresa)</dt>
             <dd class="col-8">{{ object.cliente_nombre }}</dd>
 
-            <dt class="col-4">Correo</dt>
+            <dt class="col-4">Nombre del cliente</dt>
+            <dd class="col-8">{{ object.cliente_contacto|default:"—" }}</dd>
+
+            <dt class="col-4">Correo del cliente</dt>
             <dd class="col-8">{{ object.cliente_email|default:"—" }}</dd>
+
+            <dt class="col-4">Número de teléfono</dt>
+            <dd class="col-8">{{ object.cliente_telefono|default:"—" }}</dd>
 
             <dt class="col-4">Ubicación</dt>
             <dd class="col-8">{{ object.ubicacion|default:"—" }}</dd>
 
-            <dt class="col-4">Contacto</dt>
+            <dt class="col-4">Contacto interno</dt>
             <dd class="col-8">{{ object.contacto_nombre|default:"—" }}</dd>
 
-            <dt class="col-4">Tipo(s)</dt>
+            <dt class="col-4">Tipo(s) de servicio</dt>
             <dd class="col-8">
               {% if object.tipos_servicio %}
                 {{ object.tipos_servicio_labels|join:", " }}
-              {% else %}—{% endif %}
+              {% else %}
+                —
+              {% endif %}
               {% if object.tipo_servicio_otro %}
                 <br><em>Otro:</em> {{ object.tipo_servicio_otro }}
               {% endif %}
@@ -297,12 +310,33 @@
 
             <dt class="col-4">Ingeniero</dt>
             <dd class="col-8">{{ object.ingeniero_nombre }}</dd>
+            
+            <dt class="col-4">ID Ticket</dt>
+                <dd class="col-8">
+                    {% if object.ticket_id %}
+                 <strong>{{ object.ticket_id }}</strong>
+                    {% else %}
+                 <span class="text-muted">—</span>
+                    {% endif %}
+                 </dd>
+
+
+            {# Solo pantalla, no impresión #}
+            <dt class="col-4 d-print-none">Indicaciones especiales (uso interno)</dt>
+            <dd class="col-8 d-print-none">
+              {% if object.indicaciones_especiales %}
+                {{ object.indicaciones_especiales|linebreaksbr }}
+              {% else %}
+                —
+              {% endif %}
+            </dd>
           </dl>
         </div>
 
         <div class="col-5 text-end">
-          <img src="{% static 'orders/logo.png' %}" alt="Logo"
-               class="print-logo d-none d-print-inline-block">
+          <img src="{% static 'orders/inovatech-logo.png' %}" alt="Logo Inovatech"
+               style="max-height: 50px;">
+          
           <div class="small text-muted d-print-none">
             Generado: {{ object.actualizado|date:"Y-m-d H:i" }}
           </div>
@@ -407,6 +441,7 @@
                 class="img-sign"
                 alt="Firma"
                 onerror="this.closest('.sig-box').innerHTML='<span class=&quot;text-muted&quot;>Archivo de firma no disponible</span>';">
+
             {% else %}
               <span class="text-muted">Sin firma</span>
             {% endif %}
@@ -422,26 +457,23 @@
 <div class="print-sheet">
   <div class="sheet">
 
-    <!-- ENCABEZADO -->
     <div class="sheet-header">
-  <div class="logo">
-    <img src="{% static 'orders/inovatech-logo.png' %}" alt="Inovatech">
-  </div>
-  <div class="title">
-    ORDEN DE SERVICIO TÉCNICO
-  </div>
-  <div class="folio-box">
-    <div class="folio-label">FOLIO</div>
-    <div class="folio-value">{{ object.folio }}</div>
-  </div>
-</div>
-
-    <!-- 1. INFORMACIÓN GENERAL -->
-    <div class="section-title">
-      <span class="num">1.</span> Información general
+      <div class="logo">
+        <img src="{% static 'orders/inovatech-logo.png' %}" alt="Inovatech">
+      </div>
+      <div class="title">
+        ORDEN DE SERVICIO TÉCNICO
+      </div>
+      <div class="folio-box">
+        <div class="folio-label">FOLIO</div>
+        <div class="folio-value">{{ object.folio }}</div>
+      </div>
     </div>
 
-    <table class="grid">
+    <div class="section-title">
+      <span class="num">A.</span> Información general
+    </div>
+      <table class="grid">
       <tr>
         <td class="label-cell">1. Cliente</td>
         <td class="value-cell">
@@ -452,6 +484,7 @@
           <span class="field-value">{{ object.ubicacion }}</span>
         </td>
       </tr>
+
       <tr>
         <td class="label-cell">3. Fecha</td>
         <td class="value-cell">
@@ -462,9 +495,10 @@
           <span class="field-value">{{ object.contacto_nombre }}</span>
         </td>
       </tr>
+
       <tr>
-        <td class="label-cell">5. Tipo de servicio solicitado</td>
-        <td class="value-cell">
+        <td class="label-cell" rowspan="2">5. Tipo de servicio solicitado</td>
+        <td class="value-cell" rowspan="2">
           <div class="checkbox-row">
             <span><span class="chk {% if 'instalacion'   in object.tipos_servicio %}chk--on{% endif %}"></span> Instalación</span>
             <span><span class="chk {% if 'configuracion' in object.tipos_servicio %}chk--on{% endif %}"></span> Configuración</span>
@@ -482,16 +516,24 @@
           </div>
           {% endif %}
         </td>
+        
         <td class="label-cell">6. Ingeniero de soporte</td>
         <td class="value-cell">
           <span class="field-value">{{ object.ingeniero_nombre }}</span>
         </td>
       </tr>
+
+      <tr>
+        <td class="label-cell">7. ID Ticket</td>
+        <td class="value-cell">
+          <span class="field-value">{{ object.ticket_id }}</span>
+        </td>
+      </tr>
     </table>
 
-    <!-- 7. DATOS DEL EQUIPO -->
+
     <div class="section-title">
-      <span class="num">7.</span> Datos del equipo del servicio
+      <span class="num">B.</span> Datos del equipo del servicio
     </div>
 
     <table class="equip-table">
@@ -519,20 +561,19 @@
       </tbody>
     </table>
 
-    <!-- 2. DATOS TÉCNICOS -->
     <div class="section-title">
-      <span class="num">2.</span> Datos técnicos
+      <span class="num">C.</span> Datos técnicos
     </div>
 
     <table class="grid">
       <tr>
-        <td class="label-cell">8. Título del servicio</td>
+        <td class="label-cell">1. Título del servicio</td>
         <td colspan="3">
           <span class="field-value">{{ object.titulo }}</span>
         </td>
       </tr>
       <tr>
-        <td class="label-cell">Actividades realizadas</td>
+        <td class="label-cell">2.Actividades realizadas</td>
         <td colspan="3">
           <div class="textarea-block">
             {{ object.actividades|default:""|linebreaksbr }}
@@ -540,7 +581,7 @@
         </td>
       </tr>
       <tr>
-        <td class="label-cell">Comentarios y/o incidencias</td>
+        <td class="label-cell">3.Comentarios y/o incidencias</td>
         <td colspan="3">
           <div class="textarea-block">
             {{ object.comentarios|default:""|linebreaksbr }}
@@ -549,18 +590,17 @@
       </tr>
     </table>
 
-    <!-- COSTOS / MATERIALES -->
     <div class="section-title">
-      <span class="num">3.</span> Costos y materiales
+      <span class="num">D.</span> Costos y materiales
     </div>
 
     <table class="grid">
       <tr>
-        <td class="label-cell">11. Tiempo del servicio (hrs)</td>
+        <td class="label-cell">1. Tiempo del servicio (hrs)</td>
         <td class="value-cell">
           <span class="field-value">{{ object.horas|default:"" }}</span>
         </td>
-        <td class="label-cell">12. Costo del servicio (MXN)</td>
+        <td class="label-cell">2. Costo del servicio (MXN)</td>
         <td class="value-cell">
           <span class="field-value">
             {% if object.costo_no_aplica %}
@@ -576,7 +616,7 @@
     </table>
 
     <div class="section-title">
-      <span class="num">14.</span> Se requirió material y/o piezas adicionales
+      <span class="num">E.</span> Se requirió material y/o piezas adicionales
     </div>
 
     <table class="materials-table">
@@ -602,9 +642,8 @@
       </tbody>
     </table>
 
-    <!-- TÉRMINOS -->
     <div class="section-title">
-      <span class="num">3.</span> Términos del servicio
+      <span class="num">F.</span> Términos del servicio
     </div>
 
     <div class="terms-box">
@@ -615,7 +654,6 @@
       en los equipos antes de la atención del servicio.
     </div>
 
-    <!-- FIRMAS -->
     <div class="signature-row">
       <table class="signature-grid">
         <tr>
@@ -640,11 +678,10 @@
     </div>
 
     <div class="footer">
-      It Soluciones de Innovación Tecnológica Avanzada S.A. de C.V. · Monterrey, N.L.
+      It Soluciones de Innovación Tecnológica Avanzada S.A. de C.V. · José Treviño 110, Chepevera, 64030 Monterrey, N.L.
     </div>
 
   </div>
 </div>
 
 {% endblock %}
-
