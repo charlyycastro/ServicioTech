@@ -4,6 +4,17 @@
 {% block title %}{{ object.folio }} · ServicioTech{% endblock %}
 
 {% block extra_css %}
+{% if print_mode %}
+<style>
+    /* Estilos exclusivos para cuando WeasyPrint genera el PDF */
+    .navbar, .d-print-none, .screen-layout { display: none !important; }
+    .print-sheet { display: block !important; visibility: visible !important; }
+    body { background: #fff !important; margin: 0; }
+    @page { size: A4; margin: 0; }
+</style>
+{% endif %}
+
+
 <style>
   .sig-box{
     height:180px;

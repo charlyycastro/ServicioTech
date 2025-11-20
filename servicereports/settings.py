@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import ssl  # <--- AGREGA ESTO
 
 # ------------------------------------------------------------
 # Rutas base
@@ -204,3 +205,22 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "orders:list"
 LOGOUT_REDIRECT_URL = "login"
+
+
+
+# --- CONFIGURACIÓN DE CORREO (Leyendo desde .env) ---
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+# Aquí Django va al archivo .env y busca las variables
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+# Esto crea un "pase VIP" que ignora si el nombre del certificado no coincide exactamente
+EMAIL_SSL_CONTEXT = ssl._create_unverified_context()
+
+# Verificación rápida en consola al arrancar
+if not EMAIL_HOST or not EMAIL_HOST_USER:
+    print("⚠️  OJO: No se cargaron los datos del correo desde el .env")

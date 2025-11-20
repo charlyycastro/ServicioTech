@@ -1,0 +1,11 @@
+# Ignorar base de datos y secretos
+.env
+db.sqlite3
+*.json
+
+# Ignorar archivos compilados de Python (basura)
+__pycache__/
+*.pyc
+
+# Ignorar archivos subidos por usuarios (firmas)
+media/

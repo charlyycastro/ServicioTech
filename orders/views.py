@@ -5,15 +5,24 @@ from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.http import HttpResponse
-from django.template.loader import get_template
+from django.template.loader import render_to_string
 from django.db.models import Q
 from django.conf import settings
 from django.core.paginator import Paginator
 
+# --- LIBRERÍAS PARA PDF Y CORREO MANUAL (SMTP) ---
+import weasyprint
+import smtplib
+import ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+
+# --- MODELOS Y FORMULARIOS ---
 from .models import ServiceOrder
 from .forms import ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet
 
-# para firma base64 -> ImageField
+# --- UTILIDADES ---
 import base64, uuid
 from django.core.files.base import ContentFile
 from django.utils.dateparse import parse_date
@@ -72,6 +81,7 @@ def order_detail(request, pk):
 
 
 # ===== CREAR =====
+
 @login_required
 def order_create(request):
     if request.method == "POST":
@@ -80,9 +90,8 @@ def order_create(request):
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, prefix="materiales")
 
         if form.is_valid() and equipos_fs.is_valid() and materiales_fs.is_valid():
+            # 1. Guardar la orden y firma
             order = form.save(commit=False)
-
-            # --- Firma en base64 (renombramos a 'firma_b64' para evitar colisiones) ---
             firma_b64 = (request.POST.get("firma_b64") or "").strip()
             if firma_b64.startswith("data:image"):
                 try:
@@ -93,22 +102,97 @@ def order_create(request):
                     file_data = ContentFile(base64.b64decode(data), name=f"firma_{uuid.uuid4().hex}.{ext}")
                     order.firma = file_data
                 except Exception:
-                    messages.warning(request, "No pude procesar la firma. Intenta firmar de nuevo.")
-            else:
-                # No bloquear el guardado; solo avisar en DEBUG
-                messages.warning(request, "No recibí la firma (input hidden vacío o formato no reconocido).")
-
+                    messages.warning(request, "No pude procesar la firma. Se guardará sin firma.")
             order.save()
 
+            # 2. Guardar relaciones
             equipos_fs.instance = order
             materiales_fs.instance = order
             equipos_fs.save()
             materiales_fs.save()
 
-            messages.success(request, "Orden creada correctamente.")
+            # ========================================================
+            #   ENVÍO MANUAL SMTP (BYPASS TOTAL DE SEGURIDAD DJANGO)
+            # ========================================================
+            if order.cliente_email:
+                try:
+                    # --- A) Generar PDF ---
+                    html_string = render_to_string('orders/order_detail.html', {
+                        'object': order,
+                        'print_mode': True
+                    }, request=request)
+
+                    pdf_bytes = weasyprint.HTML(
+                        string=html_string, 
+                        base_url=request.build_absolute_uri()
+                    ).write_pdf()
+
+                    # --- B) Configurar Servidor SMTP Manualmente ---
+                    smtp_server = settings.EMAIL_HOST
+                    smtp_port = settings.EMAIL_PORT
+                    smtp_user = settings.EMAIL_HOST_USER
+                    smtp_password = settings.EMAIL_HOST_PASSWORD
+
+                    # Crear objeto del mensaje
+                    msg = MIMEMultipart()
+                    msg['From'] = settings.DEFAULT_FROM_EMAIL
+                    msg['To'] = order.cliente_email
+                    msg['Subject'] = f"Reporte de Servicio {order.folio} - ServicioTech"
+
+                    # Cuerpo del correo
+                    body = f"""
+                    Hola {order.cliente_contacto or 'Cliente'},
+
+                    Adjunto encontrarás el reporte de servicio técnico realizado el {order.fecha_servicio}.
+
+                    Folio: {order.folio}
+                    Título: {order.titulo}
+
+                    Gracias por tu preferencia.
+                    Atentamente,
+                    El equipo de ServicioTech.
+                    """
+                    msg.attach(MIMEText(body, 'plain'))
+
+                    # Adjuntar PDF
+                    attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
+                    attachment.add_header('Content-Disposition', 'attachment', filename=f"{order.folio}.pdf")
+                    msg.attach(attachment)
+
+                    # --- C) CONEXIÓN SEGURA MANUAL (Aquí ocurre la magia) ---
+                    # Creamos un contexto SSL que IGNORA TODO
+                    context = ssl.create_default_context()
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+
+                    # Conectamos al servidor
+                    server = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
+                    # server.set_debuglevel(1) # Descomenta si quieres ver el log detallado en la terminal
+                    
+                    # Iniciamos TLS con nuestro contexto permisivo
+                    server.starttls(context=context)
+                    
+                    # Login y Envío
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+                    server.quit()
+
+                    # --- D) Éxito ---
+                    order.email_enviado = True
+                    order.save(update_fields=['email_enviado'])
+                    messages.success(request, f"Orden enviada correctamente a {order.cliente_email}")
+
+                except Exception as e:
+                    print(f"❌ ERROR SMTP MANUAL: {e}")
+                    messages.warning(request, f"Orden guardada. Error de correo: {e}")
+            else:
+                messages.success(request, "Orden guardada (Cliente sin correo).")
+            
+            # ========================================================
+
             return redirect(reverse("orders:detail", args=[order.pk]))
         else:
-            messages.error(request, "Revisa los errores del formulario marcado en rojo.")
+            messages.error(request, "Revisa los errores del formulario.")
     else:
         form = ServiceOrderForm()
         equipos_fs = EquipmentFormSet(prefix="equipos")
@@ -139,3 +223,63 @@ def bulk_delete(request):
 def logout_view(request):
     logout(request)
     return redirect("login")
+
+# 2. AGREGA ESTA FUNCIÓN AL FINAL DEL ARCHIVO
+@login_required
+def email_order(request, pk):
+    order = get_object_or_404(ServiceOrder, pk=pk)
+    
+    # Validar que tenga correo
+    if not order.cliente_email:
+        messages.error(request, "El cliente no tiene un correo registrado.")
+        return redirect("orders:detail", pk=pk)
+
+    # --- GENERACIÓN DEL PDF ---
+    # Renderizamos el mismo HTML del detalle, pero le pasamos 'print_mode=True'
+    html_string = render_to_string('orders/order_detail.html', {
+        'object': order,
+        'print_mode': True  # Variable clave para el CSS
+    }, request=request)
+
+    # Convertimos ese HTML a PDF usando WeasyPrint
+    # base_url es necesario para que encuentre el logo en static
+    pdf_file = weasyprint.HTML(
+        string=html_string, 
+        base_url=request.build_absolute_uri()
+    ).write_pdf()
+
+    # --- ARMADO DEL CORREO ---
+    subject = f"Reporte de Servicio {order.folio} - ServicioTech"
+    body = f"""
+    Hola {order.cliente_contacto or 'Cliente'},
+
+    Adjunto encontrarás el reporte de servicio técnico realizado el {order.fecha_servicio}.
+
+    Folio: {order.folio}
+    Título: {order.titulo}
+
+    Atentamente,
+    El equipo de ServicioTech.
+    """
+    
+    email = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email='noreply@serviciotech.com',
+        to=[order.cliente_email],
+    )
+
+    # Adjuntamos el PDF (nombre archivo, contenido, tipo mime)
+    filename = f"{order.folio}.pdf"
+    email.attach(filename, pdf_file, 'application/pdf')
+    
+    try:
+        email.send()
+        # Marcamos como enviado
+        order.email_enviado = True
+        order.save()
+        messages.success(request, f"Correo enviado exitosamente a {order.cliente_email}")
+    except Exception as e:
+        messages.error(request, f"Error al enviar: {e}")
+
+    return redirect("orders:detail", pk=pk)
