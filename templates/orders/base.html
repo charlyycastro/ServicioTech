@@ -112,6 +112,9 @@
   {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-light">
+
+  {# --- CORRECCIÓN: OCULTAR NAVBAR EN EL LOGIN --- #}
+  {% if request.resolver_match.url_name != 'login' %}
   <nav class="navbar navbar-expand-lg navbar-dark mb-5">
     <div class="container">
       <a class="navbar-brand" href="{% url 'orders:list' %}">
@@ -173,18 +176,18 @@
             {% endif %}
 
           {% else %}
-            {# Usuario no logueado #}
-            {% if request.resolver_match.url_name != 'login' %}
+            {# Usuario no logueado (Pero NO estamos en la url 'login' porque el IF lo impide, esto es para otras paginas publicas si hubiera) #}
             <li class="nav-item">
               <a class="btn btn-light text-primary fw-bold rounded-pill px-4 shadow-sm" href="{% url 'login' %}?next={% url 'orders:list' %}">Iniciar sesión</a>
             </li>
-            {% endif %}
           {% endif %}
 
         </ul>
       </div>
     </div>
   </nav>
+  {% endif %}
+  {# --- FIN DEL BLOQUE NAVBAR --- #}
 
   <main class="container pb-5">
     {% if messages %}

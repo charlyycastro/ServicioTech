@@ -14,7 +14,6 @@
 </style>
 {% endif %}
 
-
 <style>
   .sig-box{
     height:180px;
@@ -117,8 +116,6 @@
       min-width: 120px;
       display: inline-block;
       background: #f8f9fa;
-      
-      /* === TU FORMATO DE FOLIO ORIGINAL === */
       font-weight: 800;       
       color: #d60000;         
       font-size: 12px;        
@@ -232,37 +229,35 @@
     }
 
     .signature-row{
-      margin-top:10px; /* Reduje margen para que quepa mejor */
+      margin-top:10px;
     }
-    /* TABLA DE FIRMAS ORIGINAL (Ajustada a 3 columnas iguales) */
     .signature-grid{
       width:100%;
       border-collapse:collapse;
       text-align:center;
       font-size:10px;
-      table-layout: fixed; /* Fuerza anchos iguales */
+      table-layout: fixed;
     }
     .signature-grid td{
       border:1px solid #c4c8ce;
       padding:5px;
       vertical-align: bottom;
-      height: 90px; /* Altura fija para firmar */
+      height: 90px;
       position: relative;
     }
     .signature-space{
-      /* Línea de firma */
       border-bottom:1px solid #999;
       margin-bottom:4px;
       width: 90%;
       margin-left: auto;
       margin-right: auto;
       position: absolute; 
-      bottom: 25px; /* Posición de la línea */
+      bottom: 25px; 
       left: 5%;
     }
     .signature-img-container {
         position: absolute;
-        bottom: 28px; /* Justo arriba de la línea */
+        bottom: 28px; 
         left: 0;
         width: 100%;
         text-align: center;
@@ -294,6 +289,9 @@
   <h1 class="h4 m-0">Orden {{ object.folio }}</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Volver</a>
+    {% if object.cliente_email %}
+        <a class="btn btn-secondary" href="{% url 'orders:email' object.pk %}"><i class="bi bi-envelope me-1"></i>Enviar</a>
+    {% endif %}
     <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
   </div>
 </div>
@@ -302,6 +300,20 @@
 <div class="screen-layout">
   <div class="card shadow-sm print-card">
     <div class="card-body">
+      
+      {% if object.estatus == 'borrador' %}
+      <div class="alert alert-warning d-flex align-items-center justify-content-between">
+        <div>
+            <i class="bi bi-pause-circle-fill fs-4 me-2"></i>
+            <strong>Orden en Pausa (Borrador)</strong><br>
+            Esta orden aún no ha sido finalizada.
+        </div>
+        <a href="{% url 'orders:update' object.pk %}" class="btn btn-sm btn-warning border-warning shadow-sm fw-bold">
+            <i class="bi bi-pencil-fill me-1"></i>Continuar Editando
+        </a>
+      </div>
+      {% endif %}
+
       <div class="row">
         <div class="col-7">
           <h2 class="h5 mb-3">Datos del servicio</h2>
@@ -347,14 +359,13 @@
             <dd class="col-8">{{ object.ingeniero_nombre }}</dd>
             
             <dt class="col-4">ID Ticket</dt>
-                <dd class="col-8">
-                    {% if object.ticket_id %}
-                     <strong>{{ object.ticket_id }}</strong>
-                    {% else %}
-                     <span class="text-muted">—</span>
-                    {% endif %}
-                 </dd>
-
+            <dd class="col-8">
+                {% if object.ticket_id %}
+                 <strong>{{ object.ticket_id }}</strong>
+                {% else %}
+                 <span class="text-muted">—</span>
+                {% endif %}
+             </dd>
 
             {# Solo pantalla, no impresión #}
             <dt class="col-4 d-print-none">Indicaciones especiales (uso interno)</dt>
@@ -369,9 +380,7 @@
         </div>
 
         <div class="col-5 text-end">
-          <img src="{% static 'orders/inovatech-logo.png' %}" alt="Logo Inovatech"
-               style="max-height: 50px;">
-          
+          <img src="{% static 'orders/inovatech-logo.png' %}" alt="Logo Inovatech" style="max-height: 50px;">
           <div class="small text-muted d-print-none">
             Generado: {{ object.actualizado|date:"Y-m-d H:i" }}
           </div>
@@ -442,6 +451,62 @@
           {% endfor %}
         </tbody>
       </table>
+      {% endif %}
+
+      {# === SECCIÓN VISUAL: RESGUARDOS (SOLO PANTALLA) === #}
+      {% if object.resguardos.exists %}
+      <div class="card mb-3 border-warning mt-3">
+          <div class="card-header bg-warning-subtle text-dark fw-bold">
+              <i class="bi bi-box-seam me-2"></i>Equipos en Resguardo (Solo uso interno)
+          </div>
+          <div class="card-body p-0">
+              <table class="table table-sm table-striped mb-0">
+                  <thead>
+                      <tr>
+                          <th>Cant.</th>
+                          <th>Descripción</th>
+                          <th>Comentarios</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for res in object.resguardos.all %}
+                      <tr>
+                          <td class="text-center">{{ res.cantidad }}</td>
+                          <td>{{ res.descripcion }}</td>
+                          <td>{{ res.comentarios|default:"-" }}</td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+          </div>
+      </div>
+      {% endif %}
+
+      {# === SECCIÓN VISUAL: EVIDENCIAS (SOLO PANTALLA) === #}
+      {% if object.evidencias.exists %}
+      <div class="card mb-3 border-info mt-3">
+          <div class="card-header bg-info-subtle text-dark fw-bold">
+              <i class="bi bi-camera me-2"></i>Evidencias Multimedia
+          </div>
+          <div class="card-body">
+              <div class="row g-3">
+                  {% for ev in object.evidencias.all %}
+                  <div class="col-6 col-md-3 text-center">
+                      <div class="border rounded p-2 h-100 bg-light position-relative">
+                          <a href="{{ ev.archivo.url }}" target="_blank" class="text-decoration-none">
+                              {% if ".jpg" in ev.archivo.name|lower or ".png" in ev.archivo.name|lower or ".jpeg" in ev.archivo.name|lower %}
+                                  <img src="{{ ev.archivo.url }}" class="img-fluid rounded mb-2" style="max-height: 100px; object-fit: cover;">
+                              {% else %}
+                                  <div class="fs-1 text-danger mb-2"><i class="bi bi-file-earmark-pdf"></i></div>
+                              {% endif %}
+                              <div class="small text-dark fw-bold">{{ ev.comentario|default:"Archivo adjunto" }}</div>
+                          </a>
+                      </div>
+                  </div>
+                  {% endfor %}
+              </div>
+          </div>
+      </div>
       {% endif %}
 
       <div class="row mt-3">

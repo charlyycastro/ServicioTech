@@ -1,9 +1,11 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import ServiceOrder, Equipment, ServiceMaterial, SERVICE_TYPES
 from django.contrib.auth.models import User
-from .models import EngineerProfile
+from .models import ServiceOrder, Equipment, ServiceMaterial, ShelterEquipment, ServiceEvidence, SERVICE_TYPES, EngineerProfile
 
+# ================================================================
+# FORMULARIO PRINCIPAL DE LA ORDEN
+# ================================================================
 class ServiceOrderForm(forms.ModelForm):
     # Checkboxes para tipos de servicio
     tipos_servicio = forms.MultipleChoiceField(
@@ -25,7 +27,7 @@ class ServiceOrderForm(forms.ModelForm):
             "contacto_nombre",
             "tipos_servicio",
             "tipo_servicio_otro",
-            "ingeniero_nombre",
+            "ingeniero_nombre", # Ahora será un Select
             "ticket_id",
             "titulo",
             "actividades",
@@ -40,6 +42,7 @@ class ServiceOrderForm(forms.ModelForm):
             "reagenda_motivo",
             "indicaciones_especiales",
             "firma",
+            "estatus", # Nuevo campo
         ]
         widgets = {
             "fecha_servicio": forms.DateInput(attrs={"type": "date"}),
@@ -48,80 +51,98 @@ class ServiceOrderForm(forms.ModelForm):
             "actividades": forms.Textarea(attrs={"rows": 3}),
             "comentarios": forms.Textarea(attrs={"rows": 3}),
             "indicaciones_especiales": forms.Textarea(attrs={"rows": 2}),
+            # El estatus lo manejaremos con botones, así que lo ocultamos aquí
+            "estatus": forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # --- 1. ETIQUETAS ---
-        self.fields["cliente_nombre"].label = "Cliente"
-        self.fields["cliente_contacto"].label = "Nombre del cliente"
-        self.fields["cliente_email"].label = "Correo del cliente"
-        self.fields["cliente_telefono"].label = "Número de teléfono del cliente"
-        self.fields["contacto_nombre"].label = "Contacto interno"
+        # --- 1. CONVERTIR INGENIERO A DROPDOWN (SELECT) ---
+        ingenieros = User.objects.filter(is_staff=True).order_by('first_name')
+        opciones_ingenieros = []
+        for ing in ingenieros:
+            nombre_completo = ing.get_full_name() or ing.username
+            opciones_ingenieros.append((nombre_completo, nombre_completo))
+        
+        self.fields['ingeniero_nombre'].widget = forms.Select(choices=[('', 'Seleccione un Ingeniero...')] + opciones_ingenieros)
+
+        # --- 2. ETIQUETAS ---
+        self.fields["cliente_nombre"].label = "Cliente / Empresa"
+        self.fields["cliente_contacto"].label = "Persona de contacto"
         self.fields["ticket_id"].label = "ID Ticket"
 
-        # --- 2. CAMPOS OBLIGATORIOS (SECCIÓN A) ---
-        campos_obligatorios_a = [
-            'cliente_nombre',
-            'cliente_contacto',
-            'cliente_email',
-            'cliente_telefono',
-            'ubicacion',
-            'fecha_servicio',
-            'contacto_nombre',
-            'ingeniero_nombre',
-            'ticket_id',
-            'tipos_servicio'
-        ]
-
-        for field in campos_obligatorios_a:
-            if field in self.fields:
-                self.fields[field].required = True
-
-        # --- 3. CAMPOS OPCIONALES ---
-        if 'indicaciones_especiales' in self.fields:
-            self.fields['indicaciones_especiales'].required = False
+        # --- 3. RELAJAR VALIDACIÓN (Permitir Borradores) ---
+        # Hacemos que NADA sea obligatorio en el formulario HTML/Django por defecto.
+        # Validaremos manualmente en la vista si el usuario quiere "Finalizar".
+        for field in self.fields:
+            self.fields[field].required = False
         
-        if 'tipo_servicio_otro' in self.fields:
-            self.fields['tipo_servicio_otro'].required = False
-        if 'reagenda_motivo' in self.fields:
-            self.fields['reagenda_motivo'].required = False
-        if 'firma' in self.fields:
-            self.fields['firma'].required = False
+        # Solo obligamos el Nombre del Cliente para que la orden exista
+        if 'cliente_nombre' in self.fields:
+            self.fields['cliente_nombre'].required = True
 
-        # --- 4. INICIALIZAR JSON ---
+        # Inicializar JSON
         if self.instance and self.instance.pk and self.instance.tipos_servicio:
             self.initial.setdefault("tipos_servicio", self.instance.tipos_servicio)
 
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        instance.tipos_servicio = self.cleaned_data.get("tipos_servicio", [])
-        if commit:
-            instance.save()
-        return instance
 
+# ================================================================
+# INLINE FORMSETS (TABLAS DINÁMICAS)
+# ================================================================
 
-# ========== Inline formsets ==========
+# --- A) Formulario Relajado para EQUIPOS (Evita errores si hay filas vacías) ---
+class EquipmentForm(forms.ModelForm):
+    marca = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    modelo = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    serie = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    descripcion = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
 
-# TABLA DE EQUIPOS (Opcional, puede ir vacía)
+    class Meta:
+        model = Equipment
+        fields = ["marca", "modelo", "serie", "descripcion"]
+
+# 1. Equipos del Cliente (Sección B)
 EquipmentFormSet = inlineformset_factory(
-    ServiceOrder,
-    Equipment,
-    fields=["marca", "modelo", "serie", "descripcion"],
-    extra=0,
-    can_delete=True,
+    ServiceOrder, Equipment, 
+    form=EquipmentForm, # <--- Usamos el form relajado
+    extra=0, can_delete=True
 )
 
-# TABLA DE MATERIALES (CORREGIDO: Opcional y limpia al inicio)
+# 2. Materiales (Sección E)
 ServiceMaterialFormSet = inlineformset_factory(
-    ServiceOrder,
-    ServiceMaterial,
-    fields=["cantidad", "descripcion", "comentarios"],
-    extra=0,             # <--- IMPORTANTE: 0 filas vacías al inicio.
-    can_delete=True,     # Permite borrar si te equivocas.
-    # Quitamos min_num y validate_min para que NO sea obligatorio.
+    ServiceOrder, ServiceMaterial, fields=["cantidad", "descripcion", "comentarios"],
+    extra=0, can_delete=True
 )
+
+# --- B) Formulario Relajado para RESGUARDOS ---
+class ShelterEquipmentForm(forms.ModelForm):
+    descripcion = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    cantidad = forms.IntegerField(required=False, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    comentarios = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+    class Meta:
+        model = ShelterEquipment
+        fields = ["cantidad", "descripcion", "comentarios"]
+
+# 3. Equipos en Resguardo (Interno)
+ShelterEquipmentFormSet = inlineformset_factory(
+    ServiceOrder, ShelterEquipment, 
+    form=ShelterEquipmentForm, 
+    extra=0, can_delete=True
+)
+
+# 4. Evidencias
+ServiceEvidenceFormSet = inlineformset_factory(
+    ServiceOrder, ServiceEvidence,
+    fields=["archivo", "comentario"],
+    extra=0, can_delete=True
+)
+
+
+# ================================================================
+# GESTIÓN DE USUARIOS (CREAR / EDITAR)
+# ================================================================
 
 # --- FORMULARIO PARA CREAR (Alta) ---
 class CustomUserCreationForm(forms.ModelForm):
@@ -184,4 +205,3 @@ class UserEditForm(CustomUserCreationForm):
         if password and confirm_password and password != confirm_password:
             self.add_error('confirm_password', "Las contraseñas no coinciden.")
         return cleaned_data
-

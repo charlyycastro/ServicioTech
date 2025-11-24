@@ -224,3 +224,8 @@ EMAIL_SSL_CONTEXT = ssl._create_unverified_context()
 # Verificación rápida en consola al arrancar
 if not EMAIL_HOST or not EMAIL_HOST_USER:
     print("⚠️  OJO: No se cargaron los datos del correo desde el .env")
+
+
+# Configuración de Archivos Multimedia (Fotos, PDFs)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

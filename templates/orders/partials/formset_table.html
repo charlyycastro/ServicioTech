@@ -1,0 +1,112 @@
+<div class="card border-0">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+        <strong>{{ title }}</strong>
+        <button class="btn btn-sm btn-primary" type="button" data-add="{{ prefix }}">
+            <i class="bi bi-plus-lg"></i> Agregar
+        </button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0 formset-table align-middle">
+                <thead class="table-light">
+                    <tr>
+                        {# --- CORRECCIÓN 1: ENCABEZADOS EXPLÍCITOS PARA EVITAR DEFORMACIÓN --- #}
+                        {% if prefix == 'evidencias' %}
+                            <th>Archivo / Foto</th>
+                            <th>Comentario</th>
+                        {% elif prefix == 'resguardos' or prefix == 'materiales' %}
+                            <th style="width: 100px;">Cantidad</th>
+                            <th>Descripción</th>
+                            <th>Comentarios</th>
+                        {% else %}
+                            {# Por defecto: Equipos #}
+                            <th>Marca</th>
+                            <th>Modelo</th>
+                            <th>Serie</th>
+                            <th>Descripción</th>
+                        {% endif %}
+                        <th style="width: 50px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="{{ prefix }}-body">
+                    {{ formset.management_form }}
+                    {% for f in formset %}
+                        {# Ocultamos la fila si está marcada para borrar #}
+                        <tr class="formset-row" {% if f.instance.pk and f.DELETE.value %}style="display:none"{% endif %}>
+                            {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                            
+                            {# --- CELDAS DE DATOS --- #}
+                            {% if prefix == 'evidencias' %}
+                                <td>
+                                    {{ f.archivo }} 
+                                    {% if f.instance.pk and f.instance.archivo %}
+                                        <br>
+                                        <a href="{{ f.instance.archivo.url }}" target="_blank" class="small text-decoration-none">
+                                            <i class="bi bi-eye"></i> Ver actual
+                                        </a>
+                                    {% endif %}
+                                </td>
+                                <td>{{ f.comentario }}</td>
+                            
+                            {% elif prefix == 'resguardos' or prefix == 'materiales' %}
+                                <td style="width:100px;">{{ f.cantidad }}</td>
+                                <td>{{ f.descripcion }}</td>
+                                <td>{{ f.comentarios }}</td>
+                            
+                            {% else %}
+                                <td>{{ f.marca }}</td>
+                                <td>{{ f.modelo }}</td>
+                                <td>{{ f.serie }}</td>
+                                <td>{{ f.descripcion }}</td>
+                            {% endif %}
+
+                            <td class="text-end">
+                                {# Renderizamos el check de borrar oculto #}
+                                <div class="d-none">{{ f.DELETE }}</div>
+                                <button class="btn btn-sm btn-outline-danger remove-row" type="button">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        
+                        {% if f.errors %}
+                        <tr>
+                            <td colspan="10" class="text-danger small p-1 bg-danger-subtle ps-3">
+                                <i class="bi bi-exclamation-circle me-1"></i> {{ f.errors|striptags }}
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {# --- TEMPLATE VACÍO PARA JAVASCRIPT --- #}
+        <template id="{{ prefix }}-empty">
+            <tr class="formset-row">
+                {% if prefix == 'evidencias' %}
+                    <td><input type="file" name="{{ prefix }}-__prefix__-archivo" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="{{ prefix }}-__prefix__-comentario" class="form-control form-control-sm" placeholder="Descripción..."></td>
+                
+                {% elif prefix == 'resguardos' or prefix == 'materiales' %}
+                    {# --- CORRECCIÓN 2: QUITAR EL value="1" PARA EVITAR FILAS FANTASMA --- #}
+                    <td style="width:100px;"><input type="number" name="{{ prefix }}-__prefix__-cantidad" class="form-control form-control-sm" placeholder="1"></td>
+                    <td><input type="text" name="{{ prefix }}-__prefix__-descripcion" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="{{ prefix }}-__prefix__-comentarios" class="form-control form-control-sm"></td>
+                
+                {% else %}
+                    <td><input type="text" name="{{ prefix }}-__prefix__-marca" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="{{ prefix }}-__prefix__-modelo" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="{{ prefix }}-__prefix__-serie" class="form-control form-control-sm"></td>
+                    <td><input type="text" name="{{ prefix }}-__prefix__-descripcion" class="form-control form-control-sm"></td>
+                {% endif %}
+                
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger remove-row" type="button">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        </template>
+    </div>
+</div>

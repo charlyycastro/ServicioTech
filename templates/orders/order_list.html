@@ -54,7 +54,7 @@
               <th scope="col">Título</th>
               <th scope="col">Fecha</th>
               <th scope="col">Ingeniero</th>
-              <th scope="col" class="text-center">Estado</th>
+              <th scope="col" class="text-center">Estado / Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -65,13 +65,18 @@
                 <input type="checkbox" name="ids" value="{{ orden.pk }}" class="form-check-input order-check">
               </td>
               {% endif %}
+              
               <td class="fw-medium ps-3 text-primary">{{ orden.folio }}</td>
+              
               <td>
                 <div class="fw-medium">{{ orden.cliente_empresa }}</div>
                 {% if orden.cliente_nombre %}<small class="text-muted">{{ orden.cliente_nombre }}</small>{% endif %}
               </td>
+              
               <td>{{ orden.titulo }}</td>
+              
               <td>{{ orden.creado|date:"d/M/Y" }}</td>
+              
               <td>
                   {% if orden.ingeniero_nombre %}
                   <span class="badge bg-light text-dark border">{{ orden.ingeniero_nombre|truncatechars:20 }}</span>
@@ -79,11 +84,19 @@
                   <span class="text-muted small">-</span>
                   {% endif %}
               </td>
-              <td class="text-center">
-                {% if orden.email_enviado %}
-                  <span class="badge bg-success-subtle text-success border border-success-subtle">Enviado</span>
+              
+              <td class="text-center" onclick="event.stopPropagation();">
+                {# Lógica de Estado y Botón Editar #}
+                {% if orden.estatus == 'borrador' %}
+                    <a href="{% url 'orders:update' orden.pk %}" class="btn btn-sm btn-warning text-dark fw-bold py-0" style="font-size: 0.85rem;" title="Continuar Editando">
+                        <i class="bi bi-pencil-square me-1"></i>Borrador
+                    </a>
                 {% else %}
-                  <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Borrador</span>
+                    {% if orden.email_enviado %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Enviado</span>
+                    {% else %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Finalizado</span>
+                    {% endif %}
                 {% endif %}
               </td>
             </tr>
@@ -129,7 +142,7 @@
 
 {% block scripts %}
 <script>
-  // Script para manejar la selección masiva (solo funcionará si existen los checkboxes)
+  // Script para manejar la selección masiva
   const selectAll = document.getElementById('select-all');
   const btnDelete = document.getElementById('btn-delete');
   const checks = document.querySelectorAll('.order-check');

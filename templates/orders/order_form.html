@@ -10,6 +10,7 @@
   .accordion-body input[type="tel"],
   .accordion-body input[type="number"],
   .accordion-body input[type="date"],
+  .accordion-body input[type="time"],
   .accordion-body textarea,
   .accordion-body select {
     width: 100%;
@@ -21,27 +22,14 @@
   }
 
   /* Clase para marcar error (borde rojo) */
-  .accordion-body .is-invalid {
+  .is-invalid {
       border-color: #dc3545 !important;
-      padding-right: calc(1.5em + .75rem);
       background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5zM6 8.2a.3.3 0 0 0 .3-.3.3.3 0 0 0-.6 0 .3.3 0 0 0 .3.3z'/%3e%3c/svg%3e");
       background-repeat: no-repeat;
       background-position: right calc(.375em + .1875rem) center;
       background-size: calc(.75em + .375rem) calc(.75em + .375rem);
   }
 
-  .accordion-body textarea {
-    min-height: 2.5rem;
-    resize: vertical;
-  }
-
-  .accordion-body .form-label {
-    font-weight: 500;
-    font-size: .85rem;
-    margin-bottom: .15rem;
-  }
-
-  /* Texto de error */
   .invalid-feedback-custom {
       width: 100%;
       margin-top: .25rem;
@@ -55,19 +43,13 @@
     flex-direction: column;
     gap: .1rem;
   }
-
   .checkgrid .form-check input[type="checkbox"] {
     margin-right: .35rem;
     width: 1rem;
     height: 1rem;
     vertical-align: middle;
   }
- /* Motivo de reagenda: tamaño parecido a un input */
-  #id_reagenda_motivo {
-    min-height: 2.25rem;
-    max-height: 2.25rem;
-    resize: none;
-  }
+
   /* Firma */
   #signature-wrapper{
     border:1px solid #dee2e6;
@@ -83,7 +65,7 @@
     display:block;
   }
 
-  /* Textareas dentro de las tablas (equipos/materiales) con formato de input */
+  /* Tablas dinámicas */
   .formset-table textarea {
     min-height: 2.25rem;
     max-height: 2.25rem;
@@ -94,23 +76,20 @@
 
 
 {% block content %}
-<h1 class="h4 mb-3">Nueva orden</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 m-0">{{ titulo }}</h1>
+    <span class="badge bg-secondary">{{ form.instance.get_estatus_display|default:"Nueva" }}</span>
+</div>
 
 <form method="post" enctype="multipart/form-data" id="order-form" novalidate>
   {% csrf_token %}
 
-  {% if form.errors or form.non_field_errors or equipos_fs.non_form_errors or materiales_fs.non_form_errors %}
-    <div class="alert alert-danger shadow-sm">
+  {# ERRORES GLOBALES #}
+  {% if form.errors or equipos_fs.errors or materiales_fs.errors or resguardos_fs.errors or evidencias_fs.errors %}
+    <div class="alert alert-danger shadow-sm mb-3">
       <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Hay errores en el formulario.</strong>
-      Por favor revisa los campos marcados en rojo.
-      
-      {% if form.non_field_errors %}
-      <div class="mt-2">{{ form.non_field_errors }}</div>
-      {% endif %}
-      
-      {% if equipos_fs.non_form_errors %}
-      <div class="mt-2 small">Error en equipos: {{ equipos_fs.non_form_errors }}</div>
-      {% endif %}
+      Revisa las secciones marcadas en rojo.
+      {{ form.non_field_errors }}
     </div>
   {% endif %}
 
@@ -119,96 +98,112 @@
     {# A) DATOS DEL SERVICIO #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingDatos">
-        <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                data-bs-target="#collapseDatos" aria-expanded="true" aria-controls="collapseDatos">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatos" aria-expanded="true">
           A) Datos del servicio
         </button>
       </h2>
-      <div id="collapseDatos" class="accordion-collapse collapse show"
-           aria-labelledby="headingDatos" data-bs-parent="#ordenAccordion">
+      <div id="collapseDatos" class="accordion-collapse collapse show" data-bs-parent="#ordenAccordion">
         <div class="accordion-body section-datos">
           <div class="row g-3">
-            <div class="col-md-3">
-              <label class="form-label">Empresa</label>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Cliente / Empresa <span class="text-danger">*</span></label>
               {{ form.cliente_nombre }}
-              {% if form.cliente_nombre.errors %}<div class="invalid-feedback-custom">{{ form.cliente_nombre.errors.0 }}</div>{% endif %}
+              {% if form.cliente_nombre.errors %}
+                <div class="invalid-feedback-custom d-block">
+                    <i class="bi bi-exclamation-circle"></i> {{ form.cliente_nombre.errors.0 }}
+                </div>
+              {% endif %}
             </div>
-            <div class="col-md-3">
-              <label class="form-label">Nombre del Cliente </label>
-              {{ form.cliente_contacto }}
-              {% if form.cliente_contacto.errors %}<div class="invalid-feedback-custom">{{ form.cliente_contacto.errors.0 }}</div>{% endif %}
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Correo del cliente</label>
-              {{ form.cliente_email }}
-              {% if form.cliente_email.errors %}<div class="invalid-feedback-custom">{{ form.cliente_email.errors.0 }}</div>{% endif %}
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Número de teléfono del cliente</label>
-              {{ form.cliente_telefono }}
-              {% if form.cliente_telefono.errors %}<div class="invalid-feedback-custom">{{ form.cliente_telefono.errors.0 }}</div>{% endif %}
-            </div>
-
+            
             <div class="col-md-6">
               <label class="form-label">Ubicación</label>
               {{ form.ubicacion }}
-              {% if form.ubicacion.errors %}<div class="invalid-feedback-custom">{{ form.ubicacion.errors.0 }}</div>{% endif %}
             </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Persona de Contacto <span class="text-danger">*</span></label>
+              {{ form.cliente_contacto }}
+              {% if form.cliente_contacto.errors %}
+                <div class="invalid-feedback-custom d-block">
+                    {{ form.cliente_contacto.errors.0 }}
+                </div>
+              {% endif %}
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Correo <span class="text-danger">*</span></label>
+              {{ form.cliente_email }}
+              {% if form.cliente_email.errors %}
+                <div class="invalid-feedback-custom d-block">
+                    {{ form.cliente_email.errors.0 }}
+                </div>
+              {% endif %}
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label">Teléfono</label>
+              {{ form.cliente_telefono }}
+            </div>
+
+            <div class="col-12"><hr class="my-1 text-muted"></div>
+
             <div class="col-md-3">
-              <label class="form-label">Fecha de servicio</label>
+              <label class="form-label fw-bold">Fecha Servicio <span class="text-danger">*</span></label>
               {{ form.fecha_servicio }}
-              {% if form.fecha_servicio.errors %}<div class="invalid-feedback-custom">{{ form.fecha_servicio.errors.0 }}</div>{% endif %}
+              {% if form.fecha_servicio.errors %}
+                <div class="invalid-feedback-custom d-block">{{ form.fecha_servicio.errors.0 }}</div>
+              {% endif %}
             </div>
+            
             <div class="col-md-3">
-              <label class="form-label">Contacto interno</label>
+              <label class="form-label fw-bold">Ingeniero Asignado <span class="text-danger">*</span></label>
+              {{ form.ingeniero_nombre }}
+              {% if form.ingeniero_nombre.errors %}
+                <div class="invalid-feedback-custom d-block">{{ form.ingeniero_nombre.errors.0 }}</div>
+              {% endif %}
+            </div>
+            
+            <div class="col-md-3">
+              <label class="form-label">ID Ticket</label>
+              {{ form.ticket_id }}
+            </div>
+            
+            <div class="col-md-3">
+              <label class="form-label">Contacto Interno</label>
               {{ form.contacto_nombre }}
-              {% if form.contacto_nombre.errors %}<div class="invalid-feedback-custom">{{ form.contacto_nombre.errors.0 }}</div>{% endif %}
             </div>
 
             <div class="col-md-8">
-              <label class="form-label d-block">Tipo(s) de servicio</label>
-              <div class="checkgrid">
+              <label class="form-label d-block fw-bold">Tipo(s) de servicio <span class="text-danger">*</span></label>
+              <div class="checkgrid p-2 border rounded bg-white {% if form.tipos_servicio.errors %}border-danger bg-danger-subtle{% endif %}">
                 {% for cb in form.tipos_servicio %}
                   <div class="form-check">
-                    {{ cb.tag }}
-                    <label class="form-check-label" for="{{ cb.id_for_label }}">
-                      {{ cb.choice_label }}
-                    </label>
+                    {{ cb.tag }} <label class="form-check-label" for="{{ cb.id_for_label }}">{{ cb.choice_label }}</label>
                   </div>
                 {% endfor %}
-                {% if form.tipos_servicio.errors %}<div class="invalid-feedback-custom">{{ form.tipos_servicio.errors.0 }}</div>{% endif %}
-
-                <div class="form-check mt-1">
+                <div class="form-check mt-1 border-top pt-1">
                   <input type="checkbox" id="chk-otro-servicio">
                   <label class="form-check-label" for="chk-otro-servicio">Otro servicio</label>
                 </div>
               </div>
+              {% if form.tipos_servicio.errors %}
+                <div class="invalid-feedback-custom d-block">
+                    <i class="bi bi-arrow-up-circle"></i> Debes seleccionar al menos uno.
+                </div>
+              {% endif %}
             </div>
 
             <div class="col-md-4 d-none" id="otro-wrapper">
-              <label class="form-label">Otro (especifique)</label>
+              <label class="form-label">Especifique Otro</label>
               {{ form.tipo_servicio_otro }}
-              {% if form.tipo_servicio_otro.errors %}<div class="invalid-feedback-custom">{{ form.tipo_servicio_otro.errors.0 }}</div>{% endif %}
             </div>
 
-            <div class="col-md-4">
-              <label class="form-label">Ingeniero</label>
-              {{ form.ingeniero_nombre }}
-              {% if form.ingeniero_nombre.errors %}<div class="invalid-feedback-custom">{{ form.ingeniero_nombre.errors.0 }}</div>{% endif %}
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">ID Ticket</label>
-              {{ form.ticket_id }}
-              {% if form.ticket_id.errors %}<div class="invalid-feedback-custom">{{ form.ticket_id.errors.0 }}</div>{% endif %}
-            </div>
-
-            <div class="col-md-8">
-              <label class="form-label">Indicaciones especiales (uso interno, no se imprime)</label>
+            <div class="col-12">
+              <label class="form-label">Indicaciones Especiales (Interno)</label>
               {{ form.indicaciones_especiales }}
-              <div class="form-text">Ejemplo: EPP requerido, credencial de elector, pruebas de laboratorio, etc.</div>
+              <div class="form-text">Ej: EPP requerido, llevar credencial, etc.</div>
             </div>
-
           </div>
         </div>
       </div>
@@ -217,274 +212,151 @@
     {# B) EQUIPOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingEquipos">
-        <button class="accordion-button collapsed" type="button"
-                data-bs-toggle="collapse" data-bs-target="#collapseEquipos"
-                aria-expanded="false" aria-controls="collapseEquipos">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipos">
           B) Datos de los equipos
         </button>
       </h2>
-      <div id="collapseEquipos" class="accordion-collapse collapse"
-           aria-labelledby="headingEquipos" data-bs-parent="#ordenAccordion">
+      <div id="collapseEquipos" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
-          <div class="card border-0">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-              <strong>Listado de equipos</strong>
-              <button class="btn btn-sm btn-primary" type="button" data-add-equipo>
-                Agregar equipo
-              </button>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-sm table-striped mb-0 formset-table">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Marca</th>
-                      <th>Modelo</th>
-                      <th>Serie</th>
-                      <th>Descripción</th>
-                      <th class="col-actions"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="equipos-body">
-                    {{ equipos_fs.management_form }}
-                    {% for f in equipos_fs %}
-                    <tr class="formset-row">
-                      {# Campos ocultos (como ID) #}
-                      {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
-                      
-                      <td>
-                          {{ f.marca }}
-                          {% if f.marca.errors %}<div class="invalid-feedback-custom">{{ f.marca.errors.0 }}</div>{% endif %}
-                      </td>
-                      <td>
-                          {{ f.modelo }}
-                          {% if f.modelo.errors %}<div class="invalid-feedback-custom">{{ f.modelo.errors.0 }}</div>{% endif %}
-                      </td>
-                      <td>
-                          {{ f.serie }}
-                          {% if f.serie.errors %}<div class="invalid-feedback-custom">{{ f.serie.errors.0 }}</div>{% endif %}
-                      </td>
-                      <td>
-                          {{ f.descripcion }}
-                          {% if f.descripcion.errors %}<div class="invalid-feedback-custom">{{ f.descripcion.errors.0 }}</div>{% endif %}
-                      </td>
-                      <td class="text-end">
-                        {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-              <template id="equipos-empty">
-                <tr class="formset-row">
-                  <td>__FIELD__:marca</td>
-                  <td>__FIELD__:modelo</td>
-                  <td>__FIELD__:serie</td>
-                  <td>__FIELD__:descripcion</td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-                  </td>
-                </tr>
-              </template>
-            </div>
-          </div>
+          {# --- TABLA EQUIPOS --- #}
+          {% include "orders/partials/formset_table.html" with formset=equipos_fs title="Equipos del Cliente" prefix="equipos" cols="Marca,Modelo,Serie,Descripción" fields="marca,modelo,serie,descripcion" %}
         </div>
       </div>
     </div>
 
-    {# C) ACTIVIDADES Y COMENTARIOS #}
+    {# C) ACTIVIDADES #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingActividades">
-        <button class="accordion-button collapsed" type="button"
-                data-bs-toggle="collapse" data-bs-target="#collapseActividades"
-                aria-expanded="false" aria-controls="collapseActividades">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividades">
           C) Actividades y comentarios
         </button>
       </h2>
-      <div id="collapseActividades" class="accordion-collapse collapse"
-           aria-labelledby="headingActividades" data-bs-parent="#ordenAccordion">
+      <div id="collapseActividades" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="row g-3">
             <div class="col-12">
-              <label class="form-label">Título del servicio</label>
+              <label class="form-label">Título del Servicio</label>
               {{ form.titulo }}
-              {% if form.titulo.errors %}<div class="invalid-feedback-custom">{{ form.titulo.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-12">
-              <label class="form-label">Actividades realizadas</label>
+              <label class="form-label">Actividades Realizadas</label>
               {{ form.actividades }}
-              {% if form.actividades.errors %}<div class="invalid-feedback-custom">{{ form.actividades.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-12">
-              <label class="form-label">Comentarios</label>
+              <label class="form-label">Comentarios / Observaciones</label>
               {{ form.comentarios }}
-              {% if form.comentarios.errors %}<div class="invalid-feedback-custom">{{ form.comentarios.errors.0 }}</div>{% endif %}
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    {# D) COSTOS Y PROGRAMACIÓN #}
+    {# D) COSTOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingCostos">
-        <button class="accordion-button collapsed" type="button"
-                data-bs-toggle="collapse" data-bs-target="#collapseCostos"
-                aria-expanded="false" aria-controls="collapseCostos">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCostos">
           D) Costos y programación
         </button>
       </h2>
-      <div id="collapseCostos" class="accordion-collapse collapse"
-           aria-labelledby="headingCostos" data-bs-parent="#ordenAccordion">
+      <div id="collapseCostos" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="row g-3 align-items-end">
-
             <div class="col-md-3">
               <label class="form-label">Horas</label>
               {{ form.horas }}
-              {% if form.horas.errors %}<div class="invalid-feedback-custom">{{ form.horas.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-3">
               <label class="form-label">Costo (MXN)</label>
               {{ form.costo_mxn }}
-              {% if form.costo_mxn.errors %}<div class="invalid-feedback-custom">{{ form.costo_mxn.errors.0 }}</div>{% endif %}
             </div>
-
             <div class="col-md-6">
               <label class="form-label d-block">Estatus del costo</label>
-              <div class="d-flex align-items-center gap-4">
-                <div class="form-check mb-0">
-                  {{ form.costo_no_aplica }}
-                  <label class="form-check-label" for="id_costo_no_aplica">No aplica</label>
-                </div>
-                <div class="form-check mb-0">
-                  {{ form.costo_se_cotizara }}
-                  <label class="form-check-label" for="id_costo_se_cotizara">Se cotizará</label>
-                </div>
+              <div class="d-flex gap-3">
+                <div class="form-check">{{ form.costo_no_aplica }} <label class="form-check-label">No aplica</label></div>
+                <div class="form-check">{{ form.costo_se_cotizara }} <label class="form-check-label">Se cotizará</label></div>
               </div>
             </div>
-
             <div class="col-12"><hr></div>
-
             <div class="col-md-2">
-              <div class="form-check mb-0 mt-1">
-                {{ form.reagenda }}
-                <label class="form-check-label" for="id_reagenda">Reagendar</label>
-              </div>
+                <div class="form-check mt-2">
+                    {{ form.reagenda }} <label class="form-check-label fw-bold">Reagendar</label>
+                </div>
             </div>
-            <div class="col-md-2">
-              <label class="form-label">Fecha</label>
-              {{ form.reagenda_fecha }}
-              {% if form.reagenda_fecha.errors %}<div class="invalid-feedback-custom">{{ form.reagenda_fecha.errors.0 }}</div>{% endif %}
+            <div class="col-md-3">
+                <label class="form-label">Nueva Fecha</label>
+                {{ form.reagenda_fecha }}
             </div>
             <div class="col-md-2">
-              <label class="form-label">Hora</label>
-              {{ form.reagenda_hora }}
-              {% if form.reagenda_hora.errors %}<div class="invalid-feedback-custom">{{ form.reagenda_hora.errors.0 }}</div>{% endif %}
+                <label class="form-label">Hora</label>
+                {{ form.reagenda_hora }}
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Motivo</label>
-              {{ form.reagenda_motivo }}
-              {% if form.reagenda_motivo.errors %}<div class="invalid-feedback-custom">{{ form.reagenda_motivo.errors.0 }}</div>{% endif %}
+            <div class="col-md-5">
+                <label class="form-label">Motivo</label>
+                {{ form.reagenda_motivo }}
             </div>
-
           </div>
         </div>
       </div>
+    </div>
+
+    {# NUEVO: EQUIPOS EN RESGUARDO #}
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingResguardos">
+          <button class="accordion-button collapsed bg-light-subtle" type="button" data-bs-toggle="collapse" data-bs-target="#collapseResguardos">
+            <i class="bi bi-box-seam me-2"></i> Equipos en Resguardo (Taller)
+          </button>
+        </h2>
+        <div id="collapseResguardos" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
+          <div class="accordion-body">
+            {% include "orders/partials/formset_table.html" with formset=resguardos_fs title="Equipos a Resguardo" prefix="resguardos" cols="Cant.,Equipo/Descripción,Comentarios" fields="cantidad,descripcion,comentarios" %}
+          </div>
+        </div>
     </div>
 
     {# E) MATERIALES #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingMateriales">
-        <button class="accordion-button collapsed" type="button"
-                data-bs-toggle="collapse" data-bs-target="#collapseMateriales"
-                aria-expanded="false" aria-controls="collapseMateriales">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMateriales">
           E) Materiales utilizados
         </button>
       </h2>
-      <div id="collapseMateriales" class="accordion-collapse collapse"
-           aria-labelledby="headingMateriales" data-bs-parent="#ordenAccordion">
+      <div id="collapseMateriales" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
-          <div class="card border-0">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-              <strong>Listado de materiales</strong>
-              <button class="btn btn-sm btn-primary" type="button" data-add-material>
-                Agregar material
-              </button>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-sm table-striped mb-0 formset-table">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Descripción</th>
-                      <th>Cantidad</th>
-                      <th>Comentarios</th>
-                      <th class="col-actions"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="materiales-body">
-                    {{ materiales_fs.management_form }}
-                    {% for f in materiales_fs %}
-                    <tr class="formset-row">
-                      {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
-                      <td>
-                          {{ f.descripcion }}
-                          {% if f.descripcion.errors %}<div class="invalid-feedback-custom">{{ f.descripcion.errors.0 }}</div>{% endif %}
-                      </td>
-                      <td class="max-w-120">
-                          {{ f.cantidad }}
-                          {% if f.cantidad.errors %}<div class="invalid-feedback-custom">{{ f.cantidad.errors.0 }}</div>{% endif %}
-                      </td>
-                      <td>
-                          {{ f.comentarios }}
-                          {% if f.comentarios.errors %}<div class="invalid-feedback-custom">{{ f.comentarios.errors.0 }}</div>{% endif %}
-                      </td>
-                      <td class="text-end">
-                        {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-              <template id="materiales-empty">
-                <tr class="formset-row">
-                  <td>__FIELD__:descripcion</td>
-                  <td>__FIELD__:cantidad</td>
-                  <td>__FIELD__:comentarios</td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
-                  </td>
-                </tr>
-              </template>
-            </div>
-          </div>
+          {% include "orders/partials/formset_table.html" with formset=materiales_fs title="Materiales" prefix="materiales" cols="Cant.,Descripción,Comentarios" fields="cantidad,descripcion,comentarios" %}
         </div>
       </div>
+    </div>
+
+    {# NUEVO: EVIDENCIAS #}
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingEvidencias">
+          <button class="accordion-button collapsed bg-light-subtle" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvidencias">
+            <i class="bi bi-camera me-2"></i> Evidencias (Fotos/Archivos)
+          </button>
+        </h2>
+        <div id="collapseEvidencias" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
+          <div class="accordion-body">
+            <div class="alert alert-info py-2 small">
+                <i class="bi bi-info-circle me-1"></i> Las imágenes se comprimirán automáticamente. Puedes subir fotos, PDFs o videos cortos.
+            </div>
+            {% include "orders/partials/formset_table.html" with formset=evidencias_fs title="Archivos" prefix="evidencias" cols="Archivo,Comentario" fields="archivo,comentario" %}
+          </div>
+        </div>
     </div>
 
     {# F) FIRMA #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingFirma">
-        <button class="accordion-button collapsed" type="button"
-                data-bs-toggle="collapse" data-bs-target="#collapseFirma"
-                aria-expanded="false" aria-controls="collapseFirma">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma">
           F) Firma del cliente
         </button>
       </h2>
-      <div id="collapseFirma" class="accordion-collapse collapse"
-           aria-labelledby="headingFirma" data-bs-parent="#ordenAccordion">
+      <div id="collapseFirma" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="d-flex gap-2 align-items-center mb-2">
-            <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">
-              Limpiar
-            </button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
           </div>
-          <div id="signature-wrapper" class="w-100">
+          <div id="signature-wrapper" class="w-100 border bg-white">
             <canvas id="signature-canvas"></canvas>
           </div>
           <input type="hidden" name="firma_b64" id="firma_b64">
@@ -495,69 +367,129 @@
 
   </div> {# fin accordion #}
 
-  <div class="d-flex gap-2 mt-3">
-    <button class="btn btn-primary" type="submit">Guardar</button>
-    <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Cancelar</a>
+  {# BOTONERA DE ACCIÓN #}
+  <div class="card mt-4 border-0 bg-light">
+      <div class="card-body d-flex gap-3 justify-content-end">
+          <a class="btn btn-outline-secondary px-4" href="{% url 'orders:list' %}">Cancelar</a>
+          
+          <button class="btn btn-secondary px-4" type="submit" name="accion" value="borrador">
+              <i class="bi bi-pause-circle me-2"></i>Guardar Borrador
+          </button>
+          
+          <button class="btn btn-primary px-4 fw-bold" type="submit" name="accion" value="finalizar" onclick="return confirm('¿Estás seguro de finalizar la orden? Se enviará el correo al cliente.');">
+              <i class="bi bi-check-circle me-2"></i>Finalizar Orden
+          </button>
+      </div>
   </div>
+
 </form>
+
+{# --- MINI TEMPLATE PARA TABLAS DINÁMICAS (INLINE JS) --- #}
+{# Esto evita repetir código 4 veces para cada tabla #}
+<script type="text/template" id="row-template">
+    <tr class="formset-row">
+        <td class="text-end">
+            <button class="btn btn-sm btn-outline-danger remove-row" type="button">&times;</button>
+        </td>
+    </tr>
+</script>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   
-  /* ----- 1. COLOREAR ERRORES (ROJO) ----- */
-  // Este script busca los mensajes de error y le pone el borde rojo al input correspondiente
-  const errorDivs = document.querySelectorAll('.invalid-feedback-custom');
-  errorDivs.forEach(div => {
-      // Intenta encontrar el input anterior al mensaje de error
-      const input = div.previousElementSibling;
-      if(input && (input.tagName === 'INPUT' || input.tagName === 'SELECT' || input.tagName === 'TEXTAREA')) {
-          input.classList.add('is-invalid');
+  // --- 1. DETECTAR Y ABRIR ERRORES OCULTOS ---
+  function abrirAcordeonesConErrores() {
+      // Buscamos todos los acordeones
+      const accordions = document.querySelectorAll('.accordion-collapse');
+      
+      accordions.forEach(acc => {
+          // Buscamos si dentro hay inputs inválidos o textos de error
+          const hasError = acc.querySelector('.is-invalid') || acc.querySelector('.text-danger') || acc.querySelector('.alert-danger') || acc.querySelector('ul.errorlist');
           
-          // Si el input está dentro de un acordeón colapsado, hay que abrirlo para que se vea
-          const accordionCollapse = input.closest('.accordion-collapse');
-          if (accordionCollapse && !accordionCollapse.classList.contains('show')) {
-              // Usamos la API de Bootstrap para abrir el acordeón
-              new bootstrap.Collapse(accordionCollapse, { toggle: true });
+          if (hasError) {
+              // 1. Abrir el acordeón usando Bootstrap
+              new bootstrap.Collapse(acc, { show: true });
+              
+              // 2. Pintar el botón del encabezado en rojo para que sea obvio
+              const btn = document.querySelector(`button[data-bs-target="#${acc.id}"]`);
+              if (btn) {
+                  btn.classList.add('text-danger', 'fw-bold');
+                  btn.innerHTML += ' <i class="bi bi-exclamation-circle-fill ms-2"></i>';
+              }
           }
+      });
+  }
+
+  // Ejecutar la detección al iniciar
+  abrirAcordeonesConErrores();
+
+  /* --- 2. COLOREAR INPUTS CON ERROR --- */
+  document.querySelectorAll('.invalid-feedback-custom').forEach(div => {
+      const input = div.previousElementSibling;
+      if(input) {
+          input.classList.add('is-invalid');
       }
   });
 
-  /* ----- LÓGICA: OTRO SERVICIO ----- */
-  const chkOtro     = document.getElementById('chk-otro-servicio');
-  const inputOtro   = document.getElementById('id_tipo_servicio_otro');
+  /* --- 3. LÓGICA "OTRO SERVICIO" --- */
+  const chkOtro = document.getElementById('chk-otro-servicio');
   const wrapperOtro = document.getElementById('otro-wrapper');
-
-  if (chkOtro && inputOtro && wrapperOtro) {
-    function actualizarVisibilidad() {
-      if (chkOtro.checked) {
-        wrapperOtro.classList.remove('d-none');
-      } else {
-        wrapperOtro.classList.add('d-none');
-      }
-    }
-
-    if (inputOtro.value.trim() !== '') {
-      chkOtro.checked = true;
-    }
-
-    chkOtro.addEventListener('change', actualizarVisibilidad);
-    actualizarVisibilidad();
+  const inputOtro = document.getElementById('id_tipo_servicio_otro');
+  if (chkOtro && wrapperOtro) {
+    function toggleOtro() { wrapperOtro.classList.toggle('d-none', !chkOtro.checked); }
+    chkOtro.addEventListener('change', toggleOtro);
+    if(inputOtro.value.trim() !== '') { chkOtro.checked = true; toggleOtro(); }
   }
 
-  /* ----- LÓGICA: COSTOS MUTUAMENTE EXCLUYENTES ----- */
+  /* --- 4. COSTOS MUTUOS --- */
   const chkNoAplica = document.getElementById('id_costo_no_aplica');
   const chkSeCotiza = document.getElementById('id_costo_se_cotizara');
-
   if (chkNoAplica && chkSeCotiza) {
-    chkNoAplica.addEventListener('change', function () {
-      if (this.checked) chkSeCotiza.checked = false;
-    });
-    chkSeCotiza.addEventListener('change', function () {
-      if (this.checked) chkNoAplica.checked = false;
-    });
+    chkNoAplica.addEventListener('change', function(){ if(this.checked) chkSeCotiza.checked=false; });
+    chkSeCotiza.addEventListener('change', function(){ if(this.checked) chkNoAplica.checked=false; });
   }
+
+  /* --- 5. LÓGICA DINÁMICA DE TABLAS (FORMSETS) --- */
+  function initFormset(prefix) {
+      const addButton = document.querySelector(`[data-add="${prefix}"]`);
+      const container = document.getElementById(`${prefix}-body`);
+      const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+      const emptyTemplate = document.getElementById(`${prefix}-empty`);
+
+      if (!addButton || !container || !totalForms || !emptyTemplate) return;
+
+      addButton.addEventListener('click', function() {
+          const count = parseInt(totalForms.value);
+          const newRowHTML = emptyTemplate.innerHTML.replace(/__prefix__/g, count);
+          container.insertAdjacentHTML('beforeend', newRowHTML);
+          totalForms.value = count + 1;
+      });
+
+      container.addEventListener('click', function(e) {
+          if (e.target.closest('.remove-row')) {
+              const row = e.target.closest('tr');
+              // Si tiene ID (ya existía en BD), marcar DELETE oculto
+              const deleteInput = row.querySelector('input[name$="-DELETE"]');
+              if (deleteInput) {
+                  deleteInput.checked = true;
+                  row.style.display = 'none';
+              } else {
+                  // Si es nueva, borrar del DOM
+                  row.remove();
+              }
+          }
+      });
+  }
+
+  // Inicializar los 4 formsets
+  initFormset('equipos');
+  initFormset('materiales');
+  initFormset('resguardos');
+  initFormset('evidencias');
+
 });
 </script>
 {% endblock %}
