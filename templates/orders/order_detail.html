@@ -112,16 +112,16 @@
       margin-bottom:2px;
     }
     .folio-value{
-      border: 2px solid #333; /* Opcional: borde un poco más grueso también */
+      border: 2px solid #333; 
       padding: 2px 6px;
       min-width: 120px;
       display: inline-block;
       background: #f8f9fa;
       
-      /* === CAMBIOS PARA ROJO Y GRUESO === */
-      font-weight: 800;       /* Letra muy gruesa */
-      color: #d60000;         /* Rojo intenso */
-      font-size: 12px;        /* Un pelín más grande para que destaque */
+      /* === TU FORMATO DE FOLIO ORIGINAL === */
+      font-weight: 800;       
+      color: #d60000;         
+      font-size: 12px;        
     }
 
     .section-title{
@@ -232,25 +232,49 @@
     }
 
     .signature-row{
-      margin-top:18px;
+      margin-top:10px; /* Reduje margen para que quepa mejor */
     }
+    /* TABLA DE FIRMAS ORIGINAL (Ajustada a 3 columnas iguales) */
     .signature-grid{
       width:100%;
       border-collapse:collapse;
       text-align:center;
       font-size:10px;
+      table-layout: fixed; /* Fuerza anchos iguales */
     }
     .signature-grid td{
       border:1px solid #c4c8ce;
-      padding:14px 4px 6px;
+      padding:5px;
+      vertical-align: bottom;
+      height: 90px; /* Altura fija para firmar */
+      position: relative;
     }
     .signature-space{
-      height:28px;
+      /* Línea de firma */
       border-bottom:1px solid #999;
-      margin-bottom:6px;
+      margin-bottom:4px;
+      width: 90%;
+      margin-left: auto;
+      margin-right: auto;
+      position: absolute; 
+      bottom: 25px; /* Posición de la línea */
+      left: 5%;
+    }
+    .signature-img-container {
+        position: absolute;
+        bottom: 28px; /* Justo arriba de la línea */
+        left: 0;
+        width: 100%;
+        text-align: center;
     }
     .signature-label{
       font-size:9px;
+      font-weight: 600;
+      position: absolute;
+      bottom: 5px;
+      width: 100%;
+      text-align: center;
+      left: 0;
     }
 
     .footer{
@@ -325,9 +349,9 @@
             <dt class="col-4">ID Ticket</dt>
                 <dd class="col-8">
                     {% if object.ticket_id %}
-                 <strong>{{ object.ticket_id }}</strong>
+                     <strong>{{ object.ticket_id }}</strong>
                     {% else %}
-                 <span class="text-muted">—</span>
+                     <span class="text-muted">—</span>
                     {% endif %}
                  </dd>
 
@@ -658,28 +682,35 @@
     </div>
 
     <div class="terms-box">
-      Al firmar este documento se da por aceptada la conformidad de la entrega y finalización de los servicios
-      y/o trabajos realizados. Este documento será comprobante del servicio realizado. Cualquier cambio posterior
-      a la instalación (reinstalación, modificaciones, reubicación, reconfiguración o implementación adicional)
-      podrá generar cargos extra. Es responsabilidad del cliente realizar el respaldo de la información contenida
-      en los equipos antes de la atención del servicio.
+      Al firmar este documento se da por aceptada la conformidad de la entrega y finalización de los servicios y/o trabajos realizados. 
+      Este documento será comprobante del servicio realizado. Cualquier cambio posterior a la instalación 
+      (reinstalación, modificaciones, reubicación, reconfiguración o implementación adicional) podrá generar cargos extra. 
+      Es responsabilidad del cliente realizar el respaldo de la información contenida en los equipos antes de la atención del servicio.
     </div>
 
     <div class="signature-row">
       <table class="signature-grid">
         <tr>
           <td>
+            <div class="signature-img-container">
+               {% if firma_ingeniero_url %}
+                 <img src="{{ firma_ingeniero_url }}" style="max-height: 50px; max-width: 90%;">
+               {% endif %}
+            </div>
             <div class="signature-space"></div>
             <div class="signature-label">Ingeniero de soporte</div>
           </td>
+
           <td>
-            <div class="signature-space">
-              {% if object.firma %}
-                <img src="{{ object.firma.url }}" alt="Firma cliente" style="max-height:40px;">
-              {% endif %}
+            <div class="signature-img-container">
+               {% if object.firma %}
+                 <img src="{{ object.firma.url }}" style="max-height: 50px; max-width: 90%;">
+               {% endif %}
             </div>
+            <div class="signature-space"></div>
             <div class="signature-label">Cliente</div>
           </td>
+
           <td>
             <div class="signature-space"></div>
             <div class="signature-label">Contacto ventas</div>
@@ -688,11 +719,6 @@
       </table>
     </div>
 
-    <div class="footer">
-      It Soluciones de Innovación Tecnológica Avanzada S.A. de C.V. · José Treviño 110, Chepevera, 64030 Monterrey, N.L.
-    </div>
-
   </div>
 </div>
-
 {% endblock %}

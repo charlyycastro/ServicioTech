@@ -1,6 +1,8 @@
 from django import forms
 from django.forms import inlineformset_factory
 from .models import ServiceOrder, Equipment, ServiceMaterial, SERVICE_TYPES
+from django.contrib.auth.models import User
+from .models import EngineerProfile
 
 class ServiceOrderForm(forms.ModelForm):
     # Checkboxes para tipos de servicio
@@ -120,3 +122,66 @@ ServiceMaterialFormSet = inlineformset_factory(
     can_delete=True,     # Permite borrar si te equivocas.
     # Quitamos min_num y validate_min para que NO sea obligatorio.
 )
+
+# --- FORMULARIO PARA CREAR (Alta) ---
+class CustomUserCreationForm(forms.ModelForm):
+    first_name = forms.CharField(label="Nombre(s)", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Juan Carlos'}))
+    last_name = forms.CharField(label="Apellidos", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Pérez López'}))
+    email = forms.EmailField(label="Correo electrónico", widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'correo@empresa.com'}))
+    
+    password = forms.CharField(
+        label="Contraseña", 
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        required=True
+    )
+    confirm_password = forms.CharField(
+        label="Confirmar contraseña", 
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        required=True
+    )
+
+    ROLE_CHOICES = [
+        ('visor', 'Visor (Solo ve reportes)'),
+        ('ingeniero', 'Ingeniero (Crea reportes, tiene firma)'),
+        ('superuser', 'Superusuario (Administrador total)'),
+    ]
+    role = forms.ChoiceField(
+        label="Rol / Permisos", 
+        choices=ROLE_CHOICES, 
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    # Campo oculto para recibir la firma dibujada (Base64)
+    firma_b64 = forms.CharField(widget=forms.HiddenInput(), required=False)
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email']
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Usuario para login'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password and confirm_password and password != confirm_password:
+            self.add_error('confirm_password', "Las contraseñas no coinciden.")
+        return cleaned_data
+
+# --- FORMULARIO PARA EDITAR (Modificación) ---
+class UserEditForm(CustomUserCreationForm):
+    # En edición, la contraseña es opcional
+    password = forms.CharField(label="Nueva Contraseña (Opcional)", widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False)
+    confirm_password = forms.CharField(label="Confirmar Nueva (Opcional)", widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False)
+
+    def clean(self):
+        cleaned_data = super(forms.ModelForm, self).clean() # Saltamos la validación del padre
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password and confirm_password and password != confirm_password:
+            self.add_error('confirm_password', "Las contraseñas no coinciden.")
+        return cleaned_data
+

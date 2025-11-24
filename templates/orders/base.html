@@ -126,6 +126,7 @@
         <ul class="navbar-nav ms-auto align-items-lg-center">
 
           {% if user.is_authenticated %}
+            {# Info del Usuario #}
              <li class="nav-item me-4 text-white d-none d-lg-block text-end lh-sm">
                 <div class="fw-bold">{{ user.get_short_name|default:user.username }}</div>
                 <small class="text-white-50" style="font-size: 0.75rem;">
@@ -133,6 +134,7 @@
                 </small>
              </li>
 
+            {# Botón Salir #}
             <li class="nav-item">
               <form method="post" action="{% url 'orders:logout' %}" class="d-inline">
                 {% csrf_token %}
@@ -141,21 +143,42 @@
                 </button>
               </form>
             </li>
+            
+            {# MENÚ DE ADMINISTRACIÓN (Nuevo vs Viejo) #}
+            {% if user.is_staff %}
+            <li class="nav-item ms-lg-3 mt-3 mt-lg-0 dropdown">
+                <a class="nav-link dropdown-toggle text-white p-0" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Gestión">
+                    <i class="bi bi-person-gear fs-4 text-white opacity-75 hover-opacity-100"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
+                    
+                    {# Opción 1: GESTIÓN DE USUARIOS (Lista Completa) #}
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'orders:user_list' %}">
+                            <i class="bi bi-people-fill me-2 text-primary"></i>Gestión de Usuarios
+                        </a>
+                    </li>
+                    
+                    {# Opción 2: Panel Django (Solo Superusuario - Emergencia) #}
+                    {% if user.is_superuser %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item py-2 small text-muted" href="/admin/" target="_blank">
+                                <i class="bi bi-database-fill-gear me-2"></i>Base de Datos
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endif %}
+
           {% else %}
+            {# Usuario no logueado #}
             {% if request.resolver_match.url_name != 'login' %}
             <li class="nav-item">
               <a class="btn btn-light text-primary fw-bold rounded-pill px-4 shadow-sm" href="{% url 'login' %}?next={% url 'orders:list' %}">Iniciar sesión</a>
             </li>
             {% endif %}
-          {% endif %}
-
-          {# Link al Admin de Django (solo para staff) #}
-          {% if user.is_authenticated and user.is_staff and request.resolver_match.url_name != 'login' %}
-          <li class="nav-item ms-lg-3 mt-3 mt-lg-0">
-              <a class="nav-link p-0" href="/admin/" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ir al Panel de Administración">
-                <i class="bi bi-gear-fill fs-5 opacity-50 hover-opacity-100 transition-base"></i>
-              </a>
-          </li>
           {% endif %}
 
         </ul>

@@ -171,3 +171,13 @@ class ServiceMaterial(models.Model):
 
     def __str__(self):
         return f"{self.cantidad}x {self.descripcion} ({self.order.folio})"
+
+#Firma del ingeniero
+from django.contrib.auth.models import User
+
+class EngineerProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    firma = models.ImageField(upload_to="engineer_signatures/", null=True, blank=True)
+
+    def __str__(self):
+        return f"Perfil de {self.user.username}"

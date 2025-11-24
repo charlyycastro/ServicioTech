@@ -10,6 +10,19 @@ from django.template.loader import render_to_string
 from django.db.models import Q
 from django.conf import settings
 from django.core.paginator import Paginator
+from django.contrib.auth.models import User
+
+
+#Usuarios ----
+from django.contrib.auth.hashers import make_password
+from django.core.mail import send_mail
+from .models import EngineerProfile
+from .forms import CustomUserCreationForm
+import base64
+import uuid
+from django.core.files.base import ContentFile
+from django.contrib.auth.models import User
+from .forms import CustomUserCreationForm, UserEditForm
 
 # --- LIBRERÍAS PARA PDF Y CORREO MANUAL (SMTP) ---
 import weasyprint
@@ -39,6 +52,19 @@ def es_superusuario(user):
     """Verifica si el usuario es Superusuario (Admin total)"""
     return user.is_authenticated and user.is_superuser
 
+def obtener_firma_ingeniero(nombre_ingeniero, request):
+    """Busca el perfil del ingeniero por nombre completo y retorna la URL absoluta de su firma."""
+    if not nombre_ingeniero:
+        return None
+        
+    # Buscamos quién tiene ese nombre completo
+    for user in User.objects.all():
+        if user.get_full_name() == nombre_ingeniero:
+            # Verificamos si tiene perfil y firma
+            if hasattr(user, 'profile') and user.profile.firma:
+                return request.build_absolute_uri(user.profile.firma.url)
+    return None
+
 # ================================================================
 # VISTAS
 # ================================================================
@@ -47,7 +73,7 @@ def es_superusuario(user):
 def order_list(request):
     query = request.GET.get('q', '').strip()
     orders = ServiceOrder.objects.all().order_by('-creado')
-    
+
     if query:
         orders = orders.filter(
             Q(folio__icontains=query) |
@@ -66,7 +92,16 @@ def order_list(request):
 @login_required
 def order_detail(request, pk):
     order = get_object_or_404(ServiceOrder, pk=pk)
-    return render(request, 'orders/order_detail.html', {'object': order})
+    
+    # AQUI ES DONDE LLAMAMOS A LA FUNCIÓN
+    firma_url = obtener_firma_ingeniero(order.ingeniero_nombre, request)
+
+    # Y AQUÍ LA PASAMOS AL TEMPLATE
+    return render(request, 'orders/order_detail.html', {
+        'object': order,
+        'firma_ingeniero_url': firma_url  # <--- Esto es lo que faltaba
+    })
+
 
 # ===== CREAR (Restringido a Ingenieros y Admin) =====
 @login_required
@@ -300,3 +335,100 @@ def email_order(request, pk):
         messages.error(request, f"Error al enviar correo: {e}")
 
     return redirect('orders:detail', pk=pk)
+
+@login_required
+@user_passes_test(es_superusuario)
+def user_list_view(request):
+    """Muestra la lista de todos los usuarios para administrar."""
+    users = User.objects.all().order_by('username')
+    return render(request, 'orders/user_list.html', {'users': users})
+
+@login_required
+@user_passes_test(es_superusuario)
+def create_user_view(request):
+    """Crea un usuario nuevo con firma digital."""
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.password = make_password(form.cleaned_data['password'])
+            
+            # Asignar Rol
+            role = form.cleaned_data['role']
+            user.is_staff = (role in ['ingeniero', 'superuser'])
+            user.is_superuser = (role == 'superuser')
+            user.save()
+
+            # Procesar Firma Digital (Base64)
+            firma_b64 = form.cleaned_data.get('firma_b64')
+            if firma_b64 and role == 'ingeniero':
+                guardar_firma(user, firma_b64)
+
+            messages.success(request, f"Usuario {user.username} creado correctamente.")
+            return redirect('orders:user_list')
+    else:
+        form = CustomUserCreationForm()
+    
+    return render(request, 'orders/user_form.html', {'form': form, 'titulo': 'Alta de Nuevo Usuario'})
+
+@login_required
+@user_passes_test(es_superusuario)
+def edit_user_view(request, pk):
+    """Edita un usuario existente."""
+    user_to_edit = get_object_or_404(User, pk=pk)
+    
+    # Determinar rol actual
+    rol_inicial = 'visor'
+    if user_to_edit.is_superuser: rol_inicial = 'superuser'
+    elif user_to_edit.is_staff: rol_inicial = 'ingeniero'
+
+    if request.method == 'POST':
+        form = UserEditForm(request.POST, instance=user_to_edit)
+        if form.is_valid():
+            user = form.save(commit=False)
+            # Solo cambiar password si escribieron algo
+            if form.cleaned_data['password']:
+                user.password = make_password(form.cleaned_data['password'])
+            
+            # Actualizar Rol
+            role = form.cleaned_data['role']
+            user.is_staff = (role in ['ingeniero', 'superuser'])
+            user.is_superuser = (role == 'superuser')
+            user.save()
+
+            # Actualizar Firma
+            firma_b64 = form.cleaned_data.get('firma_b64')
+            if firma_b64 and role == 'ingeniero':
+                guardar_firma(user, firma_b64)
+
+            messages.success(request, f"Usuario {user.username} actualizado.")
+            return redirect('orders:user_list')
+    else:
+        form = UserEditForm(instance=user_to_edit, initial={'role': rol_inicial})
+
+    return render(request, 'orders/user_form.html', {'form': form, 'titulo': f'Editar a {user_to_edit.username}'})
+
+@login_required
+@user_passes_test(es_superusuario)
+def delete_user_view(request, pk):
+    user_to_delete = get_object_or_404(User, pk=pk)
+    if user_to_delete == request.user:
+        messages.error(request, "No puedes eliminar tu propio usuario.")
+    else:
+        user_to_delete.delete()
+        messages.success(request, "Usuario eliminado permanentemente.")
+    return redirect('orders:user_list')
+
+# --- AUXILIAR PARA GUARDAR FIRMA ---
+def guardar_firma(user, data_url):
+    """Decodifica el string base64 del canvas y lo guarda como imagen."""
+    try:
+        format, imgstr = data_url.split(';base64,') 
+        ext = format.split('/')[-1] 
+        data = ContentFile(base64.b64decode(imgstr), name=f'firma_{user.username}_{uuid.uuid4()}.{ext}')
+        
+        profile, created = EngineerProfile.objects.get_or_create(user=user)
+        profile.firma = data
+        profile.save()
+    except Exception as e:
+        print(f"Error guardando firma: {e}")
