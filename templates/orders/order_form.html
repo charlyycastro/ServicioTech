@@ -20,6 +20,16 @@
     box-sizing: border-box;
   }
 
+  /* Clase para marcar error (borde rojo) */
+  .accordion-body .is-invalid {
+      border-color: #dc3545 !important;
+      padding-right: calc(1.5em + .75rem);
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5zM6 8.2a.3.3 0 0 0 .3-.3.3.3 0 0 0-.6 0 .3.3 0 0 0 .3.3z'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right calc(.375em + .1875rem) center;
+      background-size: calc(.75em + .375rem) calc(.75em + .375rem);
+  }
+
   .accordion-body textarea {
     min-height: 2.5rem;
     resize: vertical;
@@ -29,6 +39,14 @@
     font-weight: 500;
     font-size: .85rem;
     margin-bottom: .15rem;
+  }
+
+  /* Texto de error */
+  .invalid-feedback-custom {
+      width: 100%;
+      margin-top: .25rem;
+      font-size: .875em;
+      color: #dc3545;
   }
 
   /* Grid de checkboxes de tipos de servicio */
@@ -82,11 +100,17 @@
   {% csrf_token %}
 
   {% if form.errors or form.non_field_errors or equipos_fs.non_form_errors or materiales_fs.non_form_errors %}
-    <div class="alert alert-danger">
-      <strong>Hay errores en el formulario.</strong> Corrige los campos marcados.
-      {{ form.non_field_errors }}
-      {{ equipos_fs.non_form_errors }}
-      {{ materiales_fs.non_form_errors }}
+    <div class="alert alert-danger shadow-sm">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Hay errores en el formulario.</strong>
+      Por favor revisa los campos marcados en rojo.
+      
+      {% if form.non_field_errors %}
+      <div class="mt-2">{{ form.non_field_errors }}</div>
+      {% endif %}
+      
+      {% if equipos_fs.non_form_errors %}
+      <div class="mt-2 small">Error en equipos: {{ equipos_fs.non_form_errors }}</div>
+      {% endif %}
     </div>
   {% endif %}
 
@@ -104,91 +128,85 @@
            aria-labelledby="headingDatos" data-bs-parent="#ordenAccordion">
         <div class="accordion-body section-datos">
           <div class="row g-3">
-            <!-- Fila 1: Cliente + persona + correo + teléfono -->
             <div class="col-md-3">
               <label class="form-label">Empresa</label>
               {{ form.cliente_nombre }}
+              {% if form.cliente_nombre.errors %}<div class="invalid-feedback-custom">{{ form.cliente_nombre.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-3">
               <label class="form-label">Nombre del Cliente </label>
               {{ form.cliente_contacto }}
+              {% if form.cliente_contacto.errors %}<div class="invalid-feedback-custom">{{ form.cliente_contacto.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-3">
               <label class="form-label">Correo del cliente</label>
               {{ form.cliente_email }}
+              {% if form.cliente_email.errors %}<div class="invalid-feedback-custom">{{ form.cliente_email.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-3">
               <label class="form-label">Número de teléfono del cliente</label>
               {{ form.cliente_telefono }}
+              {% if form.cliente_telefono.errors %}<div class="invalid-feedback-custom">{{ form.cliente_telefono.errors.0 }}</div>{% endif %}
             </div>
 
-            <!-- Fila 2: ubicación + fecha + contacto interno -->
             <div class="col-md-6">
               <label class="form-label">Ubicación</label>
               {{ form.ubicacion }}
+              {% if form.ubicacion.errors %}<div class="invalid-feedback-custom">{{ form.ubicacion.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-3">
               <label class="form-label">Fecha de servicio</label>
               {{ form.fecha_servicio }}
+              {% if form.fecha_servicio.errors %}<div class="invalid-feedback-custom">{{ form.fecha_servicio.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-3">
               <label class="form-label">Contacto interno</label>
               {{ form.contacto_nombre }}
+              {% if form.contacto_nombre.errors %}<div class="invalid-feedback-custom">{{ form.contacto_nombre.errors.0 }}</div>{% endif %}
             </div>
 
-            <!-- Fila 3: tipos de servicio + Otro -->
-            {# Fila 3: tipos de servicio + Otro #}
-<div class="col-md-8">
-  <label class="form-label d-block">Tipo(s) de servicio</label>
-  <div class="checkgrid">
-    {# Renderizamos cada opción con el mismo HTML #}
-    {% for cb in form.tipos_servicio %}
-      <div class="form-check">
-        {{ cb.tag }}
-        <label class="form-check-label" for="{{ cb.id_for_label }}">
-          {{ cb.choice_label }}
-        </label>
-      </div>
-    {% endfor %}
+            <div class="col-md-8">
+              <label class="form-label d-block">Tipo(s) de servicio</label>
+              <div class="checkgrid">
+                {% for cb in form.tipos_servicio %}
+                  <div class="form-check">
+                    {{ cb.tag }}
+                    <label class="form-check-label" for="{{ cb.id_for_label }}">
+                      {{ cb.choice_label }}
+                    </label>
+                  </div>
+                {% endfor %}
+                {% if form.tipos_servicio.errors %}<div class="invalid-feedback-custom">{{ form.tipos_servicio.errors.0 }}</div>{% endif %}
 
-    {# Checkbox "Otro servicio" con el MISMO estilo #}
-    <div class="form-check mt-1">
-      <input type="checkbox" id="chk-otro-servicio">
-      <label class="form-check-label" for="chk-otro-servicio">
-        Otro servicio
-      </label>
-    </div>
-  </div>
-</div>
-
+                <div class="form-check mt-1">
+                  <input type="checkbox" id="chk-otro-servicio">
+                  <label class="form-check-label" for="chk-otro-servicio">Otro servicio</label>
+                </div>
+              </div>
+            </div>
 
             <div class="col-md-4 d-none" id="otro-wrapper">
               <label class="form-label">Otro (especifique)</label>
               {{ form.tipo_servicio_otro }}
-              {% if form.tipo_servicio_otro.errors %}
-                <div class="text-danger small mt-1">{{ form.tipo_servicio_otro.errors }}</div>
-              {% endif %}
+              {% if form.tipo_servicio_otro.errors %}<div class="invalid-feedback-custom">{{ form.tipo_servicio_otro.errors.0 }}</div>{% endif %}
             </div>
 
-            <!-- Fila 4: ingeniero + indicaciones especiales -->
             <div class="col-md-4">
-  <label class="form-label">Ingeniero</label>
-  {{ form.ingeniero_nombre }}
-</div>
+              <label class="form-label">Ingeniero</label>
+              {{ form.ingeniero_nombre }}
+              {% if form.ingeniero_nombre.errors %}<div class="invalid-feedback-custom">{{ form.ingeniero_nombre.errors.0 }}</div>{% endif %}
+            </div>
 
-<div class="col-md-4">
-  <label class="form-label">ID Ticket</label>
-  {{ form.ticket_id }}
-</div>
-
-
+            <div class="col-md-4">
+              <label class="form-label">ID Ticket</label>
+              {{ form.ticket_id }}
+              {% if form.ticket_id.errors %}<div class="invalid-feedback-custom">{{ form.ticket_id.errors.0 }}</div>{% endif %}
+            </div>
 
             <div class="col-md-8">
               <label class="form-label">Indicaciones especiales (uso interno, no se imprime)</label>
               {{ form.indicaciones_especiales }}
-              <div class="form-text">
-                Ejemplo: EPP requerido, credencial de elector, pruebas de laboratorio, etc.
-              </div>
+              <div class="form-text">Ejemplo: EPP requerido, credencial de elector, pruebas de laboratorio, etc.</div>
             </div>
 
           </div>
@@ -231,15 +249,28 @@
                     {{ equipos_fs.management_form }}
                     {% for f in equipos_fs %}
                     <tr class="formset-row">
-                      <td>{{ f.marca }}</td>
-                      <td>{{ f.modelo }}</td>
-                      <td>{{ f.serie }}</td>
-                      <td>{{ f.descripcion }}</td>
+                      {# Campos ocultos (como ID) #}
+                      {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                      
+                      <td>
+                          {{ f.marca }}
+                          {% if f.marca.errors %}<div class="invalid-feedback-custom">{{ f.marca.errors.0 }}</div>{% endif %}
+                      </td>
+                      <td>
+                          {{ f.modelo }}
+                          {% if f.modelo.errors %}<div class="invalid-feedback-custom">{{ f.modelo.errors.0 }}</div>{% endif %}
+                      </td>
+                      <td>
+                          {{ f.serie }}
+                          {% if f.serie.errors %}<div class="invalid-feedback-custom">{{ f.serie.errors.0 }}</div>{% endif %}
+                      </td>
+                      <td>
+                          {{ f.descripcion }}
+                          {% if f.descripcion.errors %}<div class="invalid-feedback-custom">{{ f.descripcion.errors.0 }}</div>{% endif %}
+                      </td>
                       <td class="text-end">
                         {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>
-                          &times;
-                        </button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
                       </td>
                     </tr>
                     {% endfor %}
@@ -253,9 +284,7 @@
                   <td>__FIELD__:serie</td>
                   <td>__FIELD__:descripcion</td>
                   <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>
-                      &times;
-                    </button>
+                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
                   </td>
                 </tr>
               </template>
@@ -281,21 +310,24 @@
             <div class="col-12">
               <label class="form-label">Título del servicio</label>
               {{ form.titulo }}
+              {% if form.titulo.errors %}<div class="invalid-feedback-custom">{{ form.titulo.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-12">
               <label class="form-label">Actividades realizadas</label>
               {{ form.actividades }}
+              {% if form.actividades.errors %}<div class="invalid-feedback-custom">{{ form.actividades.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-12">
               <label class="form-label">Comentarios</label>
               {{ form.comentarios }}
+              {% if form.comentarios.errors %}<div class="invalid-feedback-custom">{{ form.comentarios.errors.0 }}</div>{% endif %}
             </div>
           </div>
         </div>
       </div>
     </div>
 
-            {# D) COSTOS Y PROGRAMACIÓN #}
+    {# D) COSTOS Y PROGRAMACIÓN #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingCostos">
         <button class="accordion-button collapsed" type="button"
@@ -309,57 +341,53 @@
         <div class="accordion-body">
           <div class="row g-3 align-items-end">
 
-            <!-- Horas y costo -->
             <div class="col-md-3">
               <label class="form-label">Horas</label>
               {{ form.horas }}
+              {% if form.horas.errors %}<div class="invalid-feedback-custom">{{ form.horas.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-3">
               <label class="form-label">Costo (MXN)</label>
               {{ form.costo_mxn }}
+              {% if form.costo_mxn.errors %}<div class="invalid-feedback-custom">{{ form.costo_mxn.errors.0 }}</div>{% endif %}
             </div>
 
-            <!-- Estatus del costo -->
             <div class="col-md-6">
               <label class="form-label d-block">Estatus del costo</label>
               <div class="d-flex align-items-center gap-4">
                 <div class="form-check mb-0">
                   {{ form.costo_no_aplica }}
-                  <label class="form-check-label" for="id_costo_no_aplica">
-                    No aplica
-                  </label>
+                  <label class="form-check-label" for="id_costo_no_aplica">No aplica</label>
                 </div>
                 <div class="form-check mb-0">
                   {{ form.costo_se_cotizara }}
-                  <label class="form-check-label" for="id_costo_se_cotizara">
-                    Se cotizará
-                  </label>
+                  <label class="form-check-label" for="id_costo_se_cotizara">Se cotizará</label>
                 </div>
               </div>
             </div>
 
             <div class="col-12"><hr></div>
 
-            <!-- Reagenda en UNA sola línea -->
             <div class="col-md-2">
               <div class="form-check mb-0 mt-1">
                 {{ form.reagenda }}
-                <label class="form-check-label" for="id_reagenda">
-                  Reagendar
-                </label>
+                <label class="form-check-label" for="id_reagenda">Reagendar</label>
               </div>
             </div>
             <div class="col-md-2">
               <label class="form-label">Fecha</label>
               {{ form.reagenda_fecha }}
+              {% if form.reagenda_fecha.errors %}<div class="invalid-feedback-custom">{{ form.reagenda_fecha.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-2">
               <label class="form-label">Hora</label>
               {{ form.reagenda_hora }}
+              {% if form.reagenda_hora.errors %}<div class="invalid-feedback-custom">{{ form.reagenda_hora.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-6">
               <label class="form-label">Motivo</label>
               {{ form.reagenda_motivo }}
+              {% if form.reagenda_motivo.errors %}<div class="invalid-feedback-custom">{{ form.reagenda_motivo.errors.0 }}</div>{% endif %}
             </div>
 
           </div>
@@ -401,14 +429,22 @@
                     {{ materiales_fs.management_form }}
                     {% for f in materiales_fs %}
                     <tr class="formset-row">
-                      <td>{{ f.descripcion }}</td>
-                      <td class="max-w-120">{{ f.cantidad }}</td>
-                      <td>{{ f.comentarios }}</td>
+                      {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                      <td>
+                          {{ f.descripcion }}
+                          {% if f.descripcion.errors %}<div class="invalid-feedback-custom">{{ f.descripcion.errors.0 }}</div>{% endif %}
+                      </td>
+                      <td class="max-w-120">
+                          {{ f.cantidad }}
+                          {% if f.cantidad.errors %}<div class="invalid-feedback-custom">{{ f.cantidad.errors.0 }}</div>{% endif %}
+                      </td>
+                      <td>
+                          {{ f.comentarios }}
+                          {% if f.comentarios.errors %}<div class="invalid-feedback-custom">{{ f.comentarios.errors.0 }}</div>{% endif %}
+                      </td>
                       <td class="text-end">
                         {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
-                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>
-                          &times;
-                        </button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
                       </td>
                     </tr>
                     {% endfor %}
@@ -421,9 +457,7 @@
                   <td>__FIELD__:cantidad</td>
                   <td>__FIELD__:comentarios</td>
                   <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>
-                      &times;
-                    </button>
+                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-row>&times;</button>
                   </td>
                 </tr>
               </template>
@@ -453,7 +487,6 @@
           <div id="signature-wrapper" class="w-100">
             <canvas id="signature-canvas"></canvas>
           </div>
-          <!-- 👇 OJO: name y id deben ser firma_b64 -->
           <input type="hidden" name="firma_b64" id="firma_b64">
           <div class="form-text">Firme con el dedo o mouse.</div>
         </div>
@@ -473,6 +506,24 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   
+  /* ----- 1. COLOREAR ERRORES (ROJO) ----- */
+  // Este script busca los mensajes de error y le pone el borde rojo al input correspondiente
+  const errorDivs = document.querySelectorAll('.invalid-feedback-custom');
+  errorDivs.forEach(div => {
+      // Intenta encontrar el input anterior al mensaje de error
+      const input = div.previousElementSibling;
+      if(input && (input.tagName === 'INPUT' || input.tagName === 'SELECT' || input.tagName === 'TEXTAREA')) {
+          input.classList.add('is-invalid');
+          
+          // Si el input está dentro de un acordeón colapsado, hay que abrirlo para que se vea
+          const accordionCollapse = input.closest('.accordion-collapse');
+          if (accordionCollapse && !accordionCollapse.classList.contains('show')) {
+              // Usamos la API de Bootstrap para abrir el acordeón
+              new bootstrap.Collapse(accordionCollapse, { toggle: true });
+          }
+      }
+  });
+
   /* ----- LÓGICA: OTRO SERVICIO ----- */
   const chkOtro     = document.getElementById('chk-otro-servicio');
   const inputOtro   = document.getElementById('id_tipo_servicio_otro');
@@ -484,12 +535,9 @@ document.addEventListener('DOMContentLoaded', function () {
         wrapperOtro.classList.remove('d-none');
       } else {
         wrapperOtro.classList.add('d-none');
-        // Opcional: limpiar el campo al ocultarlo
-        // inputOtro.value = '';
       }
     }
 
-    // Si ya traía datos (al editar), marcar el checkbox
     if (inputOtro.value.trim() !== '') {
       chkOtro.checked = true;
     }
@@ -503,18 +551,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const chkSeCotiza = document.getElementById('id_costo_se_cotizara');
 
   if (chkNoAplica && chkSeCotiza) {
-    // Si marca "No aplica", desmarca "Se cotizará"
     chkNoAplica.addEventListener('change', function () {
-      if (this.checked) {
-        chkSeCotiza.checked = false;
-      }
+      if (this.checked) chkSeCotiza.checked = false;
     });
-
-    // Si marca "Se cotizará", desmarca "No aplica"
     chkSeCotiza.addEventListener('change', function () {
-      if (this.checked) {
-        chkNoAplica.checked = false;
-      }
+      if (this.checked) chkNoAplica.checked = false;
     });
   }
 });
