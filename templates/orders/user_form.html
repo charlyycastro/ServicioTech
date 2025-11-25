@@ -47,17 +47,23 @@
                         {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors.0 }}</div>{% endif %}
                     </div>
 
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">{{ form.password.label }}</label>
-                            {{ form.password }}
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">{{ form.confirm_password.label }}</label>
-                            {{ form.confirm_password }}
-                            {% if form.confirm_password.errors %}<div class="text-danger small">{{ form.confirm_password.errors.0 }}</div>{% endif %}
-                        </div>
-                    </div>
+                   <div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <label class="form-label fw-bold">{{ form.password.label }}</label>
+        {{ form.password }}
+    </div>
+    
+    <div class="col-md-6">
+        <label class="form-label fw-bold">{{ form.confirm_password.label }}</label>
+        {{ form.confirm_password }}
+        
+        {# Error de Django (si existe) #}
+        {% if form.confirm_password.errors %}<div class="text-danger small fw-bold">{{ form.confirm_password.errors.0 }}</div>{% endif %}
+        
+        {# NUEVO: Contenedor para el error de JavaScript #}
+        <div id="password-error-msg" class="text-danger small fw-bold"></div>
+    </div>
+</div>
 
                     <h5 class="text-primary mb-3 border-bottom pb-2">3. Permisos y Firma</h5>
                     
@@ -155,5 +161,43 @@
             }
         });
     });
+
+    /* --- VALIDACIÓN EN TIEMPO REAL DE CONTRASEÑAS --- */
+const passwordInput = document.getElementById('id_password');
+const confirmInput = document.getElementById('id_confirm_password');
+const errorDiv = document.getElementById('password-error-msg');
+
+if (passwordInput && confirmInput) {
+    function checkPasswordsRealTime() {
+        const p1 = passwordInput.value;
+        const p2 = confirmInput.value;
+
+        // Limpiar el estado visual
+        confirmInput.classList.remove('is-invalid', 'is-valid');
+        errorDiv.textContent = "";
+
+        // Si se está editando y los campos están vacíos, no hacer nada
+        if (p1.length === 0 && p2.length === 0) {
+            return;
+        }
+
+        // Si la confirmación tiene texto, hacer la comparación
+        if (p2.length > 0) {
+            if (p1 !== p2) {
+                // No coinciden
+                confirmInput.classList.add('is-invalid');
+                errorDiv.textContent = "Las contraseñas no coinciden.";
+            } else {
+                // Coinciden (opcionalmente marcamos en verde)
+                confirmInput.classList.add('is-valid');
+            }
+        }
+    }
+
+    // Escuchar el evento de entrada en ambos campos
+    confirmInput.addEventListener('keyup', checkPasswordsRealTime);
+    confirmInput.addEventListener('blur', checkPasswordsRealTime);
+    passwordInput.addEventListener('keyup', checkPasswordsRealTime);
+}
 </script>
 {% endblock %}

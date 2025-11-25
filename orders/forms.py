@@ -9,7 +9,7 @@ from .models import ServiceOrder, Equipment, ServiceMaterial, ShelterEquipment, 
 class ServiceOrderForm(forms.ModelForm):
     tipos_servicio = forms.MultipleChoiceField(
         label="Tipo de servicio solicitado",
-        required=False, # <--- RELAJADO PARA BORRADORES
+        required=False,
         widget=forms.CheckboxSelectMultiple,
         choices=SERVICE_TYPES,
     )
@@ -47,11 +47,11 @@ class ServiceOrderForm(forms.ModelForm):
         self.fields["cliente_contacto"].label = "Persona de contacto"
         self.fields["ticket_id"].label = "ID Ticket"
 
-        # --- MAGIA PARA BORRADORES: NADA ES OBLIGATORIO EXCEPTO EL CLIENTE ---
+        # Relajamiento de campos para Borradores
         for field in self.fields:
             self.fields[field].required = False
         
-        self.fields['cliente_nombre'].required = True # Solo este es vital
+        self.fields['cliente_nombre'].required = True
 
         # Inicializar JSON
         if self.instance and self.instance.pk and self.instance.tipos_servicio:
@@ -69,7 +69,7 @@ class ServiceOrderForm(forms.ModelForm):
 # FORMULARIOS DE TABLAS (RELAJADOS)
 # ================================================================
 
-# 1. EQUIPOS (Relajado)
+# Definiciones de Forms base para Tablas
 class EquipmentForm(forms.ModelForm):
     marca = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     modelo = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
@@ -77,63 +77,69 @@ class EquipmentForm(forms.ModelForm):
     descripcion = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     class Meta: model = Equipment; fields = "__all__"
 
-EquipmentFormSet = inlineformset_factory(
-    ServiceOrder, Equipment, form=EquipmentForm, extra=0, can_delete=True
-)
-
-# 2. MATERIALES (Relajado)
 class ServiceMaterialForm(forms.ModelForm):
     cantidad = forms.IntegerField(required=False, widget=forms.NumberInput(attrs={'class': 'form-control'}))
     descripcion = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     comentarios = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     class Meta: model = ServiceMaterial; fields = "__all__"
 
-ServiceMaterialFormSet = inlineformset_factory(
-    ServiceOrder, ServiceMaterial, form=ServiceMaterialForm, extra=0, can_delete=True
-)
-
-# 3. RESGUARDOS (Relajado)
 class ShelterEquipmentForm(forms.ModelForm):
     cantidad = forms.IntegerField(required=False, widget=forms.NumberInput(attrs={'class': 'form-control'}))
     descripcion = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     comentarios = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     class Meta: model = ShelterEquipment; fields = "__all__"
 
-ShelterEquipmentFormSet = inlineformset_factory(
-    ServiceOrder, ShelterEquipment, form=ShelterEquipmentForm, extra=0, can_delete=True
-)
-
-# 4. EVIDENCIAS (Relajado)
 class ServiceEvidenceForm(forms.ModelForm):
     archivo = forms.FileField(required=False, widget=forms.FileInput(attrs={'class': 'form-control'}))
     comentario = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     class Meta: model = ServiceEvidence; fields = "__all__"
 
-ServiceEvidenceFormSet = inlineformset_factory(
-    ServiceOrder, ServiceEvidence, form=ServiceEvidenceForm, extra=0, can_delete=True
-)
-
+# Definiciones de FormSets
+EquipmentFormSet = inlineformset_factory(ServiceOrder, Equipment, form=EquipmentForm, extra=0, can_delete=True)
+ServiceMaterialFormSet = inlineformset_factory(ServiceOrder, ServiceMaterial, form=ServiceMaterialForm, extra=0, can_delete=True)
+ShelterEquipmentFormSet = inlineformset_factory(ServiceOrder, ShelterEquipment, form=ShelterEquipmentForm, extra=0, can_delete=True)
+ServiceEvidenceFormSet = inlineformset_factory(ServiceOrder, ServiceEvidence, form=ServiceEvidenceForm, extra=0, can_delete=True)
 
 # ================================================================
-# USUARIOS
+# GESTIÓN DE USUARIOS (CREAR / EDITAR)
 # ================================================================
+
 class CustomUserCreationForm(forms.ModelForm):
-    first_name = forms.CharField(label="Nombre", required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    first_name = forms.CharField(label="Nombre(s)", required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
     last_name = forms.CharField(label="Apellidos", required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    email = forms.EmailField(label="Correo", required=True, widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    email = forms.EmailField(label="Correo electrónico", required=True, widget=forms.EmailInput(attrs={'class': 'form-control'}))
     password = forms.CharField(label="Contraseña", widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=True)
-    confirm_password = forms.CharField(label="Confirmar", widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=True)
-    role = forms.ChoiceField(label="Rol", choices=[('visor','Visor'),('ingeniero','Ingeniero'),('superuser','Admin')], widget=forms.Select(attrs={'class': 'form-select'}))
+    confirm_password = forms.CharField(label="Confirmar contraseña", widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=True)
+    role = forms.ChoiceField(label="Rol / Permisos", choices=[('visor', 'Visor'), ('ingeniero', 'Ingeniero'), ('superuser', 'Administrador')], widget=forms.Select(attrs={'class': 'form-select'}))
     firma_b64 = forms.CharField(widget=forms.HiddenInput(), required=False)
 
-    class Meta: model = User; fields = ['username', 'first_name', 'last_name', 'email']; widgets = {'username': forms.TextInput(attrs={'class': 'form-control'})}
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email']
+        widgets = {'username': forms.TextInput(attrs={'class': 'form-control'})}
 
     def clean(self):
         cleaned_data = super().clean()
-        if cleaned_data.get("password") != cleaned_data.get("confirm_password"):
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password and confirm_password and password != confirm_password:
             self.add_error('confirm_password', "Las contraseñas no coinciden.")
         return cleaned_data
 
 class UserEditForm(CustomUserCreationForm):
     password = forms.CharField(label="Nueva Contraseña (Opcional)", widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False)
-    confirm_password = forms.CharField(label="Confirmar", widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False)
+    confirm_password = forms.CharField(label="Confirmar Nueva (Opcional)", widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False)
+
+    def clean(self):
+        # Esta es la validación para edición (donde la contraseña es opcional)
+        cleaned_data = super(forms.ModelForm, self).clean() 
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        # Se exige que la confirmación coincida SIEMPRE que se haya escrito ALGO en password o confirm_password
+        if password or confirm_password:
+            if password != confirm_password:
+                self.add_error('confirm_password', "Las nuevas contraseñas no coinciden.")
+                
+        return cleaned_data
