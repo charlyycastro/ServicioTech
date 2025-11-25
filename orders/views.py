@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
-from django.views.decorators.cache import never_cache # <--- IMPORTANTE: Faltaba esto
+from django.views.decorators.cache import never_cache
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -168,17 +168,20 @@ def order_create(request):
             # Guardar todas las tablas relacionadas
             equipos_fs.instance = order
             equipos_fs.save()
+            
             materiales_fs.instance = order
             materiales_fs.save()
+            
             resguardos_fs.instance = order
             resguardos_fs.save()
+            
             evidencias_fs.instance = order
             evidencias_fs.save()
 
             messages.success(request, mensaje_exito)
             return redirect("orders:detail", pk=order.pk)
         else:
-            messages.error(request, "Hay errores en el formulario.")
+            messages.error(request, "Hay errores en el formulario. Revisa los campos en rojo.")
     else:
         # Pre-llenado inicial
         initial_data = {}
