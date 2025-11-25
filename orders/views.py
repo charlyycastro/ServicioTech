@@ -12,19 +12,14 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage # Importamos la clase de envío de Django
 from django.core.files.base import ContentFile
 from django.utils.dateparse import parse_date
 
-# --- LIBRERÍAS EXTERNAS ---
+# --- LIBRERÍAS EXTERNAS NECESARIAS ---
 import weasyprint
-import smtplib
-import ssl
 import base64
 import uuid
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
 
 # --- MODELOS Y FORMULARIOS ---
 from .models import ServiceOrder, EngineerProfile
@@ -56,6 +51,7 @@ def obtener_firma_ingeniero(nombre_ingeniero, request):
         # Comparación flexible (nombre completo o username si no tiene nombre)
         if full_name == nombre_ingeniero or user.username == nombre_ingeniero:
             if hasattr(user, 'profile') and user.profile.firma:
+                # build_absolute_uri es vital para que WeasyPrint cargue la imagen en el PDF
                 return request.build_absolute_uri(user.profile.firma.url)
     return None
 
@@ -79,43 +75,28 @@ def guardar_firma(user, data_url):
 
 @login_required
 def order_list(request):
-    # Inicializar la consulta base
+    query = request.GET.get('q', '').strip()
     orders = ServiceOrder.objects.all().order_by('-creado')
 
-    # --- 1. FILTRO DE BÚSQUEDA GENERAL (q) ---
-    query = request.GET.get('q', '').strip()
-    if query:
-        orders = orders.filter(
-            Q(folio__icontains=query) |
-            Q(cliente_nombre__icontains=query) |  
-            Q(cliente_contacto__icontains=query) | 
-            Q(titulo__icontains=query)
-        )
-
-    # --- 2. PREPARACIÓN DE FILTROS DESPLEGABLES ---
-    # Obtenemos la lista única de empresas (clientes) para el dropdown
-    empresas = ServiceOrder.objects.exclude(cliente_nombre__isnull=True).exclude(cliente_nombre__exact='').values_list('cliente_nombre', flat=True).distinct().order_by('cliente_nombre')
-    
-    # Obtenemos la lista única de ingenieros (solo los que tienen órdenes asignadas)
-    ingenieros_list = ServiceOrder.objects.exclude(ingeniero_nombre__isnull=True).exclude(ingeniero_nombre__exact='').values_list('ingeniero_nombre', flat=True).distinct().order_by('ingeniero_nombre')
-
-    # --- 3. APLICACIÓN DE FILTROS ESPECÍFICOS ---
+    # Aplicación de Filtros Específicos (Empresa, Estatus, Ingeniero)
     filtro_empresa = request.GET.get('empresa')
     filtro_estatus = request.GET.get('estatus')
     filtro_ingeniero = request.GET.get('ingeniero')
-
+    
+    if query:
+        orders = orders.filter(Q(folio__icontains=query) | Q(cliente_nombre__icontains=query) | Q(cliente_contacto__icontains=query) | Q(titulo__icontains=query))
     if filtro_empresa:
         orders = orders.filter(cliente_nombre=filtro_empresa)
-
     if filtro_estatus:
         orders = orders.filter(estatus=filtro_estatus)
-    
     if filtro_ingeniero:
         orders = orders.filter(ingeniero_nombre=filtro_ingeniero)
 
+    # Obtenemos la lista de opciones para los dropdowns del template
+    empresas = ServiceOrder.objects.exclude(cliente_nombre__isnull=True).exclude(cliente_nombre__exact='').values_list('cliente_nombre', flat=True).distinct().order_by('cliente_nombre')
+    ingenieros_list = ServiceOrder.objects.exclude(ingeniero_nombre__isnull=True).exclude(ingeniero_nombre__exact='').values_list('ingeniero_nombre', flat=True).distinct().order_by('ingeniero_nombre')
 
-    # PAGINACIÓN
-    paginator = Paginator(orders, 15) # Aumenté a 15 órdenes por página para que se vea mejor
+    paginator = Paginator(orders, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -124,11 +105,9 @@ def order_list(request):
         'query': query,
         'empresas': empresas,
         'ingenieros_list': ingenieros_list,
-        # Pasamos los filtros activos para mantener el estado del dropdown
         'filtro_empresa': filtro_empresa,
         'filtro_estatus': filtro_estatus,
         'filtro_ingeniero': filtro_ingeniero,
-        # Opciones de estatus para el select
         'STATUS_CHOICES': ServiceOrder.STATUS_CHOICES 
     }
     return render(request, 'orders/order_list.html', ctx)
@@ -152,7 +131,6 @@ def order_create(request):
     if request.method == "POST":
         form = ServiceOrderForm(request.POST, request.FILES)
         
-        # Inicializamos los 4 FormSets
         equipos_fs = EquipmentFormSet(request.POST, request.FILES, prefix="equipos")
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, prefix="materiales")
         resguardos_fs = ShelterEquipmentFormSet(request.POST, request.FILES, prefix="resguardos")
@@ -165,7 +143,6 @@ def order_create(request):
             # === VALIDACIÓN MANUAL PARA FINALIZAR ===
             if accion == 'finalizar':
                 errores = []
-                # Validamos solo campos críticos
                 if not order.cliente_contacto: errores.append("Persona de contacto")
                 if not order.cliente_email: errores.append("Correo del cliente")
                 if not order.ingeniero_nombre: errores.append("Ingeniero asignado")
@@ -201,24 +178,17 @@ def order_create(request):
             order.save()
 
             # Guardar todas las tablas relacionadas
-            equipos_fs.instance = order
-            equipos_fs.save()
-            
-            materiales_fs.instance = order
-            materiales_fs.save()
-            
-            resguardos_fs.instance = order
-            resguardos_fs.save()
-            
-            evidencias_fs.instance = order
-            evidencias_fs.save()
+            equipos_fs.instance = order; equipos_fs.save()
+            materiales_fs.instance = order; materiales_fs.save()
+            resguardos_fs.instance = order; resguardos_fs.save()
+            evidencias_fs.instance = order; evidencias_fs.save()
 
             messages.success(request, mensaje_exito)
             return redirect("orders:detail", pk=order.pk)
         else:
             messages.error(request, "Hay errores en el formulario. Revisa los campos en rojo.")
     else:
-        # Pre-llenado inicial
+        # GET: Pre-llenado inicial
         initial_data = {}
         if request.user.is_staff:
              initial_data['ingeniero_nombre'] = request.user.get_full_name() or request.user.username
@@ -230,11 +200,8 @@ def order_create(request):
         evidencias_fs = ServiceEvidenceFormSet(prefix="evidencias")
 
     ctx = {
-        "form": form,
-        "equipos_fs": equipos_fs,
-        "materiales_fs": materiales_fs,
-        "resguardos_fs": resguardos_fs,
-        "evidencias_fs": evidencias_fs,
+        "form": form, "equipos_fs": equipos_fs, "materiales_fs": materiales_fs,
+        "resguardos_fs": resguardos_fs, "evidencias_fs": evidencias_fs,
         "titulo": "Nueva Orden de Servicio"
     }
     return render(request, "orders/order_form.html", ctx)
@@ -340,7 +307,8 @@ def bulk_delete(request):
     messages.success(request, f"Se eliminaron {count} órdenes correctamente.")
     return redirect("orders:list")
 
-# ===== ENVIAR CORREO MANUAL =====
+# ===== ENVIAR CORREO MANUAL (Revertido a SMTPLib para bypass SSL Hostname) =====
+# ===== ENVIAR CORREO MANUAL (Revertido a SMTPLib para bypass SSL Hostname) =====
 @login_required
 @user_passes_test(es_ingeniero_o_admin)
 def email_order(request, pk):
@@ -350,12 +318,30 @@ def email_order(request, pk):
         messages.warning(request, "Esta orden no tiene un correo de cliente registrado.")
         return redirect('orders:detail', pk=pk)
 
+    # 1. Validación de Firma del Ingeniero Asignado
+    firma_ingeniero_url = obtener_firma_ingeniero(order.ingeniero_nombre, request)
+    if not firma_ingeniero_url:
+        messages.error(request, f"No se puede enviar. El perfil del ingeniero '{order.ingeniero_nombre}' no tiene firma digital precargada.")
+        return redirect('orders:detail', pk=pk)
+
+    # Definición del link de la encuesta
+    survey_link = "https://www.cognitoforms.com/INOVATECH1/EncuestaDeServicio"
+
     try:
         # 1. Generar PDF
+        from django.template.loader import render_to_string
+        import weasyprint
+        import smtplib
+        import ssl
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.application import MIMEApplication
+        from django.conf import settings
+
         html_string = render_to_string('orders/order_detail.html', {
             'object': order,
             'print_mode': True,
-            'firma_ingeniero_url': obtener_firma_ingeniero(order.ingeniero_nombre, request)
+            'firma_ingeniero_url': firma_ingeniero_url 
         }, request=request)
 
         pdf_bytes = weasyprint.HTML(
@@ -363,35 +349,43 @@ def email_order(request, pk):
             base_url=request.build_absolute_uri()
         ).write_pdf()
 
-        # 2. Configurar SMTP
+        # 2. Configuración SMTP Manualmente
         smtp_server = settings.EMAIL_HOST
         smtp_port = settings.EMAIL_PORT
         smtp_user = settings.EMAIL_HOST_USER
         smtp_password = settings.EMAIL_HOST_PASSWORD
 
+        # Crear mensaje MIMEMultipart
         msg = MIMEMultipart()
         msg['From'] = settings.DEFAULT_FROM_EMAIL
         msg['To'] = order.cliente_email
         msg['Subject'] = f"Reporte de Servicio {order.folio} - ServicioTech"
 
-        body = f"""
-        Hola {order.cliente_contacto or 'Cliente'},
-
-        Adjunto encontrarás el reporte de servicio técnico realizado el {order.fecha_servicio}.
-
-        Folio: {order.folio}
-        Título: {order.titulo}
-
-        Gracias por tu preferencia.
-        Atentamente,
-        El equipo de ServicioTech.
-        """
+        # CÓDIGO ACTUALIZADO CON LA ENCUESTA
+        body = (
+            f"Hola {order.cliente_contacto or 'Cliente'},\n\n"
+            f"Adjunto encontrarás el reporte de servicio técnico realizado el {order.fecha_servicio}.\n\n"
+            f"Folio: {order.folio}\n"
+            f"Título: {order.titulo}\n\n"
+            
+            "=============================================\n"
+            "¡AYÚDANOS A MEJORAR! (Encuesta de Satisfacción)\n"
+            "=============================================\n"
+            "Por favor, tómate un minuto para calificar nuestro servicio haciendo clic en el siguiente enlace:\n"
+            f"{survey_link}\n\n" 
+            
+            "Gracias por tu preferencia.\n"
+            "Atentamente,\n"
+            "El equipo de ServicioTech."
+        )
         msg.attach(MIMEText(body, 'plain'))
-
+        
+        # Adjuntar PDF
         attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
         attachment.add_header('Content-Disposition', 'attachment', filename=f"{order.folio}.pdf")
         msg.attach(attachment)
 
+        # 3. CONEXIÓN SEGURA MANUAL (BYPASS DE HOSTNAME MISMATCH)
         context = ssl.create_default_context()
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
@@ -404,11 +398,12 @@ def email_order(request, pk):
 
         order.email_enviado = True
         order.save(update_fields=['email_enviado'])
-        messages.success(request, f"Correo reenviado exitosamente a {order.cliente_email}")
+        messages.success(request, f"Correo enviado correctamente a {order.cliente_email}")
 
     except Exception as e:
-        print(f"❌ ERROR SMTP: {e}")
-        messages.error(request, f"Error al enviar correo: {e}")
+        error_msg = f"Error de conexión. Detalles: {e}"
+        print(f"❌ ERROR SMTP MANUAL FINAL: {e}")
+        messages.error(request, error_msg)
 
     return redirect('orders:detail', pk=pk)
 
@@ -416,6 +411,26 @@ def email_order(request, pk):
 # ================================================================
 # GESTIÓN DE USUARIOS
 # ================================================================
+
+@login_required
+def dashboard_view(request):
+    # Stats
+    total_ordenes = ServiceOrder.objects.count()
+    pendientes = ServiceOrder.objects.filter(estatus='borrador').count()
+    finalizadas = ServiceOrder.objects.filter(estatus='finalizado').count()
+    nombre_usuario = request.user.get_full_name() or request.user.username
+    mis_asignadas = ServiceOrder.objects.filter(ingeniero_nombre__icontains=nombre_usuario, estatus='borrador').count()
+    recientes = ServiceOrder.objects.all().order_by('-creado')[:5]
+
+    context = {
+        'total': total_ordenes,
+        'pendientes': pendientes,
+        'finalizadas': finalizadas,
+        'mis_asignadas': mis_asignadas,
+        'recientes': recientes,
+    }
+    return render(request, 'orders/dashboard.html', context)
+
 
 @login_required
 @user_passes_test(es_superusuario)
@@ -496,38 +511,8 @@ def login_view(request):
     pass
 
 @require_POST
-@never_cache # <--- Evita que el navegador guarde la página después de salir
+@never_cache 
 def logout_view(request):
     logout(request)
     messages.info(request, "Has cerrado sesión.")
     return redirect("login")
-
-
-
-# ================================================================
-# DASHBOARD (PANTALLA DE INICIO)
-# ================================================================
-
-@login_required
-def dashboard_view(request):
-    # 1. Contadores Generales
-    total_ordenes = ServiceOrder.objects.count()
-    pendientes = ServiceOrder.objects.filter(estatus='borrador').count()
-    finalizadas = ServiceOrder.objects.filter(estatus='finalizado').count()
-    
-    # 2. Contadores Personales (Solo del usuario logueado)
-    # Buscamos por nombre completo o usuario, igual que al crear
-    nombre_usuario = request.user.get_full_name() or request.user.username
-    mis_asignadas = ServiceOrder.objects.filter(ingeniero_nombre__icontains=nombre_usuario, estatus='borrador').count()
-
-    # 3. Listado Rápido (Las 5 más recientes)
-    recientes = ServiceOrder.objects.all().order_by('-creado')[:5]
-
-    context = {
-        'total': total_ordenes,
-        'pendientes': pendientes,
-        'finalizadas': finalizadas,
-        'mis_asignadas': mis_asignadas,
-        'recientes': recientes,
-    }
-    return render(request, 'orders/dashboard.html', context)
