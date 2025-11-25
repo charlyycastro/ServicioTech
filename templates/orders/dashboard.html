@@ -1,0 +1,162 @@
+{% extends "orders/base.html" %}
+
+{% block title %}Dashboard · ServicioTech{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold text-primary mb-0">Panel de Control</h2>
+        <p class="text-muted mb-0">Bienvenido, {{ user.get_short_name|default:user.username }}</p>
+    </div>
+    {# BOTÓN SUPERIOR: SOLO VISIBLE PARA INGENIEROS Y ADMIN #}
+    {% if user.is_staff %}
+    <a href="{% url 'orders:create' %}" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-lg me-2"></i>Nueva Orden
+    </a>
+    {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #ffc107 !important;">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-bold">Pendientes (Borrador)</div>
+                <div class="d-flex align-items-center mt-2">
+                    <div class="display-5 fw-bold text-dark">{{ pendientes }}</div>
+                    <div class="ms-auto text-warning fs-2"><i class="bi bi-clock-history"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #0d6efd !important;">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-bold">Mis Asignaciones</div>
+                <div class="d-flex align-items-center mt-2">
+                    <div class="display-5 fw-bold text-dark">{{ mis_asignadas }}</div>
+                    <div class="ms-auto text-primary fs-2"><i class="bi bi-person-workspace"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #198754 !important;">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-bold">Finalizadas</div>
+                <div class="d-flex align-items-center mt-2">
+                    <div class="display-5 fw-bold text-dark">{{ finalizadas }}</div>
+                    <div class="ms-auto text-success fs-2"><i class="bi bi-check-circle"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 border-start-0">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-bold">Total Histórico</div>
+                <div class="d-flex align-items-center mt-2">
+                    <div class="display-5 fw-bold text-secondary">{{ total }}</div>
+                    <div class="ms-auto text-secondary fs-2"><i class="bi bi-archive"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 fw-bold text-primary"><i class="bi bi-activity me-2"></i>Actividad Reciente</h6>
+                <a href="{% url 'orders:list' %}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">Folio</th>
+                            <th>Cliente</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for orden in recientes %}
+                        <tr>
+                            <td class="ps-3 fw-bold">{{ orden.folio }}</td>
+                            <td>
+                                {{ orden.cliente_nombre }}
+                                <div class="small text-muted">{{ orden.titulo|truncatechars:30 }}</div>
+                            </td>
+                            <td>
+                                {% if orden.estatus == 'borrador' %}
+                                    <span class="badge bg-warning text-dark">Borrador</span>
+                                {% else %}
+                                    <span class="badge bg-success">Finalizado</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small">{{ orden.creado|date:"d M" }}</td>
+                            <td class="text-end pe-3">
+                                <a href="{% url 'orders:detail' orden.pk %}" class="btn btn-sm btn-light text-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">No hay actividad reciente.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mt-4 mt-lg-0">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="m-0 fw-bold text-primary"><i class="bi bi-lightning-charge me-2"></i>Accesos Rápidos</h6>
+            </div>
+            <div class="list-group list-group-flush">
+                
+                {# 1. Nueva Orden (SOLO STAFF/INGENIEROS) #}
+                {% if user.is_staff %}
+                <a href="{% url 'orders:create' %}" class="list-group-item list-group-item-action py-3 d-flex align-items-center">
+                    <div class="bg-primary-subtle text-primary rounded p-2 me-3"><i class="bi bi-plus-circle fs-5"></i></div>
+                    <div>
+                        <div class="fw-bold">Nueva Orden</div>
+                        <small class="text-muted">Crear reporte de servicio</small>
+                    </div>
+                </a>
+                {% endif %}
+                
+                {# 2. Consultar Historial (TODOS) #}
+                <a href="{% url 'orders:list' %}" class="list-group-item list-group-item-action py-3 d-flex align-items-center">
+                    <div class="bg-success-subtle text-success rounded p-2 me-3"><i class="bi bi-list-check fs-5"></i></div>
+                    <div>
+                        <div class="fw-bold">Consultar Historial</div>
+                        <small class="text-muted">Buscar reportes anteriores</small>
+                    </div>
+                </a>
+                
+                {# 3. Gestión de Usuarios (SOLO SUPERUSER) #}
+                {% if user.is_superuser %}
+                <a href="{% url 'orders:user_list' %}" class="list-group-item list-group-item-action py-3 d-flex align-items-center">
+                    <div class="bg-warning-subtle text-dark rounded p-2 me-3"><i class="bi bi-people fs-5"></i></div>
+                    <div>
+                        <div class="fw-bold">Usuarios</div>
+                        <small class="text-muted">Gestionar ingenieros</small>
+                    </div>
+                </a>
+                {% endif %}
+                
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

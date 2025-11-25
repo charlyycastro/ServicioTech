@@ -203,7 +203,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Auth: rutas de login/logout
 # ------------------------------------------------------------
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "orders:list"
+LOGIN_REDIRECT_URL = "orders:dashboard"
 LOGOUT_REDIRECT_URL = "login"
 
 

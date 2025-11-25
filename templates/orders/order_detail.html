@@ -288,7 +288,7 @@
 <div class="d-print-none d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 m-0">Orden {{ object.folio }}</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Volver</a>
+    <a class="btn btn-outline-secondary" href="{% url 'orders:dashboard' %}">Volver</a>
     {% if object.cliente_email %}
         <a class="btn btn-secondary" href="{% url 'orders:email' object.pk %}"><i class="bi bi-envelope me-1"></i>Enviar</a>
     {% endif %}
@@ -302,17 +302,21 @@
     <div class="card-body">
       
       {% if object.estatus == 'borrador' %}
-      <div class="alert alert-warning d-flex align-items-center justify-content-between">
-        <div>
-            <i class="bi bi-pause-circle-fill fs-4 me-2"></i>
-            <strong>Orden en Pausa (Borrador)</strong><br>
-            Esta orden aún no ha sido finalizada.
-        </div>
-        <a href="{% url 'orders:update' object.pk %}" class="btn btn-sm btn-warning border-warning shadow-sm fw-bold">
-            <i class="bi bi-pencil-fill me-1"></i>Continuar Editando
-        </a>
-      </div>
-      {% endif %}
+<div class="alert alert-warning d-flex align-items-center justify-content-between">
+  <div>
+      <i class="bi bi-pause-circle-fill fs-4 me-2"></i>
+      <strong>Orden en Pausa (Borrador)</strong><br>
+      Esta orden aún no ha sido finalizada.
+  </div>
+  
+  {# MOSTRAR BOTÓN SOLO A INGENIEROS/ADMIN #}
+  {% if user.is_staff %}
+  <a href="{% url 'orders:update' object.pk %}" class="btn btn-sm btn-warning text-dark fw-bold border-warning shadow-sm">
+      <i class="bi bi-pencil-fill me-1"></i>Continuar Editando
+  </a>
+  {% endif %}
+</div>
+{% endif %}
 
       <div class="row">
         <div class="col-7">

@@ -1,4 +1,5 @@
 {% extends "orders/base.html" %}
+{% load static %}
 
 {% block title %}Listado de Órdenes{% endblock %}
 
@@ -20,21 +21,76 @@
   </div>
 </div>
 
+{# === TARJETA DE FILTROS AVANZADOS === #}
 <div class="card mb-4 shadow-sm">
   <div class="card-body p-3">
     <form method="get" class="row g-2 align-items-center">
-      <div class="col-12 col-md-10">
+        
+      {# CAMPO DE BÚSQUEDA GENERAL #}
+      <div class="col-12 col-md-4 col-lg-3">
         <div class="input-group">
           <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-search"></i></span>
           <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Buscar por folio, cliente, título..." value="{{ query }}">
         </div>
       </div>
-      <div class="col-12 col-md-2 d-grid">
-        <button type="submit" class="btn btn-secondary fw-medium">Filtrar</button>
+
+      {# FILTRO 1: EMPRESA (El que pediste) #}
+      <div class="col-12 col-md-4 col-lg-3">
+        <select name="empresa" class="form-select">
+          <option value="">— Filtrar por Empresa —</option>
+          {% for empresa in empresas %}
+            <option value="{{ empresa }}" {% if filtro_empresa == empresa %}selected{% endif %}>
+              {{ empresa }}
+            </option>
+          {% endfor %}
+        </select>
       </div>
+
+      {# FILTRO 2: ESTATUS #}
+      <div class="col-12 col-md-4 col-lg-2">
+        <select name="estatus" class="form-select">
+          <option value="">— Filtrar Estatus —</option>
+          {% for code, label in STATUS_CHOICES %}
+            <option value="{{ code }}" {% if filtro_estatus == code %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      {# FILTRO 3: INGENIERO #}
+      <div class="col-12 col-md-6 col-lg-2">
+        <select name="ingeniero" class="form-select">
+          <option value="">— Filtrar por Ingeniero —</option>
+          {% for ingeniero in ingenieros_list %}
+            <option value="{{ ingeniero }}" {% if filtro_ingeniero == ingeniero %}selected{% endif %}>
+              {{ ingeniero }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# BOTÓN DE APLICAR FILTRO #}
+      <div class="col-12 col-md-6 col-lg-2 d-grid">
+        <button type="submit" class="btn btn-secondary fw-medium">
+            <i class="bi bi-funnel me-1"></i> Aplicar Filtros
+        </button>
+      </div>
+      
+      {# BOTÓN DE LIMPIAR FILTROS (Solo si hay un filtro activo) #}
+      {% if filtro_empresa or filtro_estatus or filtro_ingeniero or query %}
+        <div class="col-12 text-end">
+            <a href="{% url 'orders:list' %}" class="btn btn-sm btn-link text-danger p-0">
+                <i class="bi bi-x-circle-fill me-1"></i> Limpiar todos los filtros
+            </a>
+        </div>
+      {% endif %}
+
     </form>
   </div>
 </div>
+{# === FIN TARJETA DE FILTROS === #}
+
 
 <form id="bulkDeleteForm" method="post" action="{% url 'orders:bulk_delete' %}">
   {% csrf_token %}
@@ -69,8 +125,8 @@
               <td class="fw-medium ps-3 text-primary">{{ orden.folio }}</td>
               
               <td>
-                <div class="fw-medium">{{ orden.cliente_empresa }}</div>
-                {% if orden.cliente_nombre %}<small class="text-muted">{{ orden.cliente_nombre }}</small>{% endif %}
+                <div class="fw-medium">{{ orden.cliente_nombre }}</div>
+                {% if orden.cliente_contacto %}<small class="text-muted">{{ orden.cliente_contacto }}</small>{% endif %}
               </td>
               
               <td>{{ orden.titulo }}</td>
@@ -115,11 +171,12 @@
   </div>
 </form>
 
+{# PAGINACIÓN #}
 {% if page_obj.has_other_pages %}
 <nav class="mt-4">
   <ul class="pagination justify-content-center mb-0">
     {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">&laquo;</a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}">&laquo;</a></li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
     {% endif %}
@@ -127,11 +184,11 @@
       {% if page_obj.number == i %}
         <li class="page-item active"><span class="page-link">{{ i }}</span></li>
       {% else %}
-        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if query %}&q={{ query }}{% endif %}">{{ i }}</a></li>
+        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}">{{ i }}</a></li>
       {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">&raquo;</a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}">&raquo;</a></li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
     {% endif %}
@@ -142,7 +199,7 @@
 
 {% block scripts %}
 <script>
-  // Script para manejar la selección masiva
+  // Script para manejar la selección masiva (ya existía)
   const selectAll = document.getElementById('select-all');
   const btnDelete = document.getElementById('btn-delete');
   const checks = document.querySelectorAll('.order-check');

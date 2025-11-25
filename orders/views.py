@@ -79,23 +79,58 @@ def guardar_firma(user, data_url):
 
 @login_required
 def order_list(request):
-    query = request.GET.get('q', '').strip()
-    # Ordenar por fecha de creación descendente
+    # Inicializar la consulta base
     orders = ServiceOrder.objects.all().order_by('-creado')
 
+    # --- 1. FILTRO DE BÚSQUEDA GENERAL (q) ---
+    query = request.GET.get('q', '').strip()
     if query:
         orders = orders.filter(
             Q(folio__icontains=query) |
-            Q(cliente_nombre__icontains=query) |  # Solo buscamos en el nombre (empresa)
-            Q(cliente_contacto__icontains=query) | # Agregamos búsqueda por contacto
+            Q(cliente_nombre__icontains=query) |  
+            Q(cliente_contacto__icontains=query) | 
             Q(titulo__icontains=query)
         )
 
-    paginator = Paginator(orders, 10)
+    # --- 2. PREPARACIÓN DE FILTROS DESPLEGABLES ---
+    # Obtenemos la lista única de empresas (clientes) para el dropdown
+    empresas = ServiceOrder.objects.exclude(cliente_nombre__isnull=True).exclude(cliente_nombre__exact='').values_list('cliente_nombre', flat=True).distinct().order_by('cliente_nombre')
+    
+    # Obtenemos la lista única de ingenieros (solo los que tienen órdenes asignadas)
+    ingenieros_list = ServiceOrder.objects.exclude(ingeniero_nombre__isnull=True).exclude(ingeniero_nombre__exact='').values_list('ingeniero_nombre', flat=True).distinct().order_by('ingeniero_nombre')
+
+    # --- 3. APLICACIÓN DE FILTROS ESPECÍFICOS ---
+    filtro_empresa = request.GET.get('empresa')
+    filtro_estatus = request.GET.get('estatus')
+    filtro_ingeniero = request.GET.get('ingeniero')
+
+    if filtro_empresa:
+        orders = orders.filter(cliente_nombre=filtro_empresa)
+
+    if filtro_estatus:
+        orders = orders.filter(estatus=filtro_estatus)
+    
+    if filtro_ingeniero:
+        orders = orders.filter(ingeniero_nombre=filtro_ingeniero)
+
+
+    # PAGINACIÓN
+    paginator = Paginator(orders, 15) # Aumenté a 15 órdenes por página para que se vea mejor
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    ctx = {'page_obj': page_obj, 'query': query}
+    ctx = {
+        'page_obj': page_obj, 
+        'query': query,
+        'empresas': empresas,
+        'ingenieros_list': ingenieros_list,
+        # Pasamos los filtros activos para mantener el estado del dropdown
+        'filtro_empresa': filtro_empresa,
+        'filtro_estatus': filtro_estatus,
+        'filtro_ingeniero': filtro_ingeniero,
+        # Opciones de estatus para el select
+        'STATUS_CHOICES': ServiceOrder.STATUS_CHOICES 
+    }
     return render(request, 'orders/order_list.html', ctx)
 
 @login_required
@@ -466,3 +501,33 @@ def logout_view(request):
     logout(request)
     messages.info(request, "Has cerrado sesión.")
     return redirect("login")
+
+
+
+# ================================================================
+# DASHBOARD (PANTALLA DE INICIO)
+# ================================================================
+
+@login_required
+def dashboard_view(request):
+    # 1. Contadores Generales
+    total_ordenes = ServiceOrder.objects.count()
+    pendientes = ServiceOrder.objects.filter(estatus='borrador').count()
+    finalizadas = ServiceOrder.objects.filter(estatus='finalizado').count()
+    
+    # 2. Contadores Personales (Solo del usuario logueado)
+    # Buscamos por nombre completo o usuario, igual que al crear
+    nombre_usuario = request.user.get_full_name() or request.user.username
+    mis_asignadas = ServiceOrder.objects.filter(ingeniero_nombre__icontains=nombre_usuario, estatus='borrador').count()
+
+    # 3. Listado Rápido (Las 5 más recientes)
+    recientes = ServiceOrder.objects.all().order_by('-creado')[:5]
+
+    context = {
+        'total': total_ordenes,
+        'pendientes': pendientes,
+        'finalizadas': finalizadas,
+        'mis_asignadas': mis_asignadas,
+        'recientes': recientes,
+    }
+    return render(request, 'orders/dashboard.html', context)
