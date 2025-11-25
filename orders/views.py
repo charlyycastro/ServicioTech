@@ -86,8 +86,8 @@ def order_list(request):
     if query:
         orders = orders.filter(
             Q(folio__icontains=query) |
-            Q(cliente_empresa__icontains=query) |
-            Q(cliente_nombre__icontains=query) |
+            Q(cliente_nombre__icontains=query) |  # Solo buscamos en el nombre (empresa)
+            Q(cliente_contacto__icontains=query) | # Agregamos búsqueda por contacto
             Q(titulo__icontains=query)
         )
 
