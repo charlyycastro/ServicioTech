@@ -21,23 +21,44 @@
   </div>
 </div>
 
-{# === TARJETA DE FILTROS AVANZADOS === #}
+{# === TARJETA DE FILTROS AVANZADOS (Harmonizada Final) === #}
 <div class="card mb-4 shadow-sm">
   <div class="card-body p-3">
-    <form method="get" class="row g-2 align-items-center">
+    <form method="get" class="row g-3 align-items-end">
         
+      {# --- PRIMERA FILA: BÚSQUEDA Y FECHAS --- #}
+      
       {# CAMPO DE BÚSQUEDA GENERAL #}
-      <div class="col-12 col-md-4 col-lg-3">
+      <div class="col-12 col-md-6 col-lg-4">
+        <label class="form-label small fw-bold text-muted mb-1">Buscar Texto (Folio, Cliente, Título)</label>
         <div class="input-group">
           <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-search"></i></span>
-          <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Buscar por folio, cliente, título..." value="{{ query }}">
+          <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Escribe aquí para buscar..." value="{{ query }}">
         </div>
       </div>
+      
+      {# RANGO DE FECHAS DESDE #}
+      <div class="col-6 col-md-3 col-lg-2">
+        <label class="form-label small fw-bold text-muted mb-1">Desde</label>
+        <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}">
+      </div>
+      
+      {# RANGO DE FECHAS HASTA #}
+      <div class="col-6 col-md-3 col-lg-2">
+        <label class="form-label small fw-bold text-muted mb-1">Hasta</label>
+        <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}">
+      </div>
 
-      {# FILTRO 1: EMPRESA (El que pediste) #}
+      {# Separador Visual #}
+      <div class="col-12"><hr class="my-2"></div>
+
+      {# --- SEGUNDA FILA: CATEGORÍAS Y BOTÓN ÚNICO --- #}
+
+      {# FILTRO 1: EMPRESA #}
       <div class="col-12 col-md-4 col-lg-3">
+        <label class="form-label small fw-bold text-muted mb-1">Empresa</label>
         <select name="empresa" class="form-select">
-          <option value="">— Filtrar por Empresa —</option>
+          <option value="">— Todas las Empresas —</option>
           {% for empresa in empresas %}
             <option value="{{ empresa }}" {% if filtro_empresa == empresa %}selected{% endif %}>
               {{ empresa }}
@@ -48,8 +69,9 @@
 
       {# FILTRO 2: ESTATUS #}
       <div class="col-12 col-md-4 col-lg-2">
+        <label class="form-label small fw-bold text-muted mb-1">Estatus</label>
         <select name="estatus" class="form-select">
-          <option value="">— Filtrar Estatus —</option>
+          <option value="">— Todos los Estatus —</option>
           {% for code, label in STATUS_CHOICES %}
             <option value="{{ code }}" {% if filtro_estatus == code %}selected{% endif %}>
               {{ label }}
@@ -59,9 +81,10 @@
       </div>
       
       {# FILTRO 3: INGENIERO #}
-      <div class="col-12 col-md-6 col-lg-2">
+      <div class="col-12 col-md-4 col-lg-3">
+        <label class="form-label small fw-bold text-muted mb-1">Ingeniero</label>
         <select name="ingeniero" class="form-select">
-          <option value="">— Filtrar por Ingeniero —</option>
+          <option value="">— Todos los Ingenieros —</option>
           {% for ingeniero in ingenieros_list %}
             <option value="{{ ingeniero }}" {% if filtro_ingeniero == ingeniero %}selected{% endif %}>
               {{ ingeniero }}
@@ -70,15 +93,16 @@
         </select>
       </div>
 
-      {# BOTÓN DE APLICAR FILTRO #}
-      <div class="col-12 col-md-6 col-lg-2 d-grid">
-        <button type="submit" class="btn btn-secondary fw-medium">
+      {# BOTÓN ÚNICO DE APLICAR (Aplica todos los 6 filtros) #}
+      <div class="col-12 col-md-12 col-lg-4 d-grid">
+        <label class="form-label small fw-bold text-muted mb-1">&nbsp;</label>
+        <button type="submit" class="btn btn-primary fw-bold">
             <i class="bi bi-funnel me-1"></i> Aplicar Filtros
         </button>
       </div>
       
-      {# BOTÓN DE LIMPIAR FILTROS (Solo si hay un filtro activo) #}
-      {% if filtro_empresa or filtro_estatus or filtro_ingeniero or query %}
+      {# BOTÓN DE LIMPIAR FILTROS (Visual si hay filtros activos) #}
+      {% if filtro_empresa or filtro_estatus or filtro_ingeniero or query or fecha_inicio or fecha_fin %}
         <div class="col-12 text-end">
             <a href="{% url 'orders:list' %}" class="btn btn-sm btn-link text-danger p-0">
                 <i class="bi bi-x-circle-fill me-1"></i> Limpiar todos los filtros
@@ -176,7 +200,9 @@
 <nav class="mt-4">
   <ul class="pagination justify-content-center mb-0">
     {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}">&laquo;</a></li>
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">&laquo;</a>
+      </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
     {% endif %}
@@ -184,11 +210,15 @@
       {% if page_obj.number == i %}
         <li class="page-item active"><span class="page-link">{{ i }}</span></li>
       {% else %}
-        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}">{{ i }}</a></li>
+        <li class="page-item">
+          <a class="page-link" href="?page={{ i }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">{{ i }}</a>
+        </li>
       {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}">&raquo;</a></li>
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">&raquo;</a>
+      </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
     {% endif %}

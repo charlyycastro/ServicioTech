@@ -75,24 +75,48 @@ def guardar_firma(user, data_url):
 
 @login_required
 def order_list(request):
-    query = request.GET.get('q', '').strip()
     orders = ServiceOrder.objects.all().order_by('-creado')
 
-    # Aplicación de Filtros Específicos (Empresa, Estatus, Ingeniero)
+    # --- 1. CAPTURA DE PARÁMETROS ---
+    query = request.GET.get('q', '').strip()
     filtro_empresa = request.GET.get('empresa')
     filtro_estatus = request.GET.get('estatus')
     filtro_ingeniero = request.GET.get('ingeniero')
     
+    # NUEVOS FILTROS DE FECHA
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+
+    # --- 2. APLICACIÓN DE FILTROS AL QUERYSET ---
     if query:
-        orders = orders.filter(Q(folio__icontains=query) | Q(cliente_nombre__icontains=query) | Q(cliente_contacto__icontains=query) | Q(titulo__icontains=query))
+        orders = orders.filter(
+            Q(folio__icontains=query) |
+            Q(cliente_nombre__icontains=query) |  
+            Q(cliente_contacto__icontains=query) | 
+            Q(titulo__icontains=query)
+        )
+
     if filtro_empresa:
         orders = orders.filter(cliente_nombre=filtro_empresa)
+
     if filtro_estatus:
         orders = orders.filter(estatus=filtro_estatus)
+    
     if filtro_ingeniero:
         orders = orders.filter(ingeniero_nombre=filtro_ingeniero)
 
-    # Obtenemos la lista de opciones para los dropdowns del template
+    # Lógica de Rango de Fechas (Filtrado Temporal)
+    if fecha_inicio:
+        # __gte = Mayor o igual a la fecha de inicio
+        orders = orders.filter(creado__date__gte=fecha_inicio) 
+    
+    if fecha_fin:
+        # __lte = Menor o igual a la fecha de fin
+        orders = orders.filter(creado__date__lte=fecha_fin)
+
+
+    # --- 3. PREPARACIÓN DE CONTEXTO Y PAGINACIÓN ---
     empresas = ServiceOrder.objects.exclude(cliente_nombre__isnull=True).exclude(cliente_nombre__exact='').values_list('cliente_nombre', flat=True).distinct().order_by('cliente_nombre')
     ingenieros_list = ServiceOrder.objects.exclude(ingeniero_nombre__isnull=True).exclude(ingeniero_nombre__exact='').values_list('ingeniero_nombre', flat=True).distinct().order_by('ingeniero_nombre')
 
@@ -108,6 +132,8 @@ def order_list(request):
         'filtro_empresa': filtro_empresa,
         'filtro_estatus': filtro_estatus,
         'filtro_ingeniero': filtro_ingeniero,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,       
         'STATUS_CHOICES': ServiceOrder.STATUS_CHOICES 
     }
     return render(request, 'orders/order_list.html', ctx)
