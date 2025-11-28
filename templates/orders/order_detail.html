@@ -1,4 +1,4 @@
-{% extends "orders/base.html" %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}{{ object.folio }} · ServicioTech{% endblock %}
@@ -344,8 +344,14 @@
             <dt class="col-4">Ubicación</dt>
             <dd class="col-8">{{ object.ubicacion|default:"—" }}</dd>
 
-            <dt class="col-4">Contacto interno</dt>
-            <dd class="col-8">{{ object.contacto_nombre|default:"—" }}</dd>
+            <dt class="col-4">Contacto interno (Visor)</dt>
+            <dd class="col-8">
+                {% if object.visor %}
+                    {{ object.visor.get_full_name|default:object.visor.username }}
+                {% else %}
+                    {{ object.contacto_nombre|default:"—" }}
+                {% endif %}
+            </dd>
 
             <dt class="col-4">Tipo(s) de servicio</dt>
             <dd class="col-8">
@@ -780,9 +786,25 @@
             <div class="signature-label">Cliente</div>
           </td>
 
-          <td>
+         <td>
+            <div class="signature-img-container">
+               {% if object.visor and object.visor.profile.firma %}
+                 <img src="{{ object.visor.profile.firma.url }}" style="max-height: 50px; max-width: 90%;">
+               {% endif %}
+            </div>
             <div class="signature-space"></div>
-            <div class="signature-label">Contacto ventas</div>
+            <div class="signature-label">
+                Contacto ventas<br>
+                <span style="font-weight:normal; font-size:8px;">
+                    {# AQUÍ ESTABA EL ERROR: Agregamos el IF #}
+                    {% if object.visor %}
+                        {{ object.visor.get_full_name|default:object.visor.username }}
+                    {% else %}
+                        {# Si no hay visor seleccionado, mostramos el texto antiguo o vacío #}
+                        {{ object.contacto_nombre|default:"" }}
+                    {% endif %}
+                </span>
+            </div>
           </td>
         </tr>
       </table>

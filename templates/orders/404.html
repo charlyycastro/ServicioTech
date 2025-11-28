@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}404 - No Encontrado{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="display-1 fw-bold" style="color: var(--ino-blue);">404</h1>
+    <h2 class="h3 mb-4 text-secondary">Página no encontrada</h2>
+    <p class="lead mb-4">Lo sentimos, la página que estás buscando no existe o fue movida.</p>
+    <a href="{% url 'orders:dashboard' %}" class="btn btn-primary">Volver al Dashboard</a>
+</div>
+{% endblock %}

@@ -1,203 +1,190 @@
-{% extends 'orders/base.html' %}
+{% extends "base.html" %}
+{% load static %}
 
-{% block title %}{{ titulo }}{% endblock %}
+{% block title %}{{ titulo }} · ServicioTech{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card shadow border-0 mt-3">
-            <div class="card-header bg-primary text-white py-3">
-                <h4 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2"></i>{{ titulo }}</h4>
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-lg border-0 rounded-lg">
+            <div class="card-header bg-primary text-white d-flex align-items-center">
+                <i class="bi bi-person-fill-add me-2 fs-4"></i>
+                <h3 class="fw-bold my-2">{{ titulo }}</h3>
             </div>
             <div class="card-body p-4">
-                <form method="post" id="userForm" novalidate>
+                <form method="post" id="user-form">
                     {% csrf_token %}
-                    
+
                     {% if form.errors %}
-                        <div class="alert alert-danger">
-                            <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Error:</strong>
-                            Revisa los campos marcados abajo.
+                        <div class="alert alert-danger" role="alert">
+                            <strong>¡Atención!</strong> Revisa los siguientes errores:
+                            {{ form.non_field_errors }}
+                            <ul>
+                                {% for field in form %}
+                                    {% if field.errors %}<li>{{ field.label }}: {{ field.errors|striptags }}</li>{% endif %}
+                                {% endfor %}
+                            </ul>
                         </div>
                     {% endif %}
 
-                    <h5 class="text-primary mb-3 border-bottom pb-2">1. Datos Personales</h5>
-                    <div class="row g-3 mb-4">
+                    {# 1. Datos Personales #}
+                    <h5 class="fw-bold text-primary mb-3 mt-4">1. Datos Personales</h5>
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Nombre(s)</label>
+                            <label class="form-label">Nombre(s)</label>
                             {{ form.first_name }}
-                            <div class="form-text">Ejemplo: Juan Carlos</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Apellidos</label>
+                            <label class="form-label">Apellidos</label>
                             {{ form.last_name }}
-                            <div class="form-text">Ejemplo: Pérez López</div>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-bold">Correo Electrónico</label>
+                            <label class="form-label">Correo Electrónico</label>
                             {{ form.email }}
-                            <div class="form-text">Aquí llegarán las notificaciones y reportes.</div>
                         </div>
                     </div>
 
-                    <h5 class="text-primary mb-3 border-bottom pb-2">2. Datos de Acceso</h5>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Nombre de Usuario (Login)</label>
-                        {{ form.username }}
-                        <div class="form-text text-muted">Este es el nombre único para iniciar sesión en el sistema.</div>
-                        {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors.0 }}</div>{% endif %}
-                    </div>
-
-                   <div class="row g-3 mb-4">
-    <div class="col-md-6">
-        <label class="form-label fw-bold">{{ form.password.label }}</label>
-        {{ form.password }}
-    </div>
-    
-    <div class="col-md-6">
-        <label class="form-label fw-bold">{{ form.confirm_password.label }}</label>
-        {{ form.confirm_password }}
-        
-        {# Error de Django (si existe) #}
-        {% if form.confirm_password.errors %}<div class="text-danger small fw-bold">{{ form.confirm_password.errors.0 }}</div>{% endif %}
-        
-        {# NUEVO: Contenedor para el error de JavaScript #}
-        <div id="password-error-msg" class="text-danger small fw-bold"></div>
-    </div>
-</div>
-
-                    <h5 class="text-primary mb-3 border-bottom pb-2">3. Permisos y Firma</h5>
-                    
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Rol del Usuario</label>
-                        {{ form.role }}
-                        <div class="form-text">
-                            Selecciona "Ingeniero" para habilitar la firma.
+                    {# 2. Datos de Acceso #}
+                    <h5 class="fw-bold text-primary mb-3 mt-5">2. Datos de Acceso</h5>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Usuario (Login)</label>
+                            {{ form.username }}
                         </div>
-                    </div>
-
-                    <div id="signature-section" class="mb-4 p-3 bg-light rounded border" style="display: none;">
-                        <label class="form-label fw-bold d-flex justify-content-between">
-                            <span><i class="bi bi-pen me-2"></i>Firma del Ingeniero</span>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-sig">Limpiar</button>
-                        </label>
                         
-                        <div style="border: 2px dashed #ccc; background: white; height: 200px; width: 100%;">
-                            <canvas id="user-sig-canvas" style="width: 100%; height: 100%; display: block; touch-action: none;"></canvas>
+                        {# Contraseñas #}
+                        <div class="col-md-6">
+                            <label class="form-label">Contraseña</label>
+                            {{ form.password }}
                         </div>
-                        <div class="form-text mt-1">Dibuja la firma aquí usando el mouse o el dedo.</div>
-                        
-                        {{ form.firma_b64 }}
+
+                        <div class="col-md-6">
+                            <label class="form-label">Confirmar contraseña</label>
+                            {{ form.confirm_password }}
+                            <div id="password-error-msg" class="text-danger small fw-bold mt-1"></div>
+                        </div>
                     </div>
 
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{% url 'orders:user_list' %}" class="btn btn-outline-secondary px-4">Cancelar</a>
-                        <button type="submit" class="btn btn-primary px-5 fw-bold">Guardar Usuario</button>
+                    {# 3. Permisos y Firma #}
+                    <h5 class="fw-bold text-primary mb-3 mt-5">3. Permisos y Firma</h5>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Rol del Usuario</label>
+                            {{ form.role }}
+                            <div class="form-text text-muted">Selecciona el rol para ver opciones de firma.</div>
+                        </div>
+                    </div>
+
+                    {# Área de Firma DIGITAL #}
+                    <div id="signature-area" class="mt-4 p-3 border rounded" style="display:none;">
+                        <h6 class="fw-bold mb-3">Firma Digital del Usuario</h6>
+                        <p class="text-muted small">Dibuja la firma aquí (Requerida para Ingenieros, opcional para Visores).</p>
+                        
+                        <canvas id="signature-pad" class="border bg-light rounded w-100" height="150" style="touch-action: none; cursor: crosshair;"></canvas>
+                        
+                        <div class="d-flex justify-content-end mt-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm me-2" id="clear-signature">Borrar</button>
+                            <span class="btn btn-sm btn-outline-secondary disabled" id="save-signature-status">Sin firma</span>
+                        </div>
+                        
+                        {{ form.firma_b64 }} {# Campo oculto #}
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="{% url 'orders:user_list' %}" class="btn btn-secondary me-2">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="submit-btn">Guardar Usuario</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{# --- AQUÍ ESTABA EL ERROR: CAMBIAMOS 'extra_js' POR 'scripts' --- #}
+{% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const roleSelect = document.querySelector('select[name="role"]');
-        const sigSection = document.getElementById('signature-section');
-        const canvas = document.getElementById('user-sig-canvas');
-        const hiddenInput = document.getElementById('id_firma_b64');
-        const clearBtn = document.getElementById('clear-sig');
-        let signaturePad = null;
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // 1. VALIDACIÓN DE CONTRASEÑAS
+        const pass1 = document.getElementById('id_password');
+        const pass2 = document.getElementById('id_confirm_password');
+        const errorMsg = document.getElementById('password-error-msg');
 
-        // 1. Inicializar SignaturePad
-        if (canvas) {
-            signaturePad = new SignaturePad(canvas, {
-                backgroundColor: 'rgb(255, 255, 255)',
-                penColor: 'rgb(0, 0, 0)'
-            });
+        function validarPasswords() {
+            if (!pass1 || !pass2) return;
+            const v1 = pass1.value;
+            const v2 = pass2.value;
+
+            if (v1 === '' && v2 === '') {
+                pass2.classList.remove('is-invalid', 'is-valid');
+                errorMsg.textContent = "";
+                return;
+            }
+
+            if (v1 !== v2) {
+                pass2.classList.add('is-invalid');
+                pass2.classList.remove('is-valid');
+                errorMsg.textContent = "Las contraseñas no coinciden.";
+            } else {
+                pass2.classList.remove('is-invalid');
+                pass2.classList.add('is-valid');
+                errorMsg.textContent = "";
+            }
         }
 
-        // 2. Función para ajustar el tamaño del Canvas
-        function resizeCanvas() {
-            if (!canvas) return;
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            // Solo redimensionar si el canvas es visible y tiene ancho
-            if (canvas.offsetWidth > 0) {
+        if (pass1 && pass2) {
+            pass1.addEventListener('keyup', validarPasswords);
+            pass2.addEventListener('keyup', validarPasswords);
+        }
+
+        // 2. LÓGICA DE FIRMA
+        const roleSelect = document.getElementById('id_role');
+        const signatureArea = document.getElementById('signature-area');
+        const canvas = document.getElementById('signature-pad');
+        const signatureInput = document.getElementById('id_firma_b64');
+        let signaturePad = null;
+
+        function initPad() {
+            if (canvas && !signaturePad) {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
-                
-                // Si ya había firma, habría que redibujarla o limpiarla, 
-                // aquí limpiamos para evitar distorsiones al redimensionar.
-                // Si quieres conservar, necesitarías guardar los datos antes.
+                signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgb(255, 255, 255)' });
+
+                signaturePad.addEventListener("endStroke", () => {
+                    if (!signaturePad.isEmpty()) {
+                        signatureInput.value = signaturePad.toDataURL();
+                        document.getElementById('save-signature-status').textContent = "Firma Lista";
+                        document.getElementById('save-signature-status').className = "btn btn-sm btn-success disabled";
+                    }
+                });
             }
         }
-        window.addEventListener("resize", resizeCanvas);
 
-        // 3. Mostrar/Ocultar y Recalcular tamaño
         function toggleSignature() {
-            if (roleSelect.value === 'ingeniero') {
-                sigSection.style.display = 'block';
-                // CRUCIAL: Esperar un microsegundo a que el navegador muestre el div para calcular tamaño
-                setTimeout(resizeCanvas, 50); 
+            const role = roleSelect.value;
+            if (role === 'ingeniero' || role === 'visor' || role === 'superuser') {
+                signatureArea.style.display = 'block';
+                if (!signaturePad) setTimeout(initPad, 100); 
             } else {
-                sigSection.style.display = 'none';
+                signatureArea.style.display = 'none';
             }
         }
 
-        // Eventos
-        roleSelect.addEventListener('change', toggleSignature);
-        clearBtn.addEventListener('click', () => { if(signaturePad) signaturePad.clear(); });
-        
-        // Ejecutar al inicio
-        toggleSignature();
+        if (roleSelect) {
+            roleSelect.addEventListener('change', toggleSignature);
+            toggleSignature(); 
+        }
 
-        // 4. Guardar al enviar
-        document.getElementById('userForm').addEventListener('submit', function(e) {
-            // Solo guardamos si es Ingeniero y hay dibujo
-            if (roleSelect.value === 'ingeniero' && signaturePad && !signaturePad.isEmpty()) {
-                hiddenInput.value = signaturePad.toDataURL();
-            }
+        document.getElementById('clear-signature').addEventListener('click', function() {
+            if (signaturePad) signaturePad.clear();
+            signatureInput.value = '';
+            document.getElementById('save-signature-status').textContent = "Sin firma";
+            document.getElementById('save-signature-status').className = "btn btn-sm btn-outline-secondary disabled";
         });
     });
-
-    /* --- VALIDACIÓN EN TIEMPO REAL DE CONTRASEÑAS --- */
-const passwordInput = document.getElementById('id_password');
-const confirmInput = document.getElementById('id_confirm_password');
-const errorDiv = document.getElementById('password-error-msg');
-
-if (passwordInput && confirmInput) {
-    function checkPasswordsRealTime() {
-        const p1 = passwordInput.value;
-        const p2 = confirmInput.value;
-
-        // Limpiar el estado visual
-        confirmInput.classList.remove('is-invalid', 'is-valid');
-        errorDiv.textContent = "";
-
-        // Si se está editando y los campos están vacíos, no hacer nada
-        if (p1.length === 0 && p2.length === 0) {
-            return;
-        }
-
-        // Si la confirmación tiene texto, hacer la comparación
-        if (p2.length > 0) {
-            if (p1 !== p2) {
-                // No coinciden
-                confirmInput.classList.add('is-invalid');
-                errorDiv.textContent = "Las contraseñas no coinciden.";
-            } else {
-                // Coinciden (opcionalmente marcamos en verde)
-                confirmInput.classList.add('is-valid');
-            }
-        }
-    }
-
-    // Escuchar el evento de entrada en ambos campos
-    confirmInput.addEventListener('keyup', checkPasswordsRealTime);
-    confirmInput.addEventListener('blur', checkPasswordsRealTime);
-    passwordInput.addEventListener('keyup', checkPasswordsRealTime);
-}
 </script>
 {% endblock %}

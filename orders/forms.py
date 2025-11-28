@@ -18,7 +18,7 @@ class ServiceOrderForm(forms.ModelForm):
         model = ServiceOrder
         fields = [
             "cliente_nombre", "cliente_contacto", "cliente_email", "cliente_telefono",
-            "ubicacion", "fecha_servicio", "contacto_nombre", "tipos_servicio",
+            "ubicacion", "fecha_servicio", "contacto_nombre", "visor", "tipos_servicio", # <--- AGREGADO 'visor'
             "tipo_servicio_otro", "ingeniero_nombre", "ticket_id", "titulo",
             "actividades", "comentarios", "horas", "costo_mxn", "costo_no_aplica",
             "costo_se_cotizara", "reagenda", "reagenda_fecha", "reagenda_hora",
@@ -32,12 +32,20 @@ class ServiceOrderForm(forms.ModelForm):
             "comentarios": forms.Textarea(attrs={"rows": 3}),
             "indicaciones_especiales": forms.Textarea(attrs={"rows": 2}),
             "estatus": forms.HiddenInput(),
+            # Widget para que el Visor se vea bonito con Bootstrap
+            "visor": forms.Select(attrs={'class': 'form-select'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Selector de Ingenieros
+        # 1. Configuración del campo VISOR (Lista desplegable de usuarios)
+        # Filtramos usuarios activos y los ordenamos por nombre
+        self.fields['visor'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'username')
+        self.fields['visor'].label = "Contacto Ventas (Visor)"
+        self.fields['visor'].empty_label = "Seleccione un usuario..."
+
+        # 2. Selector de Ingenieros (Texto manual basado en usuarios staff)
         ingenieros = User.objects.filter(is_staff=True).order_by('first_name')
         opciones = [(u.get_full_name() or u.username, u.get_full_name() or u.username) for u in ingenieros]
         self.fields['ingeniero_nombre'].widget = forms.Select(choices=[('', 'Seleccione...')] + opciones)

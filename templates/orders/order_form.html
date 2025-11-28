@@ -1,4 +1,4 @@
-{% extends 'orders/base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {# ---- CSS específico para este template ---- #}
@@ -170,8 +170,11 @@
             </div>
             
             <div class="col-md-3">
-              <label class="form-label">Contacto Interno</label>
-              {{ form.contacto_nombre }}
+              <label class="form-label fw-bold text-primary">Contacto Ventas (Visor)</label>
+              {{ form.visor }} 
+              {% if form.visor.errors %}
+                 <div class="invalid-feedback-custom d-block">{{ form.visor.errors.0 }}</div>
+              {% endif %}
             </div>
 
             <div class="col-md-8">
@@ -397,6 +400,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'orders/signature.js' %}"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   

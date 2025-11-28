@@ -1,4 +1,4 @@
-{% extends "orders/base.html" %}
+{% extends 'base.html' %}
 
 {% block title %}Dashboard · ServicioTech{% endblock %}
 
@@ -16,53 +16,68 @@
     {% endif %}
 </div>
 
+{# Reemplaza el bloque <div class="row g-3 mb-4">...</div> entero #}
 <div class="row g-3 mb-4">
+    {# 1. Pendientes (Borrador) - LINK FUNCIONAL #}
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #ffc107 !important;">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase fw-bold">Pendientes (Borrador)</div>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="display-5 fw-bold text-dark">{{ pendientes }}</div>
-                    <div class="ms-auto text-warning fs-2"><i class="bi bi-clock-history"></i></div>
+        <a href="{% url 'orders:list' %}?estatus=borrador" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #ffc107 !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Pendientes (Borrador)</div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="display-5 fw-bold text-dark">{{ pendientes }}</div>
+                        <div class="ms-auto text-warning fs-2"><i class="bi bi-clock-history"></i></div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 
+    {# 2. Mis Asignaciones (TODO del Ingeniero) - LINK FUNCIONAL #}
+    {% with current_user=user.get_full_name|default:user.username %}
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #0d6efd !important;">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase fw-bold">Mis Asignaciones</div>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="display-5 fw-bold text-dark">{{ mis_asignadas }}</div>
-                    <div class="ms-auto text-primary fs-2"><i class="bi bi-person-workspace"></i></div>
+        <a href="{% url 'orders:list' %}?ingeniero={{ current_user|urlencode }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #0d6efd !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Mis Asignaciones</div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="display-5 fw-bold text-dark">{{ mis_asignadas }}</div>
+                        <div class="ms-auto text-primary fs-2"><i class="bi bi-person-workspace"></i></div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
+    </div>
+    {% endwith %}
+
+    {# 3. Finalizadas (Verde/Éxito) - LINK FUNCIONAL #}
+    <div class="col-md-3">
+        <a href="{% url 'orders:list' %}?estatus=finalizado" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #198754 !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Finalizadas</div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="display-5 fw-bold text-dark">{{ finalizadas }}</div>
+                        <div class="ms-auto text-success fs-2"><i class="bi bi-check-circle"></i></div>
+                    </div>
+                </div>
+            </div>
+        </a>
     </div>
 
+    {# 4. Total Histórico (Gris) - LINK FUNCIONAL (Ver todas) #}
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #198754 !important;">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase fw-bold">Finalizadas</div>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="display-5 fw-bold text-dark">{{ finalizadas }}</div>
-                    <div class="ms-auto text-success fs-2"><i class="bi bi-check-circle"></i></div>
+        <a href="{% url 'orders:list' %}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 border-start-0">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Total Histórico</div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="display-5 fw-bold text-dark">{{ total }}</div>
+                        <div class="ms-auto text-secondary fs-2"><i class="bi bi-archive"></i></div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100 border-start-0">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase fw-bold">Total Histórico</div>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="display-5 fw-bold text-secondary">{{ total }}</div>
-                    <div class="ms-auto text-secondary fs-2"><i class="bi bi-archive"></i></div>
-                </div>
-            </div>
-        </div>
+        </a>
     </div>
 </div>
 
