@@ -1,11 +1,23 @@
-# Ignorar base de datos y secretos
+# --- SEGURIDAD (Claves y Secretos) ---
 .env
-db.sqlite3
-*.json
+*.env
+.DS_Store
 
-# Ignorar archivos compilados de Python (basura)
+# --- ARCHIVOS DE USUARIO (Firmas, Fotos, PDFs generados) ---
+# Ignoramos todo lo que esté dentro de media
+media/
+# Pero (opcional) mantenemos la carpeta vacía para que no de error
+!media/.gitkeep 
+
+# --- BASE DE DATOS LOCAL ---
+db.sqlite3
+
+# --- PYTHON Y ENTORNOS ---
 __pycache__/
 *.pyc
+.venv/
+venv/
+env/
 
-# Ignorar archivos subidos por usuarios (firmas)
-media/
+# --- ARCHIVOS ESTÁTICOS RECOPILADOS (Si usas collectstatic) ---
+staticfiles/

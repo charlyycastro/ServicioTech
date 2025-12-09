@@ -1,9 +1,0 @@
-@media print {
-  nav, .navbar, .d-print-none { display: none !important; }
-  .print-card { box-shadow: none !important; border: none !important; }
-  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  @page { size: A4; margin: 14mm 12mm; }
-  .print-logo { max-height: 38px; }
-  table { page-break-inside: auto; }
-  tr, img { page-break-inside: avoid; }
-}

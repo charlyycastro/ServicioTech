@@ -8,6 +8,7 @@
         <h2 class="fw-bold text-primary mb-0">Panel de Control</h2>
         <p class="text-muted mb-0">Bienvenido, {{ user.get_short_name|default:user.username }}</p>
     </div>
+    
     {# BOTÓN SUPERIOR: SOLO VISIBLE PARA INGENIEROS Y ADMIN #}
     {% if user.is_staff %}
     <a href="{% url 'orders:create' %}" class="btn btn-primary shadow-sm">
@@ -17,52 +18,61 @@
 </div>
 
 <div class="row g-3 mb-4">
+    
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #ffc107 !important;">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase fw-bold">Pendientes (Borrador)</div>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="display-5 fw-bold text-dark">{{ pendientes }}</div>
-                    <div class="ms-auto text-warning fs-2"><i class="bi bi-clock-history"></i></div>
+        <a href="{% url 'orders:list' %}?estatus=borrador" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 card-hover" style="border-left: 5px solid #ffc107 !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Pendientes</div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="display-5 fw-bold text-dark">{{ pendientes }}</div>
+                        <div class="ms-auto text-warning fs-2"><i class="bi bi-clock-history"></i></div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #0d6efd !important;">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase fw-bold">Mis Asignaciones</div>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="display-5 fw-bold text-dark">{{ mis_asignadas }}</div>
-                    <div class="ms-auto text-primary fs-2"><i class="bi bi-person-workspace"></i></div>
+        <a href="{% url 'orders:list' %}?ingeniero={{ user.get_full_name|default:user.username }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 card-hover" style="border-left: 5px solid #0d6efd !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Mis Asignaciones</div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="display-5 fw-bold text-dark">{{ mis_asignadas }}</div>
+                        <div class="ms-auto text-primary fs-2"><i class="bi bi-person-workspace"></i></div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #198754 !important;">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase fw-bold">Finalizadas</div>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="display-5 fw-bold text-dark">{{ finalizadas }}</div>
-                    <div class="ms-auto text-success fs-2"><i class="bi bi-check-circle"></i></div>
+        <a href="{% url 'orders:list' %}?estatus=finalizado" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 card-hover" style="border-left: 5px solid #198754 !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Finalizadas</div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="display-5 fw-bold text-dark">{{ finalizadas }}</div>
+                        <div class="ms-auto text-success fs-2"><i class="bi bi-check-circle"></i></div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100 border-start-0">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase fw-bold">Total Histórico</div>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="display-5 fw-bold text-secondary">{{ total }}</div>
-                    <div class="ms-auto text-secondary fs-2"><i class="bi bi-archive"></i></div>
+        <a href="{% url 'orders:list' %}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 border-start-0 card-hover">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Total Histórico</div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="display-5 fw-bold text-secondary">{{ total }}</div>
+                        <div class="ms-auto text-secondary fs-2"><i class="bi bi-archive"></i></div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 
@@ -124,7 +134,7 @@
             </div>
             <div class="list-group list-group-flush">
                 
-                {# 1. Nueva Orden (SOLO STAFF/INGENIEROS) #}
+                {# 1. Nueva Orden #}
                 {% if user.is_staff %}
                 <a href="{% url 'orders:create' %}" class="list-group-item list-group-item-action py-3 d-flex align-items-center">
                     <div class="bg-primary-subtle text-primary rounded p-2 me-3"><i class="bi bi-plus-circle fs-5"></i></div>
@@ -135,7 +145,7 @@
                 </a>
                 {% endif %}
                 
-                {# 2. Consultar Historial (TODOS) #}
+                {# 2. Consultar Historial #}
                 <a href="{% url 'orders:list' %}" class="list-group-item list-group-item-action py-3 d-flex align-items-center">
                     <div class="bg-success-subtle text-success rounded p-2 me-3"><i class="bi bi-list-check fs-5"></i></div>
                     <div>
@@ -144,7 +154,7 @@
                     </div>
                 </a>
                 
-                {# 3. Gestión de Usuarios (SOLO SUPERUSER) #}
+                {# 3. Usuarios (Solo Admin) #}
                 {% if user.is_superuser %}
                 <a href="{% url 'orders:user_list' %}" class="list-group-item list-group-item-action py-3 d-flex align-items-center">
                     <div class="bg-warning-subtle text-dark rounded p-2 me-3"><i class="bi bi-people fs-5"></i></div>
@@ -159,4 +169,16 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Efecto para que se note que son clickeables */
+    .card-hover {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+</style>
 {% endblock %}

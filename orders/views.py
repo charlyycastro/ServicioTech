@@ -12,16 +12,14 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from django.core.mail import EmailMessage # Importamos la clase de envío de Django
+from django.core.mail import EmailMessage 
 from django.core.files.base import ContentFile
 from django.utils.dateparse import parse_date
-
-# --- LIBRERÍAS EXTERNAS NECESARIAS ---
-import weasyprint
+from django.db import IntegrityError 
 import base64
 import uuid
 
-# --- MODELOS Y FORMULARIOS ---
+# --- IMPORTACIONES DE TUS MODELOS Y FORMS ---
 from .models import ServiceOrder, EngineerProfile
 from .forms import (
     ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet,
@@ -30,8 +28,9 @@ from .forms import (
 )
 
 # ================================================================
-# FUNCIONES AUXILIARES DE SEGURIDAD Y UTILIDADES
+# FUNCIONES AUXILIARES
 # ================================================================
+
 def es_ingeniero_o_admin(user):
     """Verifica si el usuario es Staff (Ingeniero) o Superusuario"""
     return user.is_authenticated and (user.is_staff or user.is_superuser)
@@ -69,6 +68,63 @@ def guardar_firma(user, data_url):
     except Exception as e:
         print(f"Error guardando firma de usuario: {e}")
 
+
+# ================================================================
+# DASHBOARD (CEREBRO DEL SISTEMA)
+# ================================================================
+
+@login_required
+def dashboard_view(request):
+    user = request.user
+    
+    # Variables iniciales
+    pendientes = 0
+    mis_asignadas = 0
+    finalizadas = 0
+    total_ordenes = 0
+    recientes = []
+
+    # --- CASO 1: SUPERUSUARIO (Ve todo) ---
+    if user.is_superuser:
+        pendientes = ServiceOrder.objects.filter(estatus='borrador').count()
+        # Mis asignadas para el admin (si se auto-asigna)
+        nombre_admin = user.get_full_name() or user.username
+        mis_asignadas = ServiceOrder.objects.filter(ingeniero_nombre__icontains=nombre_admin).exclude(estatus='finalizado').count()
+        finalizadas = ServiceOrder.objects.filter(estatus='finalizado').count()
+        total_ordenes = ServiceOrder.objects.count()
+        
+        # Tabla: Las 5 más recientes de TODA la empresa
+        recientes = ServiceOrder.objects.all().order_by('-creado')[:5]
+
+    # --- CASO 2: INGENIEROS / MORTALES (Ven solo lo suyo) ---
+    else:
+        # Buscamos por nombre (ya que tu modelo guarda el nombre en texto)
+        nombre_busqueda = user.get_full_name() or user.username
+
+        # Filtramos solo por el nombre del ingeniero
+        mis_ordenes = ServiceOrder.objects.filter(
+            ingeniero_nombre__icontains=nombre_busqueda
+        )
+
+        # Calculamos estadísticas solo sobre "sus" órdenes
+        pendientes = mis_ordenes.filter(estatus='borrador').count()
+        mis_asignadas = mis_asignadas = mis_ordenes.count()
+        finalizadas = mis_ordenes.filter(estatus='finalizado').count()
+        total_ordenes = mis_ordenes.count()
+
+        # Tabla: Solo SUS 5 más recientes
+        recientes = mis_ordenes.order_by('-creado')[:5]
+
+    context = {
+        'total': total_ordenes,
+        'pendientes': pendientes,
+        'finalizadas': finalizadas,
+        'mis_asignadas': mis_asignadas,
+        'recientes': recientes,
+    }
+    return render(request, 'orders/dashboard.html', context)
+
+
 # ================================================================
 # VISTAS DE ÓRDENES (CRUD)
 # ================================================================
@@ -77,18 +133,14 @@ def guardar_firma(user, data_url):
 def order_list(request):
     orders = ServiceOrder.objects.all().order_by('-creado')
 
-    # --- 1. CAPTURA DE PARÁMETROS ---
+    # Filtros
     query = request.GET.get('q', '').strip()
     filtro_empresa = request.GET.get('empresa')
     filtro_estatus = request.GET.get('estatus')
     filtro_ingeniero = request.GET.get('ingeniero')
-    
-    # NUEVOS FILTROS DE FECHA
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
 
-
-    # --- 2. APLICACIÓN DE FILTROS AL QUERYSET ---
     if query:
         orders = orders.filter(
             Q(folio__icontains=query) |
@@ -99,27 +151,20 @@ def order_list(request):
 
     if filtro_empresa:
         orders = orders.filter(cliente_nombre=filtro_empresa)
-
     if filtro_estatus:
         orders = orders.filter(estatus=filtro_estatus)
-    
     if filtro_ingeniero:
         orders = orders.filter(ingeniero_nombre=filtro_ingeniero)
-
-    # Lógica de Rango de Fechas (Filtrado Temporal)
     if fecha_inicio:
-        # __gte = Mayor o igual a la fecha de inicio
         orders = orders.filter(creado__date__gte=fecha_inicio) 
-    
     if fecha_fin:
-        # __lte = Menor o igual a la fecha de fin
         orders = orders.filter(creado__date__lte=fecha_fin)
 
-
-    # --- 3. PREPARACIÓN DE CONTEXTO Y PAGINACIÓN ---
+    # Listas para selects de filtro
     empresas = ServiceOrder.objects.exclude(cliente_nombre__isnull=True).exclude(cliente_nombre__exact='').values_list('cliente_nombre', flat=True).distinct().order_by('cliente_nombre')
     ingenieros_list = ServiceOrder.objects.exclude(ingeniero_nombre__isnull=True).exclude(ingeniero_nombre__exact='').values_list('ingeniero_nombre', flat=True).distinct().order_by('ingeniero_nombre')
 
+    # Paginación
     paginator = Paginator(orders, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -141,8 +186,6 @@ def order_list(request):
 @login_required
 def order_detail(request, pk):
     order = get_object_or_404(ServiceOrder, pk=pk)
-    
-    # Obtener firma del ingeniero asignado
     firma_url = obtener_firma_ingeniero(order.ingeniero_nombre, request)
 
     return render(request, 'orders/order_detail.html', {
@@ -150,13 +193,12 @@ def order_detail(request, pk):
         'firma_ingeniero_url': firma_url
     })
 
-# ===== CREAR ORDEN (Con Resguardos, Evidencias y Pausa) =====
+# ===== CREAR ORDEN =====
 @login_required
 @user_passes_test(es_ingeniero_o_admin)
 def order_create(request):
     if request.method == "POST":
         form = ServiceOrderForm(request.POST, request.FILES)
-        
         equipos_fs = EquipmentFormSet(request.POST, request.FILES, prefix="equipos")
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, prefix="materiales")
         resguardos_fs = ShelterEquipmentFormSet(request.POST, request.FILES, prefix="resguardos")
@@ -166,7 +208,6 @@ def order_create(request):
             order = form.save(commit=False)
             accion = request.POST.get('accion', 'borrador')
 
-            # === VALIDACIÓN MANUAL PARA FINALIZAR ===
             if accion == 'finalizar':
                 errores = []
                 if not order.cliente_contacto: errores.append("Persona de contacto")
@@ -187,9 +228,9 @@ def order_create(request):
                 mensaje_exito = f"Orden {order.folio} FINALIZADA correctamente."
             else:
                 order.estatus = 'borrador'
-                mensaje_exito = f"Borrador guardado. Puedes continuar después."
+                mensaje_exito = f"Borrador guardado."
 
-            # Procesar firma del cliente (Base64)
+            # Firma Cliente
             firma_b64 = (request.POST.get("firma_b64") or "").strip()
             if firma_b64.startswith("data:image"):
                 try:
@@ -202,8 +243,6 @@ def order_create(request):
                     print(f"Error firma cliente: {e}")
 
             order.save()
-
-            # Guardar todas las tablas relacionadas
             equipos_fs.instance = order; equipos_fs.save()
             materiales_fs.instance = order; materiales_fs.save()
             resguardos_fs.instance = order; resguardos_fs.save()
@@ -212,9 +251,8 @@ def order_create(request):
             messages.success(request, mensaje_exito)
             return redirect("orders:detail", pk=order.pk)
         else:
-            messages.error(request, "Hay errores en el formulario. Revisa los campos en rojo.")
+            messages.error(request, "Hay errores en el formulario.")
     else:
-        # GET: Pre-llenado inicial
         initial_data = {}
         if request.user.is_staff:
              initial_data['ingeniero_nombre'] = request.user.get_full_name() or request.user.username
@@ -233,7 +271,7 @@ def order_create(request):
     return render(request, "orders/order_form.html", ctx)
 
 
-# ===== EDITAR ORDEN (Retomar Borrador) =====
+# ===== EDITAR ORDEN =====
 @login_required
 @user_passes_test(es_ingeniero_o_admin)
 def order_update(request, pk):
@@ -241,7 +279,6 @@ def order_update(request, pk):
 
     if request.method == "POST":
         form = ServiceOrderForm(request.POST, request.FILES, instance=order)
-        
         equipos_fs = EquipmentFormSet(request.POST, request.FILES, instance=order, prefix="equipos")
         materiales_fs = ServiceMaterialFormSet(request.POST, request.FILES, instance=order, prefix="materiales")
         resguardos_fs = ShelterEquipmentFormSet(request.POST, request.FILES, instance=order, prefix="resguardos")
@@ -251,7 +288,6 @@ def order_update(request, pk):
             order = form.save(commit=False)
             accion = request.POST.get('accion', 'borrador')
 
-            # === VALIDACIÓN MANUAL PARA FINALIZAR ===
             if accion == 'finalizar':
                 errores = []
                 if not order.cliente_contacto: errores.append("Persona de contacto")
@@ -269,18 +305,14 @@ def order_update(request, pk):
                     return render(request, "orders/order_form.html", ctx)
 
                 order.estatus = 'finalizado'
-                mensaje = f"Orden {order.folio} FINALIZADA y actualizada."
+                mensaje = f"Orden {order.folio} FINALIZADA."
             else:
                 order.estatus = 'borrador'
-                mensaje = f"Cambios guardados en el BORRADOR {order.folio}."
+                mensaje = f"Cambios guardados."
 
-            # Firma (si se actualizó)
             firma_b64 = (request.POST.get("firma_b64") or "").strip()
             if firma_b64.startswith("data:image"):
                 try:
-                    import base64
-                    from django.core.files.base import ContentFile
-                    import uuid
                     header, data = firma_b64.split(",", 1)
                     ext = "png" if "png" in header.lower() else "jpg"
                     file_data = ContentFile(base64.b64decode(data), name=f"firma_cliente_{uuid.uuid4().hex}.{ext}")
@@ -307,16 +339,14 @@ def order_update(request, pk):
 
     ctx = {
         "form": form,
-        "equipos_fs": equipos_fs,
-        "materiales_fs": materiales_fs,
-        "resguardos_fs": resguardos_fs,
-        "evidencias_fs": evidencias_fs,
+        "equipos_fs": equipos_fs, "materiales_fs": materiales_fs,
+        "resguardos_fs": resguardos_fs, "evidencias_fs": evidencias_fs,
         "titulo": f"Editar Orden {order.folio}"
     }
     return render(request, "orders/order_form.html", ctx)
 
 
-# ===== ELIMINAR ORDENES (Bulk) =====
+# ===== ELIMINAR ORDENES =====
 @require_POST
 @login_required
 @user_passes_test(es_superusuario)
@@ -333,8 +363,8 @@ def bulk_delete(request):
     messages.success(request, f"Se eliminaron {count} órdenes correctamente.")
     return redirect("orders:list")
 
-# ===== ENVIAR CORREO MANUAL (Revertido a SMTPLib para bypass SSL Hostname) =====
-# ===== ENVIAR CORREO MANUAL (Revertido a SMTPLib para bypass SSL Hostname) =====
+
+# ===== ENVIAR CORREO =====
 @login_required
 @user_passes_test(es_ingeniero_o_admin)
 def email_order(request, pk):
@@ -344,25 +374,20 @@ def email_order(request, pk):
         messages.warning(request, "Esta orden no tiene un correo de cliente registrado.")
         return redirect('orders:detail', pk=pk)
 
-    # 1. Validación de Firma del Ingeniero Asignado
     firma_ingeniero_url = obtener_firma_ingeniero(order.ingeniero_nombre, request)
     if not firma_ingeniero_url:
-        messages.error(request, f"No se puede enviar. El perfil del ingeniero '{order.ingeniero_nombre}' no tiene firma digital precargada.")
+        messages.error(request, f"No se puede enviar. El ingeniero '{order.ingeniero_nombre}' no tiene firma precargada.")
         return redirect('orders:detail', pk=pk)
 
-    # Definición del link de la encuesta
     survey_link = "https://www.cognitoforms.com/INOVATECH1/EncuestaDeServicio"
 
     try:
-        # 1. Generar PDF
-        from django.template.loader import render_to_string
         import weasyprint
         import smtplib
         import ssl
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
         from email.mime.application import MIMEApplication
-        from django.conf import settings
 
         html_string = render_to_string('orders/order_detail.html', {
             'object': order,
@@ -375,43 +400,36 @@ def email_order(request, pk):
             base_url=request.build_absolute_uri()
         ).write_pdf()
 
-        # 2. Configuración SMTP Manualmente
+        # Configuración SMTP
         smtp_server = settings.EMAIL_HOST
         smtp_port = settings.EMAIL_PORT
         smtp_user = settings.EMAIL_HOST_USER
         smtp_password = settings.EMAIL_HOST_PASSWORD
 
-        # Crear mensaje MIMEMultipart
         msg = MIMEMultipart()
         msg['From'] = settings.DEFAULT_FROM_EMAIL
         msg['To'] = order.cliente_email
         msg['Subject'] = f"Reporte de Servicio {order.folio} - ServicioTech"
 
-        # CÓDIGO ACTUALIZADO CON LA ENCUESTA
         body = (
             f"Hola {order.cliente_contacto or 'Cliente'},\n\n"
             f"Adjunto encontrarás el reporte de servicio técnico realizado el {order.fecha_servicio}.\n\n"
             f"Folio: {order.folio}\n"
             f"Título: {order.titulo}\n\n"
-            
             "=============================================\n"
-            "¡AYÚDANOS A MEJORAR! (Encuesta de Satisfacción)\n"
+            "¡AYÚDANOS A MEJORAR!\n"
             "=============================================\n"
-            "Por favor, tómate un minuto para calificar nuestro servicio haciendo clic en el siguiente enlace:\n"
+            "Por favor, tómate un minuto para calificar nuestro servicio:\n"
             f"{survey_link}\n\n" 
-            
-            "Gracias por tu preferencia.\n"
             "Atentamente,\n"
             "El equipo de ServicioTech."
         )
         msg.attach(MIMEText(body, 'plain'))
         
-        # Adjuntar PDF
         attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
         attachment.add_header('Content-Disposition', 'attachment', filename=f"{order.folio}.pdf")
         msg.attach(attachment)
 
-        # 3. CONEXIÓN SEGURA MANUAL (BYPASS DE HOSTNAME MISMATCH)
         context = ssl.create_default_context()
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
@@ -427,9 +445,7 @@ def email_order(request, pk):
         messages.success(request, f"Correo enviado correctamente a {order.cliente_email}")
 
     except Exception as e:
-        error_msg = f"Error de conexión. Detalles: {e}"
-        print(f"❌ ERROR SMTP MANUAL FINAL: {e}")
-        messages.error(request, error_msg)
+        messages.error(request, f"Error de conexión: {e}")
 
     return redirect('orders:detail', pk=pk)
 
@@ -437,26 +453,6 @@ def email_order(request, pk):
 # ================================================================
 # GESTIÓN DE USUARIOS
 # ================================================================
-
-@login_required
-def dashboard_view(request):
-    # Stats
-    total_ordenes = ServiceOrder.objects.count()
-    pendientes = ServiceOrder.objects.filter(estatus='borrador').count()
-    finalizadas = ServiceOrder.objects.filter(estatus='finalizado').count()
-    nombre_usuario = request.user.get_full_name() or request.user.username
-    mis_asignadas = ServiceOrder.objects.filter(ingeniero_nombre__icontains=nombre_usuario, estatus='borrador').count()
-    recientes = ServiceOrder.objects.all().order_by('-creado')[:5]
-
-    context = {
-        'total': total_ordenes,
-        'pendientes': pendientes,
-        'finalizadas': finalizadas,
-        'mis_asignadas': mis_asignadas,
-        'recientes': recientes,
-    }
-    return render(request, 'orders/dashboard.html', context)
-
 
 @login_required
 @user_passes_test(es_superusuario)
@@ -482,7 +478,7 @@ def create_user_view(request):
             if firma_b64 and role == 'ingeniero':
                 guardar_firma(user, firma_b64)
 
-            messages.success(request, f"Usuario {user.username} creado correctamente.")
+            messages.success(request, f"Usuario {user.username} creado.")
             return redirect('orders:user_list')
     else:
         form = CustomUserCreationForm()
@@ -524,21 +520,35 @@ def edit_user_view(request, pk):
 @login_required
 @user_passes_test(es_superusuario)
 def delete_user_view(request, pk):
-    user_to_delete = get_object_or_404(User, pk=pk)
-    if user_to_delete == request.user:
-        messages.error(request, "No puedes eliminar tu propio usuario.")
-    else:
-        user_to_delete.delete()
-        messages.success(request, "Usuario eliminado permanentemente.")
+    usuario_a_borrar = get_object_or_404(User, pk=pk)
+    
+    if usuario_a_borrar.is_superuser:
+        messages.error(request, "No puedes eliminar al Superadministrador.")
+        return redirect('orders:user_list')
+
+    try:
+        nombre = usuario_a_borrar.username
+        usuario_a_borrar.delete()
+        messages.success(request, f"El usuario '{nombre}' fue eliminado.")
+        
+    except IntegrityError:
+        messages.error(request, f"No se puede eliminar a '{usuario_a_borrar.username}' porque tiene historial. Desactívalo.")
+    except Exception as e:
+        messages.error(request, f"Error: {e}")
+
     return redirect('orders:user_list')
 
-# ===== LOGIN / LOGOUT =====
+
+# ================================================================
+# LOGIN / LOGOUT
+# ================================================================
+
 def login_view(request):
-    pass
+    return redirect('account_login')
 
 @require_POST
 @never_cache 
 def logout_view(request):
     logout(request)
     messages.info(request, "Has cerrado sesión.")
-    return redirect("login")
+    return redirect("account_login")
