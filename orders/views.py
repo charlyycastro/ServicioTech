@@ -276,7 +276,12 @@ def order_create(request):
 @user_passes_test(es_ingeniero_o_admin)
 def order_update(request, pk):
     order = get_object_or_404(ServiceOrder, pk=pk)
-
+# --- BLOQUEO DE SEGURIDAD INTELIGENTE ---
+    # Si el usuario NO es Superusuario Y la orden YA está finalizada...
+    if not request.user.is_superuser and order.estatus == 'finalizado':
+        messages.error(request, "⚠️ No puedes editar una orden finalizada. Solicita correcciones al Administrador.")
+        return redirect('orders:detail', pk=pk) # Lo regresamos al detalle
+    # ----------------------------------------
     if request.method == "POST":
         form = ServiceOrderForm(request.POST, request.FILES, instance=order)
         equipos_fs = EquipmentFormSet(request.POST, request.FILES, instance=order, prefix="equipos")

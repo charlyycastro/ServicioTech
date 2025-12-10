@@ -289,6 +289,13 @@
   <h1 class="h4 m-0">Orden {{ object.folio }}</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{% url 'orders:dashboard' %}">Volver</a>
+
+    {# --- NUEVO: BOTÓN EDITAR SOLO PARA SUPERUSUARIO --- #}
+    {% if user.is_superuser %}
+        <a href="{% url 'orders:update' object.pk %}" class="btn btn-warning text-dark fw-bold">
+            <i class="bi bi-pencil-square me-1"></i>Editar (Admin)
+        </a>
+      {% endif %}  
     {% if object.cliente_email %}
         <a class="btn btn-secondary" href="{% url 'orders:email' object.pk %}"><i class="bi bi-envelope me-1"></i>Enviar</a>
     {% endif %}
