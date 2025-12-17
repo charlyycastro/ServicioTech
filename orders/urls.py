@@ -22,4 +22,5 @@ urlpatterns = [
     path('usuarios/editar/<int:pk>/', views.edit_user_view, name='edit_user'),
     path('usuarios/eliminar/<int:pk>/', views.delete_user_view, name='delete_user'),
     path('editar/<int:pk>/', views.order_update, name='update'),
+    path('<int:pk>/word/', views.download_word, name='download_word'),
 ]

@@ -7,6 +7,26 @@ from .models import ServiceOrder, Equipment, ServiceMaterial, ShelterEquipment, 
 # FORMULARIO PRINCIPAL DE LA ORDEN
 # ================================================================
 class ServiceOrderForm(forms.ModelForm):
+    # 1. Selector de INGENIEROS (Staff = True)
+    ingeniero_nombre = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_staff=True, is_active=True).order_by('first_name'),
+        to_field_name='username', # Guarda el username en la BD
+        label="Ingeniero Asignado",
+        empty_label="Seleccione un Ingeniero...",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=False
+    )
+
+    # 2. Selector de VISORES (Staff = False) -> Para "Contacto Interno"
+    contacto_nombre = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_staff=False, is_superuser=False, is_active=True).order_by('first_name'),
+        to_field_name='username', # Guarda el username en la BD
+        label="Contacto Interno (Visor)",
+        empty_label="Seleccione un Visor...",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=False
+    )
+
     tipos_servicio = forms.MultipleChoiceField(
         label="Tipo de servicio solicitado",
         required=False,
@@ -25,35 +45,44 @@ class ServiceOrderForm(forms.ModelForm):
             "reagenda_motivo", "indicaciones_especiales", "firma", "estatus",
         ]
         widgets = {
-            "fecha_servicio": forms.DateInput(attrs={"type": "date"}),
-            "reagenda_fecha": forms.DateInput(attrs={"type": "date"}),
-            "reagenda_hora": forms.TimeInput(attrs={"type": "time"}),
-            "actividades": forms.Textarea(attrs={"rows": 3}),
-            "comentarios": forms.Textarea(attrs={"rows": 3}),
-            "indicaciones_especiales": forms.Textarea(attrs={"rows": 2}),
+            "fecha_servicio": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "reagenda_fecha": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "reagenda_hora": forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+            "actividades": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "comentarios": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "indicaciones_especiales": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
             "estatus": forms.HiddenInput(),
+            
+            # Estilos Bootstrap genéricos para el resto
+            "cliente_nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "cliente_contacto": forms.TextInput(attrs={"class": "form-control"}),
+            "cliente_email": forms.EmailInput(attrs={"class": "form-control"}),
+            "cliente_telefono": forms.TextInput(attrs={"class": "form-control"}),
+            "ubicacion": forms.TextInput(attrs={"class": "form-control"}),
+            "ticket_id": forms.TextInput(attrs={"class": "form-control"}),
+            "titulo": forms.TextInput(attrs={"class": "form-control"}),
+            "tipo_servicio_otro": forms.TextInput(attrs={"class": "form-control"}),
+            "horas": forms.TextInput(attrs={"class": "form-control"}),
+            "costo_mxn": forms.NumberInput(attrs={"class": "form-control"}),
+            "reagenda_motivo": forms.TextInput(attrs={"class": "form-control"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Selector de Ingenieros
-        ingenieros = User.objects.filter(is_staff=True).order_by('first_name')
-        opciones = [(u.get_full_name() or u.username, u.get_full_name() or u.username) for u in ingenieros]
-        self.fields['ingeniero_nombre'].widget = forms.Select(choices=[('', 'Seleccione...')] + opciones)
-
-        # ETIQUETAS
+        # ETIQUETAS PERSONALIZADAS
         self.fields["cliente_nombre"].label = "Cliente / Empresa"
         self.fields["cliente_contacto"].label = "Persona de contacto"
         self.fields["ticket_id"].label = "ID Ticket"
 
-        # Relajamiento de campos para Borradores
+        # Relajamiento de campos para Borradores (todo opcional al inicio)
         for field in self.fields:
             self.fields[field].required = False
         
+        # Solo el nombre del cliente es obligatorio siempre para no perder la referencia
         self.fields['cliente_nombre'].required = True
 
-        # Inicializar JSON
+        # Inicializar JSON de Tipos de Servicio
         if self.instance and self.instance.pk and self.instance.tipos_servicio:
             self.initial.setdefault("tipos_servicio", self.instance.tipos_servicio)
 

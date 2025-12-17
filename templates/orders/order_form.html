@@ -1,10 +1,9 @@
 {% extends 'orders/base.html' %}
 {% load static %}
 
-{# ---- CSS específico para este template ---- #}
 {% block extra_css %}
 <style>
-  /* Estilo general de campos dentro del acordeón */
+  /* Estilos generales */
   .accordion-body input[type="text"],
   .accordion-body input[type="email"],
   .accordion-body input[type="tel"],
@@ -18,62 +17,95 @@
     font-size: .9rem;
     border-radius: .35rem;
     border: 1px solid #ced4da;
-    box-sizing: border-box;
   }
 
-  /* Clase para marcar error (borde rojo) */
   .is-invalid {
       border-color: #dc3545 !important;
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5zM6 8.2a.3.3 0 0 0 .3-.3.3.3 0 0 0-.6 0 .3.3 0 0 0 .3.3z'/%3e%3c/svg%3e");
-      background-repeat: no-repeat;
-      background-position: right calc(.375em + .1875rem) center;
-      background-size: calc(.75em + .375rem) calc(.75em + .375rem);
   }
-
   .invalid-feedback-custom {
-      width: 100%;
-      margin-top: .25rem;
-      font-size: .875em;
-      color: #dc3545;
+      width: 100%; margin-top: .25rem; font-size: .875em; color: #dc3545;
   }
 
-  /* Grid de checkboxes de tipos de servicio */
-  .checkgrid {
-    display: flex;
-    flex-direction: column;
-    gap: .1rem;
-  }
-  .checkgrid .form-check input[type="checkbox"] {
-    margin-right: .35rem;
-    width: 1rem;
-    height: 1rem;
-    vertical-align: middle;
-  }
+  .checkgrid { display: flex; flex-direction: column; gap: .1rem; }
+  .checkgrid .form-check input[type="checkbox"] { margin-right: .35rem; width: 1rem; height: 1rem; vertical-align: middle; }
 
   /* Firma */
-  #signature-wrapper{
-    border:1px solid #dee2e6;
-    border-radius:.5rem;
-    height:180px;
-    background:#fff;
-    touch-action:none;
-    user-select:none;
-  }
-  #signature-canvas{
-    width:100%;
-    height:100%;
-    display:block;
-  }
+  #signature-wrapper{ border:1px solid #dee2e6; border-radius:.5rem; height:180px; background:#fff; touch-action:none; }
+  #signature-canvas{ width:100%; height:100%; display:block; }
 
-  /* Tablas dinámicas */
-  .formset-table textarea {
-    min-height: 2.25rem;
-    max-height: 2.25rem;
-    resize: none;
+  /* --- ESTILOS DROPZONE PERSONALIZADO --- */
+  .drop-zone {
+      border: 2px dashed #6c757d;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      background-color: #f8f9fa;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
   }
+  .drop-zone:hover, .drop-zone.dragover {
+      background-color: #e2e6ea;
+      border-color: #0d6efd;
+      color: #0d6efd;
+  }
+  .drop-zone input[type="file"] {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
+  }
+  
+  /* Lista de archivos previsualizados */
+  .file-preview-item {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      animation: fadeIn 0.3s ease-out;
+  }
+  .file-icon {
+      font-size: 1.5rem;
+      margin-right: 15px;
+      color: #0d6efd;
+  }
+  .file-details { flex-grow: 1; }
+  .file-name { font-weight: 600; font-size: 0.9rem; display: block; }
+  .file-size { font-size: 0.75rem; color: #6c757d; }
+  
+  /* Barra de progreso simulada */
+  .progress-bar-wrapper {
+      height: 4px;
+      width: 100%;
+      background-color: #e9ecef;
+      border-radius: 2px;
+      margin-top: 5px;
+      overflow: hidden;
+  }
+  .progress-fill {
+      height: 100%;
+      background-color: #198754;
+      width: 0%;
+      transition: width 0.5s ease-out;
+  }
+  
+  .btn-remove-file {
+      border: none;
+      background: transparent;
+      color: #dc3545;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0 10px;
+      transition: color 0.2s;
+  }
+  .btn-remove-file:hover { color: #bb2d3b; transform: scale(1.1); }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 {% endblock %}
-
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -88,122 +120,66 @@
   {% if form.errors or equipos_fs.errors or materiales_fs.errors or resguardos_fs.errors or evidencias_fs.errors %}
     <div class="alert alert-danger shadow-sm mb-3">
       <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Hay errores en el formulario.</strong>
-      Revisa las secciones marcadas en rojo.
       {{ form.non_field_errors }}
     </div>
   {% endif %}
 
   <div class="accordion shadow-sm" id="ordenAccordion">
 
-    {# A) DATOS DEL SERVICIO #}
+    {# A) DATOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingDatos">
-        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatos" aria-expanded="true">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatos">
           A) Datos del servicio
         </button>
       </h2>
       <div id="collapseDatos" class="accordion-collapse collapse show" data-bs-parent="#ordenAccordion">
         <div class="accordion-body section-datos">
           <div class="row g-3">
-            
             <div class="col-md-6">
               <label class="form-label fw-bold">Cliente / Empresa <span class="text-danger">*</span></label>
               {{ form.cliente_nombre }}
-              {% if form.cliente_nombre.errors %}
-                <div class="invalid-feedback-custom d-block">
-                    <i class="bi bi-exclamation-circle"></i> {{ form.cliente_nombre.errors.0 }}
-                </div>
-              {% endif %}
+              {% if form.cliente_nombre.errors %}<div class="invalid-feedback-custom d-block">{{ form.cliente_nombre.errors.0 }}</div>{% endif %}
             </div>
-            
-            <div class="col-md-6">
-              <label class="form-label">Ubicación</label>
-              {{ form.ubicacion }}
-            </div>
-
+            <div class="col-md-6"><label class="form-label">Ubicación</label>{{ form.ubicacion }}</div>
             <div class="col-md-4">
               <label class="form-label fw-bold">Persona de Contacto <span class="text-danger">*</span></label>
               {{ form.cliente_contacto }}
-              {% if form.cliente_contacto.errors %}
-                <div class="invalid-feedback-custom d-block">
-                    {{ form.cliente_contacto.errors.0 }}
-                </div>
-              {% endif %}
+              {% if form.cliente_contacto.errors %}<div class="invalid-feedback-custom d-block">{{ form.cliente_contacto.errors.0 }}</div>{% endif %}
             </div>
-            
             <div class="col-md-4">
               <label class="form-label fw-bold">Correo <span class="text-danger">*</span></label>
               {{ form.cliente_email }}
-              {% if form.cliente_email.errors %}
-                <div class="invalid-feedback-custom d-block">
-                    {{ form.cliente_email.errors.0 }}
-                </div>
-              {% endif %}
+              {% if form.cliente_email.errors %}<div class="invalid-feedback-custom d-block">{{ form.cliente_email.errors.0 }}</div>{% endif %}
             </div>
-            
-            <div class="col-md-4">
-              <label class="form-label">Teléfono</label>
-              {{ form.cliente_telefono }}
-            </div>
-
+            <div class="col-md-4"><label class="form-label">Teléfono</label>{{ form.cliente_telefono }}</div>
             <div class="col-12"><hr class="my-1 text-muted"></div>
-
             <div class="col-md-3">
               <label class="form-label fw-bold">Fecha Servicio <span class="text-danger">*</span></label>
               {{ form.fecha_servicio }}
-              {% if form.fecha_servicio.errors %}
-                <div class="invalid-feedback-custom d-block">{{ form.fecha_servicio.errors.0 }}</div>
-              {% endif %}
+              {% if form.fecha_servicio.errors %}<div class="invalid-feedback-custom d-block">{{ form.fecha_servicio.errors.0 }}</div>{% endif %}
             </div>
-            
             <div class="col-md-3">
-              <label class="form-label fw-bold">Ingeniero Asignado <span class="text-danger">*</span></label>
+              <label class="form-label fw-bold">Ingeniero <span class="text-danger">*</span></label>
               {{ form.ingeniero_nombre }}
-              {% if form.ingeniero_nombre.errors %}
-                <div class="invalid-feedback-custom d-block">{{ form.ingeniero_nombre.errors.0 }}</div>
-              {% endif %}
+              {% if form.ingeniero_nombre.errors %}<div class="invalid-feedback-custom d-block">{{ form.ingeniero_nombre.errors.0 }}</div>{% endif %}
             </div>
-            
-            <div class="col-md-3">
-              <label class="form-label">ID Ticket</label>
-              {{ form.ticket_id }}
-            </div>
-            
-            <div class="col-md-3">
-              <label class="form-label">Contacto Interno</label>
-              {{ form.contacto_nombre }}
-            </div>
-
+            <div class="col-md-3"><label class="form-label">ID Ticket</label>{{ form.ticket_id }}</div>
+            <div class="col-md-3"><label class="form-label">Contacto Interno</label>{{ form.contacto_nombre }}</div>
             <div class="col-md-8">
               <label class="form-label d-block fw-bold">Tipo(s) de servicio <span class="text-danger">*</span></label>
-              <div class="checkgrid p-2 border rounded bg-white {% if form.tipos_servicio.errors %}border-danger bg-danger-subtle{% endif %}">
+              <div class="checkgrid p-2 border rounded bg-white">
                 {% for cb in form.tipos_servicio %}
-                  <div class="form-check">
-                    {{ cb.tag }} <label class="form-check-label" for="{{ cb.id_for_label }}">{{ cb.choice_label }}</label>
-                  </div>
+                  <div class="form-check">{{ cb.tag }} <label class="form-check-label" for="{{ cb.id_for_label }}">{{ cb.choice_label }}</label></div>
                 {% endfor %}
                 <div class="form-check mt-1 border-top pt-1">
-                  <input type="checkbox" id="chk-otro-servicio">
-                  <label class="form-check-label" for="chk-otro-servicio">Otro servicio</label>
+                  <input type="checkbox" id="chk-otro-servicio"> <label class="form-check-label" for="chk-otro-servicio">Otro servicio</label>
                 </div>
               </div>
-              {% if form.tipos_servicio.errors %}
-                <div class="invalid-feedback-custom d-block">
-                    <i class="bi bi-arrow-up-circle"></i> Debes seleccionar al menos uno.
-                </div>
-              {% endif %}
+              {% if form.tipos_servicio.errors %}<div class="invalid-feedback-custom d-block">Selecciona al menos uno.</div>{% endif %}
             </div>
-
-            <div class="col-md-4 d-none" id="otro-wrapper">
-              <label class="form-label">Especifique Otro</label>
-              {{ form.tipo_servicio_otro }}
-            </div>
-
-            <div class="col-12">
-              <label class="form-label">Indicaciones Especiales (Interno)</label>
-              {{ form.indicaciones_especiales }}
-              <div class="form-text">Ej: EPP requerido, llevar credencial, etc.</div>
-            </div>
+            <div class="col-md-4 d-none" id="otro-wrapper"><label class="form-label">Especifique Otro</label>{{ form.tipo_servicio_otro }}</div>
+            <div class="col-12"><label class="form-label">Indicaciones Especiales</label>{{ form.indicaciones_especiales }}</div>
           </div>
         </div>
       </div>
@@ -212,13 +188,10 @@
     {# B) EQUIPOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingEquipos">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipos">
-          B) Datos de los equipos
-        </button>
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipos">B) Datos de los equipos</button>
       </h2>
       <div id="collapseEquipos" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
-          {# --- TABLA EQUIPOS --- #}
           {% include "orders/partials/formset_table.html" with formset=equipos_fs title="Equipos del Cliente" prefix="equipos" cols="Marca,Modelo,Serie,Descripción" fields="marca,modelo,serie,descripcion" %}
         </div>
       </div>
@@ -227,25 +200,14 @@
     {# C) ACTIVIDADES #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingActividades">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividades">
-          C) Actividades y comentarios
-        </button>
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividades">C) Actividades y comentarios</button>
       </h2>
       <div id="collapseActividades" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="row g-3">
-            <div class="col-12">
-              <label class="form-label">Título del Servicio</label>
-              {{ form.titulo }}
-            </div>
-            <div class="col-12">
-              <label class="form-label">Actividades Realizadas</label>
-              {{ form.actividades }}
-            </div>
-            <div class="col-12">
-              <label class="form-label">Comentarios / Observaciones</label>
-              {{ form.comentarios }}
-            </div>
+            <div class="col-12"><label class="form-label">Título</label>{{ form.titulo }}</div>
+            <div class="col-12"><label class="form-label">Actividades</label>{{ form.actividades }}</div>
+            <div class="col-12"><label class="form-label">Comentarios</label>{{ form.comentarios }}</div>
           </div>
         </div>
       </div>
@@ -254,56 +216,35 @@
     {# D) COSTOS #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingCostos">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCostos">
-          D) Costos y programación
-        </button>
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCostos">D) Costos y programación</button>
       </h2>
       <div id="collapseCostos" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="row g-3 align-items-end">
-            <div class="col-md-3">
-              <label class="form-label">Horas</label>
-              {{ form.horas }}
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Costo (MXN)</label>
-              {{ form.costo_mxn }}
-            </div>
+            <div class="col-md-3"><label class="form-label">Horas</label>{{ form.horas }}</div>
+            <div class="col-md-3"><label class="form-label">Costo (MXN)</label>{{ form.costo_mxn }}</div>
             <div class="col-md-6">
-              <label class="form-label d-block">Estatus del costo</label>
+              <label class="form-label d-block">Estatus</label>
               <div class="d-flex gap-3">
                 <div class="form-check">{{ form.costo_no_aplica }} <label class="form-check-label">No aplica</label></div>
                 <div class="form-check">{{ form.costo_se_cotizara }} <label class="form-check-label">Se cotizará</label></div>
               </div>
             </div>
             <div class="col-12"><hr></div>
-            <div class="col-md-2">
-                <div class="form-check mt-2">
-                    {{ form.reagenda }} <label class="form-check-label fw-bold">Reagendar</label>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Nueva Fecha</label>
-                {{ form.reagenda_fecha }}
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Hora</label>
-                {{ form.reagenda_hora }}
-            </div>
-            <div class="col-md-5">
-                <label class="form-label">Motivo</label>
-                {{ form.reagenda_motivo }}
-            </div>
+            <div class="col-md-2"><div class="form-check mt-2">{{ form.reagenda }} <label class="form-check-label fw-bold">Reagendar</label></div></div>
+            <div class="col-md-3"><label class="form-label">Nueva Fecha</label>{{ form.reagenda_fecha }}</div>
+            <div class="col-md-2"><label class="form-label">Hora</label>{{ form.reagenda_hora }}</div>
+            <div class="col-md-5"><label class="form-label">Motivo</label>{{ form.reagenda_motivo }}</div>
           </div>
         </div>
       </div>
     </div>
 
-    {# NUEVO: EQUIPOS EN RESGUARDO #}
+    {# RESGUARDOS #}
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingResguardos">
           <button class="accordion-button collapsed bg-light-subtle" type="button" data-bs-toggle="collapse" data-bs-target="#collapseResguardos">
-            <i class="bi bi-box-seam me-2"></i> Equipos en Resguardo (Taller)
+            <i class="bi bi-box-seam me-2"></i> Equipos en Resguardo
           </button>
         </h2>
         <div id="collapseResguardos" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
@@ -313,12 +254,10 @@
         </div>
     </div>
 
-    {# E) MATERIALES #}
+    {# MATERIALES #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingMateriales">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMateriales">
-          E) Materiales utilizados
-        </button>
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMateriales">E) Materiales utilizados</button>
       </h2>
       <div id="collapseMateriales" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
@@ -327,7 +266,7 @@
       </div>
     </div>
 
-    {# NUEVO: EVIDENCIAS #}
+    {# EVIDENCIAS (NUEVO DISEÑO CON BARRA DE CARGA) #}
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingEvidencias">
           <button class="accordion-button collapsed bg-light-subtle" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvidencias">
@@ -336,10 +275,27 @@
         </h2>
         <div id="collapseEvidencias" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
           <div class="accordion-body">
-            <div class="alert alert-info py-2 small">
-                <i class="bi bi-info-circle me-1"></i> Las imágenes se comprimirán automáticamente. Puedes subir fotos, PDFs o videos cortos.
+            
+            {# --- DROPZONE INTERACTIVO --- #}
+            <div class="card mb-4 border-secondary">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-images me-2"></i>Carga Masiva de Evidencias
+                </div>
+                <div class="card-body">
+                    <div class="drop-zone" id="drop-zone">
+                        <i class="bi bi-cloud-arrow-up display-4 text-secondary"></i>
+                        <p class="mt-2 mb-1 fw-bold">Arrastra tus archivos aquí o haz clic</p>
+                        <p class="text-muted small">Soporta múltiples archivos (Imágenes, PDF)</p>
+                        
+                        <input type="file" name="imagenes_masivas" id="file-input" multiple accept="image/*,application/pdf">
+                    </div>
+
+                    <div id="file-list-container" class="mt-4">
+                        </div>
+                </div>
             </div>
-            {% include "orders/partials/formset_table.html" with formset=evidencias_fs title="Archivos" prefix="evidencias" cols="Archivo,Comentario" fields="archivo,comentario" %}
+
+            {{ evidencias_fs.management_form }}
           </div>
         </div>
     </div>
@@ -347,52 +303,32 @@
     {# F) FIRMA #}
     <div class="accordion-item">
       <h2 class="accordion-header" id="headingFirma">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma">
-          F) Firma del cliente
-        </button>
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFirma">F) Firma del cliente</button>
       </h2>
       <div id="collapseFirma" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="d-flex gap-2 align-items-center mb-2">
             <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-signature">Limpiar</button>
           </div>
-          <div id="signature-wrapper" class="w-100 border bg-white">
-            <canvas id="signature-canvas"></canvas>
-          </div>
+          <div id="signature-wrapper" class="w-100 border bg-white"><canvas id="signature-canvas"></canvas></div>
           <input type="hidden" name="firma_b64" id="firma_b64">
-          <div class="form-text">Firme con el dedo o mouse.</div>
         </div>
       </div>
     </div>
 
   </div> {# fin accordion #}
 
-  {# BOTONERA DE ACCIÓN #}
   <div class="card mt-4 border-0 bg-light">
       <div class="card-body d-flex gap-3 justify-content-end">
           <a class="btn btn-outline-secondary px-4" href="{% url 'orders:dashboard' %}">Cancelar</a>
-          
-          <button class="btn btn-secondary px-4" type="submit" name="accion" value="borrador">
-              <i class="bi bi-pause-circle me-2"></i>Guardar Borrador
-          </button>
-          
-          <button class="btn btn-primary px-4 fw-bold" type="submit" name="accion" value="finalizar" onclick="return confirm('¿Estás seguro de finalizar la orden? Se enviará el correo al cliente.');">
-              <i class="bi bi-check-circle me-2"></i>Finalizar Orden
-          </button>
+          <button class="btn btn-secondary px-4" type="submit" name="accion" value="borrador"><i class="bi bi-pause-circle me-2"></i>Guardar Borrador</button>
+          <button class="btn btn-primary px-4 fw-bold" type="submit" name="accion" value="finalizar" onclick="return confirm('¿Finalizar orden?');"><i class="bi bi-check-circle me-2"></i>Finalizar Orden</button>
       </div>
   </div>
-
 </form>
 
-{# --- MINI TEMPLATE PARA TABLAS DINÁMICAS (INLINE JS) --- #}
-{# Esto evita repetir código 4 veces para cada tabla #}
-<script type="text/template" id="row-template">
-    <tr class="formset-row">
-        <td class="text-end">
-            <button class="btn btn-sm btn-outline-danger remove-row" type="button">&times;</button>
-        </td>
-    </tr>
-</script>
+{# Templates JS #}
+<script type="text/template" id="row-template"><tr class="formset-row"><td class="text-end"><button class="btn btn-sm btn-outline-danger remove-row" type="button">&times;</button></td></tr></script>
 
 {% endblock %}
 
@@ -400,51 +336,143 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   
-  // --- 1. DETECTAR Y ABRIR ERRORES OCULTOS ---
-  function abrirAcordeonesConErrores() {
-      // Buscamos todos los acordeones
-      const accordions = document.querySelectorAll('.accordion-collapse');
+  // --- LOGICA DE CARGA MASIVA (DROPZONE) ---
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const fileListContainer = document.getElementById('file-list-container');
+  
+  // Array global para mantener los archivos acumulados
+  let accumulatedFiles = [];
+
+  // Eventos de Drag & Drop para estilo visual
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+  }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+  });
+
+  // Manejar cuando se sueltan archivos
+  dropZone.addEventListener('drop', handleDrop, false);
+  // Manejar cuando se seleccionan con click
+  fileInput.addEventListener('change', handleSelect, false);
+
+  function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const newFiles = dt.files;
+      handleFiles(newFiles);
+  }
+
+  function handleSelect(e) {
+      const newFiles = e.target.files;
+      handleFiles(newFiles);
+      // Reiniciamos el input para permitir seleccionar el mismo archivo si se borró y se quiere volver a subir
+      fileInput.value = ''; 
+  }
+
+  function handleFiles(files) {
+      // Convertir FileList a Array y agregarlos al acumulado
+      const newFilesArray = Array.from(files);
       
-      accordions.forEach(acc => {
-          // Buscamos si dentro hay inputs inválidos o textos de error
-          const hasError = acc.querySelector('.is-invalid') || acc.querySelector('.text-danger') || acc.querySelector('.alert-danger') || acc.querySelector('ul.errorlist');
-          
-          if (hasError) {
-              // 1. Abrir el acordeón usando Bootstrap
-              new bootstrap.Collapse(acc, { show: true });
-              
-              // 2. Pintar el botón del encabezado en rojo para que sea obvio
-              const btn = document.querySelector(`button[data-bs-target="#${acc.id}"]`);
-              if (btn) {
-                  btn.classList.add('text-danger', 'fw-bold');
-                  btn.innerHTML += ' <i class="bi bi-exclamation-circle-fill ms-2"></i>';
-              }
-          }
+      newFilesArray.forEach(file => {
+          accumulatedFiles.push(file);
+          renderFilePreview(file, accumulatedFiles.length - 1);
+      });
+
+      updateInputFiles();
+  }
+
+  // Renderizar la tarjeta visual del archivo
+  function renderFilePreview(file, index) {
+      const div = document.createElement('div');
+      div.className = 'file-preview-item';
+      div.dataset.index = index; // Para saber cual borrar luego
+
+      // Tamaño legible
+      const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+
+      div.innerHTML = `
+          <div class="file-icon"><i class="bi bi-file-earmark-image"></i></div>
+          <div class="file-details">
+              <span class="file-name">${file.name}</span>
+              <span class="file-size">${size}</span>
+              <div class="progress-bar-wrapper">
+                  <div class="progress-fill" style="width: 0%"></div>
+              </div>
+          </div>
+          <button type="button" class="btn-remove-file" title="Eliminar archivo">&times;</button>
+      `;
+
+      fileListContainer.appendChild(div);
+
+      // Simular carga (animación visual)
+      setTimeout(() => {
+          div.querySelector('.progress-fill').style.width = '100%';
+      }, 50);
+
+      // Evento borrar
+      div.querySelector('.btn-remove-file').addEventListener('click', function() {
+          removeFile(file);
+          div.remove();
       });
   }
 
-  // Ejecutar la detección al iniciar
+  function removeFile(fileToRemove) {
+      // Filtrar el array eliminando el archivo especifico
+      accumulatedFiles = accumulatedFiles.filter(f => f !== fileToRemove);
+      updateInputFiles();
+  }
+
+  // --- TRUCO IMPORTANTE ---
+  // Actualizar el input real con el DataTransfer para que Django reciba los archivos
+  function updateInputFiles() {
+      const dataTransfer = new DataTransfer();
+      accumulatedFiles.forEach(file => {
+          dataTransfer.items.add(file);
+      });
+      fileInput.files = dataTransfer.files;
+      
+      // Debug (opcional)
+      console.log("Archivos listos para enviar:", fileInput.files.length);
+  }
+
+
+  // --- RESTO DEL JS (ACORDEONES, FIRMA, FORMSETS) ---
+  
+  function abrirAcordeonesConErrores() {
+      document.querySelectorAll('.accordion-collapse').forEach(acc => {
+          if (acc.querySelector('.is-invalid') || acc.querySelector('.text-danger') || acc.querySelector('.alert-danger')) {
+              new bootstrap.Collapse(acc, { show: true });
+              const btn = document.querySelector(`button[data-bs-target="#${acc.id}"]`);
+              if(btn) { btn.classList.add('text-danger', 'fw-bold'); btn.innerHTML += ' <i class="bi bi-exclamation-circle-fill ms-2"></i>'; }
+          }
+      });
+  }
   abrirAcordeonesConErrores();
 
-  /* --- 2. COLOREAR INPUTS CON ERROR --- */
   document.querySelectorAll('.invalid-feedback-custom').forEach(div => {
-      const input = div.previousElementSibling;
-      if(input) {
-          input.classList.add('is-invalid');
-      }
+      if(div.previousElementSibling) div.previousElementSibling.classList.add('is-invalid');
   });
 
-  /* --- 3. LÓGICA "OTRO SERVICIO" --- */
   const chkOtro = document.getElementById('chk-otro-servicio');
   const wrapperOtro = document.getElementById('otro-wrapper');
   const inputOtro = document.getElementById('id_tipo_servicio_otro');
   if (chkOtro && wrapperOtro) {
-    function toggleOtro() { wrapperOtro.classList.toggle('d-none', !chkOtro.checked); }
-    chkOtro.addEventListener('change', toggleOtro);
-    if(inputOtro.value.trim() !== '') { chkOtro.checked = true; toggleOtro(); }
+    const t = () => wrapperOtro.classList.toggle('d-none', !chkOtro.checked);
+    chkOtro.addEventListener('change', t);
+    if(inputOtro.value.trim() !== '') { chkOtro.checked = true; t(); }
   }
 
-  /* --- 4. COSTOS MUTUOS --- */
   const chkNoAplica = document.getElementById('id_costo_no_aplica');
   const chkSeCotiza = document.getElementById('id_costo_se_cotizara');
   if (chkNoAplica && chkSeCotiza) {
@@ -452,44 +480,29 @@ document.addEventListener('DOMContentLoaded', function () {
     chkSeCotiza.addEventListener('change', function(){ if(this.checked) chkNoAplica.checked=false; });
   }
 
-  /* --- 5. LÓGICA DINÁMICA DE TABLAS (FORMSETS) --- */
   function initFormset(prefix) {
       const addButton = document.querySelector(`[data-add="${prefix}"]`);
       const container = document.getElementById(`${prefix}-body`);
       const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
       const emptyTemplate = document.getElementById(`${prefix}-empty`);
-
       if (!addButton || !container || !totalForms || !emptyTemplate) return;
 
       addButton.addEventListener('click', function() {
           const count = parseInt(totalForms.value);
-          const newRowHTML = emptyTemplate.innerHTML.replace(/__prefix__/g, count);
-          container.insertAdjacentHTML('beforeend', newRowHTML);
+          container.insertAdjacentHTML('beforeend', emptyTemplate.innerHTML.replace(/__prefix__/g, count));
           totalForms.value = count + 1;
       });
-
       container.addEventListener('click', function(e) {
           if (e.target.closest('.remove-row')) {
               const row = e.target.closest('tr');
-              // Si tiene ID (ya existía en BD), marcar DELETE oculto
-              const deleteInput = row.querySelector('input[name$="-DELETE"]');
-              if (deleteInput) {
-                  deleteInput.checked = true;
-                  row.style.display = 'none';
-              } else {
-                  // Si es nueva, borrar del DOM
-                  row.remove();
-              }
+              const delInput = row.querySelector('input[name$="-DELETE"]');
+              if (delInput) { delInput.checked = true; row.style.display = 'none'; } else { row.remove(); }
           }
       });
   }
-
-  // Inicializar los 4 formsets
   initFormset('equipos');
   initFormset('materiales');
   initFormset('resguardos');
-  initFormset('evidencias');
-
 });
 </script>
 {% endblock %}

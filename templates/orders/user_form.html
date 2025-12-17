@@ -71,13 +71,13 @@
                         <label class="form-label fw-bold">Rol del Usuario</label>
                         {{ form.role }}
                         <div class="form-text">
-                            Selecciona "Ingeniero" para habilitar la firma.
+                            Selecciona el rol adecuado para este usuario.
                         </div>
                     </div>
 
                     <div id="signature-section" class="mb-4 p-3 bg-light rounded border" style="display: none;">
                         <label class="form-label fw-bold d-flex justify-content-between">
-                            <span><i class="bi bi-pen me-2"></i>Firma del Ingeniero</span>
+                            <span><i class="bi bi-pen me-2"></i>Firma</span>
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-sig">Limpiar</button>
                         </label>
                         
@@ -136,15 +136,19 @@
         window.addEventListener("resize", resizeCanvas);
 
         // 3. Mostrar/Ocultar y Recalcular tamaño
-        function toggleSignature() {
-            if (roleSelect.value === 'ingeniero') {
-                sigSection.style.display = 'block';
-                // CRUCIAL: Esperar un microsegundo a que el navegador muestre el div para calcular tamaño
-                setTimeout(resizeCanvas, 50); 
-            } else {
-                sigSection.style.display = 'none';
-            }
+function toggleSignature() {
+        const role = roleSelect.value;
+        
+        // CORRECCIÓN AQUÍ: Agregamos 'visor' a la condición
+        if (role === 'ingeniero' || role === 'visor') {
+            sigSection.style.display = 'block';
+            
+            // Un pequeño retraso para que el canvas se ajuste al tamaño correcto
+            setTimeout(resizeCanvas, 100); 
+        } else {
+            sigSection.style.display = 'none';
         }
+    }
 
         // Eventos
         roleSelect.addEventListener('change', toggleSignature);

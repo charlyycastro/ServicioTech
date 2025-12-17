@@ -15,10 +15,10 @@
   <style>
       :root {
           /* Paleta de colores corporativa */
-          --ino-blue: #002f6c;   /* Azul marino fuerte (Navbar, Encabezados) */
-          --ino-blue-light: #004a99; /* Azul un poco más claro para hovers */
-          --ino-bg: #f4f7f6;     /* Fondo gris muy claro y limpio */
-          --ino-red: #d93025;    /* Rojo para acciones destructivas */
+          --ino-blue: #002f6c;   /* Azul marino fuerte */
+          --ino-blue-light: #004a99; /* Azul más claro */
+          --ino-bg: #f4f7f6;     /* Fondo gris muy claro */
+          --ino-red: #d93025;    /* Rojo */
       }
 
       body {
@@ -53,12 +53,12 @@
       }
       .fw-bold { font-weight: 700 !important; }
 
-      /* --- Tarjetas (Cards) Limpias --- */
+      /* --- Cards --- */
       .card {
           border: none;
           border-radius: 10px;
           box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-          overflow: hidden; /* Para que el header no se salga */
+          overflow: hidden;
       }
       .card-header {
           background-color: #fff;
@@ -68,7 +68,7 @@
           padding: 1rem 1.5rem;
       }
 
-      /* --- Botones Corporativos --- */
+      /* --- Botones --- */
       .btn-primary {
           background-color: var(--ino-blue);
           border-color: var(--ino-blue);
@@ -90,22 +90,14 @@
           font-weight: 600;
           text-transform: uppercase;
           font-size: 0.85rem;
-          letter-spacing: 0.5px;
           border: none;
       }
-      .table-hover tbody tr:hover {
-          background-color: rgba(0, 47, 108, 0.03); /* Azul muy sutil al pasar el mouse */
-      }
       
-      /* --- Campos de Formulario --- */
-      .form-control:focus, .form-select:focus {
-          border-color: var(--ino-blue-light);
-          box-shadow: 0 0 0 0.25rem rgba(0, 47, 108, 0.15);
-      }
-      .form-label {
-          font-weight: 600;
-          color: var(--ino-blue);
-      }
+      /* --- Estilos para Notificaciones Toast --- */
+      .bg-success-custom { background-color: #28a745; }
+      .bg-danger-custom { background-color: #dc3545; }
+      .bg-warning-custom { background-color: #ffc107; color: #333 !important; }
+      .bg-info-custom { background-color: #007bff; }
   </style>
 
   {# CSS extra de cada plantilla #}
@@ -113,12 +105,10 @@
 </head>
 <body class="bg-light">
 
-  {# --- CORRECCIÓN: OCULTAR NAVBAR EN EL LOGIN --- #}
-  {# Si la URL actual NO es el login (account_login), mostramos la barra #}
+  {# --- NAVBAR (Oculta en Login) --- #}
   {% if request.resolver_match.url_name != 'account_login' and request.resolver_match.url_name != 'login' %}
   <nav class="navbar navbar-expand-lg navbar-dark mb-5">
     <div class="container">
-      {# Logo/Home link apunta al nuevo Dashboard #}
       <a class="navbar-brand" href="{% url 'orders:dashboard' %}">
         <i class="bi bi-shield-check me-2"></i>ServicioTech
       </a>
@@ -131,7 +121,6 @@
         <ul class="navbar-nav ms-auto align-items-lg-center">
 
           {% if user.is_authenticated %}
-            {# Info del Usuario #}
              <li class="nav-item me-4 text-white d-none d-lg-block text-end lh-sm">
                 <div class="fw-bold">{{ user.get_short_name|default:user.username }}</div>
                 <small class="text-white-50" style="font-size: 0.75rem;">
@@ -139,9 +128,7 @@
                 </small>
              </li>
 
-            {# Botón Salir #}
             <li class="nav-item">
-              {# Usamos account_logout de Allauth #}
               <form method="post" action="{% url 'account_logout' %}" class="d-inline">
                 {% csrf_token %}
                 <button class="btn btn-outline-light btn-sm rounded-pill px-3" type="submit">
@@ -150,22 +137,17 @@
               </form>
             </li>
             
-            {# MENÚ DE ADMINISTRACIÓN (SOLO PARA SUPERUSER) #}
             {% if user.is_superuser %}
             <li class="nav-item ms-lg-3 mt-3 mt-lg-0 dropdown">
-                <a class="nav-link dropdown-toggle text-white p-0" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Gestión">
+                <a class="nav-link dropdown-toggle text-white p-0" href="#" role="button" data-bs-toggle="dropdown">
                     <i class="bi bi-person-gear fs-4 text-white opacity-75 hover-opacity-100"></i>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
-                    
-                    {# Opción 1: GESTIÓN DE USUARIOS #}
                     <li>
                         <a class="dropdown-item py-2" href="{% url 'orders:user_list' %}">
                             <i class="bi bi-people-fill me-2 text-primary"></i>Gestión de Usuarios
                         </a>
                     </li>
-                    
-                    {# Opción 2: Panel Django (Emergencia) #}
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item py-2 small text-muted" href="/admin/" target="_blank">
@@ -177,7 +159,6 @@
             {% endif %}
 
           {% else %}
-            {# Usuario no logueado #}
             <li class="nav-item">
               <a class="btn btn-light text-primary fw-bold rounded-pill px-4 shadow-sm" href="{% url 'account_login' %}">Iniciar sesión</a>
             </li>
@@ -188,25 +169,42 @@
     </div>
   </nav>
   {% endif %}
-  {# --- FIN DEL BLOQUE NAVBAR --- #}
 
   <main class="container pb-5">
     
-    {# --- AQUÍ ESTÁ EL ARREGLO DE LOS MENSAJES --- #}
-    {# No usamos comment, usamos display:none para no romper el HTML #}
-    <div style="display: none;">
-        {% if messages %}
-          {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm border-0" role="alert">
-              {% if message.tags == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>{% endif %}
-              {% if message.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>{% endif %}
-              {% if message.tags == 'error' %}<i class="bi bi-x-circle-fill me-2"></i>{% endif %}
-              {{ message }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-            </div>
-          {% endfor %}
-        {% endif %}
-    </div>
+    {# --- SISTEMA DE NOTIFICACIONES FLOTANTES (TOASTS) --- #}
+    {% if messages %}
+        <div id="alerta-flotante" style="position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 350px;">
+            {% for message in messages %}
+                <div class="toast-notification {% if message.tags == 'success' %}bg-success-custom{% elif message.tags == 'error' %}bg-danger-custom{% elif message.tags == 'warning' %}bg-warning-custom{% else %}bg-info-custom{% endif %}" 
+                     style="color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between;">
+                    
+                    <div>
+                        {% if message.tags == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>{% endif %}
+                        {% if message.tags == 'error' %}<i class="bi bi-x-circle-fill me-2"></i>{% endif %}
+                        {% if message.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>{% endif %}
+                        <span>{{ message }}</span>
+                    </div>
+
+                    <button onclick="this.parentElement.remove();" style="background:none; border:none; color:white; font-size: 1.2rem; cursor:pointer; margin-left:10px; opacity: 0.8;">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const alerta = document.getElementById('alerta-flotante');
+                if (alerta) {
+                    // Esperar 5 segundos
+                    setTimeout(function() {
+                        alerta.style.transition = "opacity 0.5s ease-out";
+                        alerta.style.opacity = "0";
+                        setTimeout(function() { alerta.remove(); }, 500); 
+                    }, 5000); 
+                }
+            });
+        </script>
+    {% endif %}
 
     {% block content %}{% endblock %}
   </main>
