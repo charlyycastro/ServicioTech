@@ -50,33 +50,20 @@ def es_superusuario(user):
     return user.is_authenticated and user.is_superuser
 
 def obtener_firma_ingeniero(nombre_busqueda, request):
-    """
-    Busca la firma de un usuario (Ingeniero o Visor).
-    Es 'inteligente': ignora mayúsculas y busca por Nombre Completo o Usuario.
-    """
     if not nombre_busqueda:
         return None
-    
-    # Convertimos a string y minúsculas para comparar
     busqueda = str(nombre_busqueda).lower().strip()
-    
     for user in User.objects.all():
-        # Obtenemos nombre y usuario del sistema en minúsculas
         full_name = (user.get_full_name() or "").lower().strip()
         username = user.username.lower().strip()
-        
-        # Comparamos: ¿Coincide el nombre O el usuario?
         if full_name == busqueda or username == busqueda:
-            # Si encontramos al usuario, buscamos su firma en cualquier perfil
             if hasattr(user, 'engineerprofile') and user.engineerprofile.firma:
                 return request.build_absolute_uri(user.engineerprofile.firma.url)
             elif hasattr(user, 'profile') and user.profile.firma:
                 return request.build_absolute_uri(user.profile.firma.url)
-                
     return None
 
 def guardar_firma(user, data_url):
-    """Guarda la firma base64 en el perfil del usuario."""
     try:
         if ';base64,' in data_url:
             format, imgstr = data_url.split(';base64,') 
@@ -91,7 +78,6 @@ def guardar_firma(user, data_url):
                 user.profile.firma = data
                 user.profile.save()
             else:
-                # Si no tiene perfil, creamos uno de Ingeniero por defecto
                 profile = EngineerProfile.objects.create(user=user)
                 profile.firma = data
                 profile.save()
@@ -99,7 +85,7 @@ def guardar_firma(user, data_url):
         print(f"Error guardando firma: {e}")
 
 # ================================================================
-# DASHBOARD
+# DASHBOARD Y LISTAS
 # ================================================================
 
 @login_required
@@ -125,10 +111,6 @@ def dashboard_view(request):
 
     return render(request, 'orders/dashboard.html', locals())
 
-# ================================================================
-# CRUD DE ÓRDENES
-# ================================================================
-
 @login_required
 def order_list(request):
     orders = ServiceOrder.objects.all().order_by('-creado')
@@ -140,7 +122,6 @@ def order_list(request):
             Q(cliente_contacto__icontains=query) | Q(titulo__icontains=query)
         )
     
-    # Filtros
     if request.GET.get('empresa'): orders = orders.filter(cliente_nombre=request.GET.get('empresa'))
     if request.GET.get('estatus'): orders = orders.filter(estatus=request.GET.get('estatus'))
     if request.GET.get('ingeniero'): orders = orders.filter(ingeniero_nombre=request.GET.get('ingeniero'))
@@ -162,8 +143,6 @@ def order_list(request):
 @login_required
 def order_detail(request, pk):
     order = get_object_or_404(ServiceOrder, pk=pk)
-    
-    # Buscamos firmas (Ingeniero Y Visor) y las mandamos al HTML
     firma_ing = obtener_firma_ingeniero(order.ingeniero_nombre, request)
     firma_vis = obtener_firma_ingeniero(order.contacto_nombre, request)
 
@@ -172,6 +151,10 @@ def order_detail(request, pk):
         'firma_ingeniero_url': firma_ing,
         'firma_visor_url': firma_vis, 
     })
+
+# ================================================================
+# CREAR Y EDITAR (AQUÍ ESTÁ LA VALIDACIÓN)
+# ================================================================
 
 @login_required
 @user_passes_test(es_ingeniero_o_admin)
@@ -187,17 +170,43 @@ def order_create(request):
             order = form.save(commit=False)
             accion = request.POST.get('accion', 'borrador')
             
+            # --- VALIDACIÓN ESTRICTA AL FINALIZAR ---
             if accion == 'finalizar':
-                if not all([order.cliente_contacto, order.cliente_email, order.ingeniero_nombre]):
-                    messages.error(request, "Faltan datos obligatorios para finalizar.")
+                errores_validacion = False
+                
+                # Campos que TÚ definiste como obligatorios
+                campos_obligatorios = {
+                    'cliente_contacto': 'El nombre del contacto es obligatorio.',
+                    'cliente_email': 'El correo es obligatorio.',
+                    'ingeniero_nombre': 'Debes seleccionar un ingeniero.',
+                    'fecha_servicio': 'La fecha del servicio es obligatoria.',
+                    'ubicacion': 'La ubicación es obligatoria.',
+                    # 'titulo': 'El título es obligatorio.'  <-- Descomenta si también lo quieres obligatorio
+                }
+
+                # Revisamos uno por uno
+                for campo, mensaje in campos_obligatorios.items():
+                    valor = getattr(order, campo)
+                    if not valor: 
+                        form.add_error(campo, mensaje) # Esto pinta el campo de rojo
+                        errores_validacion = True
+
+                # Revisamos Tipo de Servicio (JSON)
+                if not order.tipos_servicio or len(order.tipos_servicio) == 0:
+                    form.add_error('tipos_servicio', 'Debes marcar al menos un tipo de servicio.')
+                    errores_validacion = True
+
+                if errores_validacion:
+                    messages.error(request, "Faltan campos obligatorios para finalizar (marcados en rojo).")
                     return render(request, "orders/order_form.html", locals())
+
                 order.estatus = 'finalizado'
                 msg = f"Orden {order.folio} FINALIZADA."
             else:
                 order.estatus = 'borrador'
                 msg = "Borrador guardado."
 
-            # Firma Cliente
+            # Guardar Firma Cliente
             firma_b64 = request.POST.get("firma_b64", "").strip()
             if firma_b64.startswith("data:image"):
                 try:
@@ -212,7 +221,7 @@ def order_create(request):
             resguardos_fs.instance = order; resguardos_fs.save()
             evidencias_fs.instance = order; evidencias_fs.save()
 
-            # --- CARGA MASIVA DE FOTOS ---
+            # Carga masiva
             imagenes_extra = request.FILES.getlist('imagenes_masivas')
             if imagenes_extra:
                 for img in imagenes_extra:
@@ -222,7 +231,7 @@ def order_create(request):
             messages.success(request, msg)
             return redirect("orders:detail", pk=order.pk)
         else:
-            messages.error(request, "Errores en el formulario. Revisa los campos rojos.")
+            messages.error(request, "Errores en el formulario.")
     else:
         initial = {'ingeniero_nombre': request.user.get_full_name()} if request.user.is_staff else {}
         form = ServiceOrderForm(initial=initial)
@@ -252,7 +261,32 @@ def order_update(request, pk):
             order = form.save(commit=False)
             accion = request.POST.get('accion', 'borrador')
             
+            # --- VALIDACIÓN ESTRICTA AL FINALIZAR (IGUAL QUE EN CREATE) ---
             if accion == 'finalizar':
+                errores_validacion = False
+                
+                campos_obligatorios = {
+                    'cliente_contacto': 'Contacto obligatorio.',
+                    'cliente_email': 'Correo obligatorio.',
+                    'ingeniero_nombre': 'Ingeniero obligatorio.',
+                    'fecha_servicio': 'Fecha obligatoria.',
+                    'ubicacion': 'Ubicación obligatoria.',
+                }
+
+                for campo, mensaje in campos_obligatorios.items():
+                    valor = getattr(order, campo)
+                    if not valor:
+                        form.add_error(campo, mensaje)
+                        errores_validacion = True
+                
+                if not order.tipos_servicio or len(order.tipos_servicio) == 0:
+                    form.add_error('tipos_servicio', 'Selecciona al menos un tipo.')
+                    errores_validacion = True
+
+                if errores_validacion:
+                    messages.error(request, "Faltan campos obligatorios para finalizar.")
+                    return render(request, "orders/order_form.html", locals())
+
                 order.estatus = 'finalizado'
             else:
                 order.estatus = 'borrador'
@@ -268,7 +302,6 @@ def order_update(request, pk):
             order.save()
             equipos_fs.save(); materiales_fs.save(); resguardos_fs.save(); evidencias_fs.save()
 
-            # --- CARGA MASIVA DE FOTOS (EDICIÓN) ---
             imagenes_extra = request.FILES.getlist('imagenes_masivas')
             if imagenes_extra:
                 for img in imagenes_extra:
@@ -299,7 +332,7 @@ def bulk_delete(request):
     return redirect("orders:list")
 
 # ================================================================
-# GESTIÓN DE USUARIOS
+# USUARIOS
 # ================================================================
 
 @login_required
@@ -362,7 +395,7 @@ def delete_user_view(request, pk):
     return redirect('orders:user_list')
 
 # ================================================================
-# LOGIN / LOGOUT
+# LOGIN / EMAIL / WORD / UTILS
 # ================================================================
 
 def login_view(request):
@@ -375,10 +408,6 @@ def logout_view(request):
     messages.info(request, "Has cerrado sesión.")
     return redirect("account_login")
 
-# ================================================================
-# CORREO
-# ================================================================
-
 @login_required
 @user_passes_test(es_ingeniero_o_admin)
 def email_order(request, pk):
@@ -387,13 +416,11 @@ def email_order(request, pk):
         messages.warning(request, "Falta correo del cliente.")
         return redirect('orders:detail', pk=pk)
 
-    # Obtenemos ambas firmas para el PDF
     firma_ing = obtener_firma_ingeniero(order.ingeniero_nombre, request)
     firma_vis = obtener_firma_ingeniero(order.contacto_nombre, request)
     survey = "https://www.cognitoforms.com/INOVATECH1/EncuestaDeServicio"
 
     try:
-        # Generar PDF
         html = render_to_string('orders/order_detail.html', {
             'object': order, 
             'print_mode': True, 
@@ -422,10 +449,7 @@ def email_order(request, pk):
 
     return redirect('orders:detail', pk=pk)
 
-# ================================================================
-# WORD GENERATION (HELPERS)
-# ================================================================
-
+# --- HELPERS WORD ---
 def set_cell_color(cell, color):
     tc = cell._tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
@@ -457,19 +481,13 @@ def insert_signature(cell, title, img_field, name):
     if name: p.add_run(str(name)+"\n").bold=True
     p.add_run(title).font.size = Pt(7)
 
-# ==============================================================================
-# VISTA PRINCIPAL DE DESCARGA DE WORD (COMPLETA)
-# ==============================================================================
 @login_required
 def download_word(request, pk):
-    from docx.enum.table import WD_TABLE_ALIGNMENT 
-    
     order = get_object_or_404(ServiceOrder, pk=pk)
     doc = Document()
     s = doc.sections[0]; s.left_margin=s.right_margin=s.top_margin=s.bottom_margin = Inches(0.4)
     w_total = s.page_width - s.left_margin - s.right_margin
 
-    # 1. Header
     t = doc.add_table(rows=1, cols=3); t.autofit=False; t.alignment = WD_TABLE_ALIGNMENT.CENTER
     t.columns[0].width = int(w_total*0.2); t.columns[1].width = int(w_total*0.5); t.columns[2].width = int(w_total*0.3)
     
@@ -489,12 +507,10 @@ def download_word(request, pk):
     r = tf.cell(1,0).paragraphs[0].add_run(str(order.folio)); r.bold=True; r.font.color.rgb=RGBColor(192,0,0); r.font.size=Pt(12)
     doc.add_paragraph()
 
-    # 2. Body
     t = doc.add_table(rows=0, cols=4); t.style='Table Grid'
     w1=int(w_total*0.15); w2=int(w_total*0.35)
     for i in range(4): t.columns[i].width = w1 if i%2==0 else w2
 
-    # A. Info
     r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " A. INFORMACIÓN GENERAL")
     r=t.add_row(); make_label_gray(r.cells[0],"1. Cliente"); set_value_text(r.cells[1], order.cliente_nombre)
     make_label_gray(r.cells[2],"2. Ubicación"); set_value_text(r.cells[3], order.ubicacion)
@@ -514,7 +530,6 @@ def download_word(request, pk):
     r=t.add_row(); set_cell_color(r.cells[0],'FFFFFF'); set_cell_color(r.cells[1],'FFFFFF')
     make_label_gray(r.cells[2],"7. ID Ticket"); set_value_text(r.cells[3], order.ticket_id)
 
-    # B. Equipo
     r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " B. DATOS DEL EQUIPO")
     r=t.add_row()
     for i,x in enumerate(["Marca","Modelo","Serie","Descripción"]): make_label_gray(r.cells[i], x)
@@ -525,14 +540,12 @@ def download_word(request, pk):
         set_value_text(r.cells[2], eq.serie); set_value_text(r.cells[3], eq.descripcion)
     else: r.cells[0].merge(r.cells[3]); set_value_text(r.cells[0], "Sin equipo.")
 
-    # C. Datos
     r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " C. DATOS TÉCNICOS")
     r=t.add_row(); make_label_gray(r.cells[0],"1. Título"); r.cells[1].merge(r.cells[3]); set_value_text(r.cells[1], order.titulo)
     
     r=t.add_row(); make_label_gray(r.cells[0],"2. Actividades"); c=r.cells[1]; c.merge(r.cells[3]); c.text=""
     c.paragraphs[0].add_run(str(order.actividades)).font.size=Pt(9)
     
-    # Fotos
     if order.evidencias.exists():
         c.paragraphs[0].add_run("\n\n--- EVIDENCIA FOTOGRÁFICA ---\n").bold=True
         for f in order.evidencias.all():
@@ -542,12 +555,10 @@ def download_word(request, pk):
 
     r=t.add_row(); make_label_gray(r.cells[0],"3. Comentarios"); r.cells[1].merge(r.cells[3]); set_value_text(r.cells[1], order.comentarios)
 
-    # D. Costos
     r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " D. COSTOS Y TIEMPOS")
     r=t.add_row(); make_label_gray(r.cells[0],"Tiempo (hrs)"); set_value_text(r.cells[1], order.horas)
     make_label_gray(r.cells[2],"Costo"); set_value_text(r.cells[3], str(order.costo_mxn))
 
-    # E. Firmas
     r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " E. ACEPTACIÓN DEL SERVICIO")
     r=t.add_row(); r.cells[0].merge(r.cells[3])
     r.cells[0].paragraphs[0].add_run("Al firmar acepta conformidad.").font.size=Pt(7)
@@ -556,7 +567,6 @@ def download_word(request, pk):
     w3 = int(w_total/3)
     for cl in ts.rows[0].cells: cl.width = w3
 
-    # Buscar usuarios (Insensible a mayúsculas)
     def find_u(n):
         if not n: return None
         target = str(n).lower().strip()

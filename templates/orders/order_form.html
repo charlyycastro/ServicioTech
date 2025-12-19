@@ -1,5 +1,6 @@
 {% extends 'orders/base.html' %}
 {% load static %}
+{% load form_utils %} {# <--- 1. CARGAMOS LA LIBRERÍA DE FILTROS NUEVA #}
 
 {% block extra_css %}
 <style>
@@ -19,9 +20,16 @@
     border: 1px solid #ced4da;
   }
 
-  .is-invalid {
+  /* ESTILOS PARA ERRORES DE VALIDACIÓN (BOOTSTRAP STANDARD) */
+  .form-select.is-invalid, .form-control.is-invalid {
       border-color: #dc3545 !important;
+      padding-right: calc(1.5em + .75rem);
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5zM6 7.5h.01'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right calc(.375em + .1875rem) center;
+      background-size: calc(.75em + .375rem) calc(.75em + .375rem);
   }
+
   .invalid-feedback-custom {
       width: 100%; margin-top: .25rem; font-size: .875em; color: #dc3545;
   }
@@ -120,6 +128,7 @@
   {% if form.errors or equipos_fs.errors or materiales_fs.errors or resguardos_fs.errors or evidencias_fs.errors %}
     <div class="alert alert-danger shadow-sm mb-3">
       <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Hay errores en el formulario.</strong>
+      Por favor revisa las secciones marcadas en rojo y con icono de alerta.
       {{ form.non_field_errors }}
     </div>
   {% endif %}
@@ -138,37 +147,39 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label fw-bold">Cliente / Empresa <span class="text-danger">*</span></label>
-              {{ form.cliente_nombre }}
+              {# APLICAMOS EL FILTRO MAGICO AQUÍ #}
+              {{ form.cliente_nombre|add_class_if_error }}
               {% if form.cliente_nombre.errors %}<div class="invalid-feedback-custom d-block">{{ form.cliente_nombre.errors.0 }}</div>{% endif %}
             </div>
-            <div class="col-md-6"><label class="form-label">Ubicación</label>{{ form.ubicacion }}</div>
+            <div class="col-md-6"><label class="form-label">Ubicación</label>{{ form.ubicacion|add_class_if_error }}</div>
             <div class="col-md-4">
               <label class="form-label fw-bold">Persona de Contacto <span class="text-danger">*</span></label>
-              {{ form.cliente_contacto }}
+              {{ form.cliente_contacto|add_class_if_error }}
               {% if form.cliente_contacto.errors %}<div class="invalid-feedback-custom d-block">{{ form.cliente_contacto.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-4">
               <label class="form-label fw-bold">Correo <span class="text-danger">*</span></label>
-              {{ form.cliente_email }}
+              {{ form.cliente_email|add_class_if_error }}
               {% if form.cliente_email.errors %}<div class="invalid-feedback-custom d-block">{{ form.cliente_email.errors.0 }}</div>{% endif %}
             </div>
-            <div class="col-md-4"><label class="form-label">Teléfono</label>{{ form.cliente_telefono }}</div>
+            <div class="col-md-4"><label class="form-label">Teléfono</label>{{ form.cliente_telefono|add_class_if_error }}</div>
             <div class="col-12"><hr class="my-1 text-muted"></div>
             <div class="col-md-3">
               <label class="form-label fw-bold">Fecha Servicio <span class="text-danger">*</span></label>
-              {{ form.fecha_servicio }}
+              {{ form.fecha_servicio|add_class_if_error }}
               {% if form.fecha_servicio.errors %}<div class="invalid-feedback-custom d-block">{{ form.fecha_servicio.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-md-3">
               <label class="form-label fw-bold">Ingeniero <span class="text-danger">*</span></label>
-              {{ form.ingeniero_nombre }}
+              {{ form.ingeniero_nombre|add_class_if_error }}
               {% if form.ingeniero_nombre.errors %}<div class="invalid-feedback-custom d-block">{{ form.ingeniero_nombre.errors.0 }}</div>{% endif %}
             </div>
-            <div class="col-md-3"><label class="form-label">ID Ticket</label>{{ form.ticket_id }}</div>
-            <div class="col-md-3"><label class="form-label">Contacto Interno</label>{{ form.contacto_nombre }}</div>
+            <div class="col-md-3"><label class="form-label">ID Ticket</label>{{ form.ticket_id|add_class_if_error }}</div>
+            <div class="col-md-3"><label class="form-label">Contacto Interno</label>{{ form.contacto_nombre|add_class_if_error }}</div>
             <div class="col-md-8">
               <label class="form-label d-block fw-bold">Tipo(s) de servicio <span class="text-danger">*</span></label>
-              <div class="checkgrid p-2 border rounded bg-white">
+              {# Checkboxes: Borde rojo al contenedor si hay error #}
+              <div class="checkgrid p-2 border rounded bg-white {% if form.tipos_servicio.errors %}border-danger{% endif %}">
                 {% for cb in form.tipos_servicio %}
                   <div class="form-check">{{ cb.tag }} <label class="form-check-label" for="{{ cb.id_for_label }}">{{ cb.choice_label }}</label></div>
                 {% endfor %}
@@ -176,10 +187,10 @@
                   <input type="checkbox" id="chk-otro-servicio"> <label class="form-check-label" for="chk-otro-servicio">Otro servicio</label>
                 </div>
               </div>
-              {% if form.tipos_servicio.errors %}<div class="invalid-feedback-custom d-block">Selecciona al menos uno.</div>{% endif %}
+              {% if form.tipos_servicio.errors %}<div class="text-danger small mt-1 d-block"><i class="bi bi-exclamation-circle me-1"></i>Selecciona al menos uno.</div>{% endif %}
             </div>
-            <div class="col-md-4 d-none" id="otro-wrapper"><label class="form-label">Especifique Otro</label>{{ form.tipo_servicio_otro }}</div>
-            <div class="col-12"><label class="form-label">Indicaciones Especiales</label>{{ form.indicaciones_especiales }}</div>
+            <div class="col-md-4 d-none" id="otro-wrapper"><label class="form-label">Especifique Otro</label>{{ form.tipo_servicio_otro|add_class_if_error }}</div>
+            <div class="col-12"><label class="form-label">Indicaciones Especiales</label>{{ form.indicaciones_especiales|add_class_if_error }}</div>
           </div>
         </div>
       </div>
@@ -205,9 +216,9 @@
       <div id="collapseActividades" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="row g-3">
-            <div class="col-12"><label class="form-label">Título</label>{{ form.titulo }}</div>
-            <div class="col-12"><label class="form-label">Actividades</label>{{ form.actividades }}</div>
-            <div class="col-12"><label class="form-label">Comentarios</label>{{ form.comentarios }}</div>
+            <div class="col-12"><label class="form-label">Título</label>{{ form.titulo|add_class_if_error }}</div>
+            <div class="col-12"><label class="form-label">Actividades</label>{{ form.actividades|add_class_if_error }}</div>
+            <div class="col-12"><label class="form-label">Comentarios</label>{{ form.comentarios|add_class_if_error }}</div>
           </div>
         </div>
       </div>
@@ -221,8 +232,8 @@
       <div id="collapseCostos" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
         <div class="accordion-body">
           <div class="row g-3 align-items-end">
-            <div class="col-md-3"><label class="form-label">Horas</label>{{ form.horas }}</div>
-            <div class="col-md-3"><label class="form-label">Costo (MXN)</label>{{ form.costo_mxn }}</div>
+            <div class="col-md-3"><label class="form-label">Horas</label>{{ form.horas|add_class_if_error }}</div>
+            <div class="col-md-3"><label class="form-label">Costo (MXN)</label>{{ form.costo_mxn|add_class_if_error }}</div>
             <div class="col-md-6">
               <label class="form-label d-block">Estatus</label>
               <div class="d-flex gap-3">
@@ -232,9 +243,9 @@
             </div>
             <div class="col-12"><hr></div>
             <div class="col-md-2"><div class="form-check mt-2">{{ form.reagenda }} <label class="form-check-label fw-bold">Reagendar</label></div></div>
-            <div class="col-md-3"><label class="form-label">Nueva Fecha</label>{{ form.reagenda_fecha }}</div>
-            <div class="col-md-2"><label class="form-label">Hora</label>{{ form.reagenda_hora }}</div>
-            <div class="col-md-5"><label class="form-label">Motivo</label>{{ form.reagenda_motivo }}</div>
+            <div class="col-md-3"><label class="form-label">Nueva Fecha</label>{{ form.reagenda_fecha|add_class_if_error }}</div>
+            <div class="col-md-2"><label class="form-label">Hora</label>{{ form.reagenda_hora|add_class_if_error }}</div>
+            <div class="col-md-5"><label class="form-label">Motivo</label>{{ form.reagenda_motivo|add_class_if_error }}</div>
           </div>
         </div>
       </div>
@@ -336,134 +347,117 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   
-  // --- LOGICA DE CARGA MASIVA (DROPZONE) ---
-  const dropZone = document.getElementById('drop-zone');
-  const fileInput = document.getElementById('file-input');
-  const fileListContainer = document.getElementById('file-list-container');
-  
-  // Array global para mantener los archivos acumulados
-  let accumulatedFiles = [];
-
-  // Eventos de Drag & Drop para estilo visual
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(eventName, preventDefaults, false);
-  });
-
-  function preventDefaults(e) {
-      e.preventDefault();
-      e.stopPropagation();
-  }
-
-  ['dragenter', 'dragover'].forEach(eventName => {
-      dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
-  });
-
-  ['dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
-  });
-
-  // Manejar cuando se sueltan archivos
-  dropZone.addEventListener('drop', handleDrop, false);
-  // Manejar cuando se seleccionan con click
-  fileInput.addEventListener('change', handleSelect, false);
-
-  function handleDrop(e) {
-      const dt = e.dataTransfer;
-      const newFiles = dt.files;
-      handleFiles(newFiles);
-  }
-
-  function handleSelect(e) {
-      const newFiles = e.target.files;
-      handleFiles(newFiles);
-      // Reiniciamos el input para permitir seleccionar el mismo archivo si se borró y se quiere volver a subir
-      fileInput.value = ''; 
-  }
-
-  function handleFiles(files) {
-      // Convertir FileList a Array y agregarlos al acumulado
-      const newFilesArray = Array.from(files);
-      
-      newFilesArray.forEach(file => {
-          accumulatedFiles.push(file);
-          renderFilePreview(file, accumulatedFiles.length - 1);
-      });
-
-      updateInputFiles();
-  }
-
-  // Renderizar la tarjeta visual del archivo
-  function renderFilePreview(file, index) {
-      const div = document.createElement('div');
-      div.className = 'file-preview-item';
-      div.dataset.index = index; // Para saber cual borrar luego
-
-      // Tamaño legible
-      const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-
-      div.innerHTML = `
-          <div class="file-icon"><i class="bi bi-file-earmark-image"></i></div>
-          <div class="file-details">
-              <span class="file-name">${file.name}</span>
-              <span class="file-size">${size}</span>
-              <div class="progress-bar-wrapper">
-                  <div class="progress-fill" style="width: 0%"></div>
-              </div>
-          </div>
-          <button type="button" class="btn-remove-file" title="Eliminar archivo">&times;</button>
-      `;
-
-      fileListContainer.appendChild(div);
-
-      // Simular carga (animación visual)
-      setTimeout(() => {
-          div.querySelector('.progress-fill').style.width = '100%';
-      }, 50);
-
-      // Evento borrar
-      div.querySelector('.btn-remove-file').addEventListener('click', function() {
-          removeFile(file);
-          div.remove();
-      });
-  }
-
-  function removeFile(fileToRemove) {
-      // Filtrar el array eliminando el archivo especifico
-      accumulatedFiles = accumulatedFiles.filter(f => f !== fileToRemove);
-      updateInputFiles();
-  }
-
-  // --- TRUCO IMPORTANTE ---
-  // Actualizar el input real con el DataTransfer para que Django reciba los archivos
-  function updateInputFiles() {
-      const dataTransfer = new DataTransfer();
-      accumulatedFiles.forEach(file => {
-          dataTransfer.items.add(file);
-      });
-      fileInput.files = dataTransfer.files;
-      
-      // Debug (opcional)
-      console.log("Archivos listos para enviar:", fileInput.files.length);
-  }
-
-
-  // --- RESTO DEL JS (ACORDEONES, FIRMA, FORMSETS) ---
-  
+  // =========================================================
+  // 1. SISTEMA INTELIGENTE DE ERRORES (NUEVO)
+  // =========================================================
   function abrirAcordeonesConErrores() {
-      document.querySelectorAll('.accordion-collapse').forEach(acc => {
-          if (acc.querySelector('.is-invalid') || acc.querySelector('.text-danger') || acc.querySelector('.alert-danger')) {
-              new bootstrap.Collapse(acc, { show: true });
-              const btn = document.querySelector(`button[data-bs-target="#${acc.id}"]`);
-              if(btn) { btn.classList.add('text-danger', 'fw-bold'); btn.innerHTML += ' <i class="bi bi-exclamation-circle-fill ms-2"></i>'; }
+      // Buscamos cualquier elemento con clase .is-invalid (inyectado por Django) O .text-danger (errores manuales)
+      const errorIndicators = document.querySelectorAll('.is-invalid, .invalid-feedback-custom, .text-danger, .alert-danger');
+      
+      errorIndicators.forEach(el => {
+          // Subimos hasta encontrar el acordeón padre
+          const collapse = el.closest('.accordion-collapse');
+          if (collapse) {
+              // Abrimos el acordeón
+              new bootstrap.Collapse(collapse, { show: true });
+              
+              // Marcamos el botón del header en rojo para que se note dónde está el error
+              const headerBtn = document.querySelector(`button[data-bs-target="#${collapse.id}"]`);
+              if(headerBtn) {
+                  headerBtn.classList.add('text-danger', 'fw-bold');
+                  if(!headerBtn.innerHTML.includes('exclamation')) {
+                      headerBtn.innerHTML += ' <i class="bi bi-exclamation-circle-fill ms-2"></i>';
+                  }
+              }
           }
       });
   }
-  abrirAcordeonesConErrores();
+  
+  // Ejecutamos la búsqueda de errores al cargar
+  setTimeout(abrirAcordeonesConErrores, 100);
 
-  document.querySelectorAll('.invalid-feedback-custom').forEach(div => {
-      if(div.previousElementSibling) div.previousElementSibling.classList.add('is-invalid');
-  });
+  // =========================================================
+  // 2. LÓGICA DROPZONE (MANTENIDA)
+  // =========================================================
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const fileListContainer = document.getElementById('file-list-container');
+  let accumulatedFiles = [];
 
+  if(dropZone && fileInput){
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+          dropZone.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+          dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+          dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+      });
+
+      dropZone.addEventListener('drop', handleDrop, false);
+      fileInput.addEventListener('change', handleSelect, false);
+
+      function handleDrop(e) {
+          const dt = e.dataTransfer;
+          handleFiles(dt.files);
+      }
+
+      function handleSelect(e) {
+          handleFiles(e.target.files);
+          fileInput.value = ''; 
+      }
+
+      function handleFiles(files) {
+          const newFilesArray = Array.from(files);
+          newFilesArray.forEach(file => {
+              accumulatedFiles.push(file);
+              renderFilePreview(file, accumulatedFiles.length - 1);
+          });
+          updateInputFiles();
+      }
+
+      function renderFilePreview(file, index) {
+          const div = document.createElement('div');
+          div.className = 'file-preview-item';
+          div.dataset.index = index; 
+          const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+
+          div.innerHTML = `
+              <div class="file-icon"><i class="bi bi-file-earmark-image"></i></div>
+              <div class="file-details">
+                  <span class="file-name">${file.name}</span>
+                  <span class="file-size">${size}</span>
+                  <div class="progress-bar-wrapper">
+                      <div class="progress-fill" style="width: 0%"></div>
+                  </div>
+              </div>
+              <button type="button" class="btn-remove-file" title="Eliminar archivo">&times;</button>
+          `;
+          fileListContainer.appendChild(div);
+          setTimeout(() => { div.querySelector('.progress-fill').style.width = '100%'; }, 50);
+          
+          div.querySelector('.btn-remove-file').addEventListener('click', function() {
+              accumulatedFiles = accumulatedFiles.filter(f => f !== file);
+              updateInputFiles();
+              div.remove();
+          });
+      }
+
+      function updateInputFiles() {
+          const dataTransfer = new DataTransfer();
+          accumulatedFiles.forEach(file => { dataTransfer.items.add(file); });
+          fileInput.files = dataTransfer.files;
+      }
+  }
+
+  // =========================================================
+  // 3. LOGICA GENERAL UI
+  // =========================================================
   const chkOtro = document.getElementById('chk-otro-servicio');
   const wrapperOtro = document.getElementById('otro-wrapper');
   const inputOtro = document.getElementById('id_tipo_servicio_otro');
