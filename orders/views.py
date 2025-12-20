@@ -1,3 +1,20 @@
+import os
+import uuid
+import base64
+import unicodedata
+
+# --- TERCEROS ---
+import weasyprint
+import google.generativeai as genai
+from docx.shared import Inches
+from docx import Document
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
+# --- DJANGO ---
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
@@ -12,18 +29,17 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from django.core.mail import EmailMessage 
+from django.core.mail import EmailMessage
 from django.core.files.base import ContentFile
 from django.utils.dateparse import parse_date
-from django.db import IntegrityError 
-import base64
-import uuid
+from django.utils import timezone  # <--- FALTABA ESTA PARA LA FECHA
+from django.db import IntegrityError
 
-# --- IMPORTACIONES DE TUS MODELOS Y FORMS ---
-from .models import ServiceOrder, EngineerProfile
+# --- MODELOS Y FORMULARIOS ---
+from .models import ServiceOrder, EngineerProfile, ServiceEvidence 
 from .forms import (
     ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet,
-    ShelterEquipmentFormSet, ServiceEvidenceFormSet, 
+    ShelterEquipmentFormSet, ServiceEvidenceFormSet,
     CustomUserCreationForm, UserEditForm
 )
 
@@ -557,3 +573,342 @@ def logout_view(request):
     logout(request)
     messages.info(request, "Has cerrado sesión.")
     return redirect("account_login")
+
+# ================================================================
+# MÓDULO INTELIGENCIA ARTIFICIAL: MEMORIA TÉCNICA
+# ================================================================
+
+@login_required
+@user_passes_test(es_ingeniero_o_admin)
+def memory_selection_view(request):
+    """
+    Vista para seleccionar múltiples reportes y generar la memoria.
+    Funciona igual que order_list pero con checkboxes.
+    """
+    orders = ServiceOrder.objects.filter(estatus='finalizado').order_by('-fecha_servicio')
+    
+    # --- FILTROS (Misma lógica que tu lista) ---
+    cliente = request.GET.get('cliente', '').strip()
+    if cliente:
+        orders = orders.filter(cliente_nombre__icontains=cliente)
+    
+    fecha_ini = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    if fecha_ini: orders = orders.filter(fecha_servicio__gte=fecha_ini)
+    if fecha_fin: orders = orders.filter(fecha_servicio__lte=fecha_fin)
+
+    # Obtenemos lista única de clientes para el dropdown
+    clientes_list = ServiceOrder.objects.values_list('cliente_nombre', flat=True).distinct().order_by('cliente_nombre')
+
+    return render(request, 'orders/memory_selection.html', {
+        'orders': orders,
+        'clientes_list': clientes_list
+    })
+
+@login_required
+@user_passes_test(es_ingeniero_o_admin)
+@require_POST
+def memory_preview_view(request):
+    selected_ids = request.POST.getlist('selected_orders')
+    if not selected_ids:
+        messages.error(request, "Selecciona al menos una orden.")
+        return redirect('orders:memory_select')
+
+    # Recuperar datos
+    ordenes = ServiceOrder.objects.filter(id__in=selected_ids).order_by('fecha_servicio')
+    cliente_principal = ordenes.first().cliente_nombre
+    
+    # Construir Contexto
+    contexto = ""
+    for orden in ordenes:
+        act = (orden.actividades or "").replace('\n', ' ')
+        hallazgos = (orden.comentarios or "").replace('\n', ' ')
+        contexto += f"""
+        [FOLIO {orden.folio}]
+        - Tipo: {', '.join(orden.tipos_servicio)}
+        - Actividades: {act}
+        - Hallazgos: {hallazgos}
+        --------------------------------------------------
+        """
+
+    prompt = f"""
+    Actúa como Gerente Técnico. Redacta una MEMORIA TÉCNICA para "{cliente_principal}".
+    
+    DATOS:
+    {contexto}
+    
+    INSTRUCCIONES:
+    - Texto plano para Word.
+    - Sin Markdown (**).
+    - Secciones: RESUMEN, DETALLES, HALLAZGOS, RECOMENDACIONES.
+    """
+
+    # Conexión Gemini (Usando el modelo 'latest' que nos funcionó)
+    api_key = os.getenv("GEMINI_API_KEY")
+    texto_ia = "Error: No hay API Key."
+    
+    if api_key:
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-flash-latest') # O el que te funcionó
+            response = model.generate_content(prompt)
+            texto_ia = response.text.replace('**', '').replace('##', '')
+        except Exception as e:
+            texto_ia = f"Error generando texto con IA: {e}.\n\nPuedes escribir el reporte manualmente aquí."
+
+    # Renderizamos la vista previa (NO descargamos aún)
+    return render(request, 'orders/memory_preview.html', {
+        'texto_generado': texto_ia,
+        'selected_ids': selected_ids, # Pasamos los IDs ocultos para usarlos al descargar
+        'cliente': cliente_principal
+    })
+
+# ------------------------------------------------------------------
+# VISTA 2: DESCARGA FINAL (Word Profesional + Fotos)
+# ------------------------------------------------------------------
+@login_required
+@user_passes_test(es_ingeniero_o_admin)
+@require_POST
+def memory_download_view(request):
+    # Recibimos el texto FINAL (posiblemente editado por el usuario)
+    texto_final = request.POST.get('texto_final')
+    # Recibimos los IDs de nuevo para buscar las fotos
+    selected_ids_str = request.POST.get('selected_ids', '')
+    
+    # Convertir string de lista "[1, 2]" a lista real python
+    import ast
+    try:
+        selected_ids = ast.literal_eval(selected_ids_str)
+        ordenes = ServiceOrder.objects.filter(id__in=selected_ids).order_by('fecha_servicio')
+    except:
+        ordenes = []
+
+    # Crear Documento
+    document = Document()
+    style = document.styles['Normal']
+    font = style.font
+    font.name = 'Calibri'
+    font.size = Pt(11)
+
+    # 1. Encabezado Profesional
+    header = document.sections[0].header
+    paragraph = header.paragraphs[0]
+    paragraph.text = f"MEMORIA TÉCNICA - {timezone.now().year}"
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    # 2. Título Principal
+    titulo = document.add_heading('MEMORIA TÉCNICA DE SERVICIO', 0)
+    titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    document.add_paragraph(f"Cliente: {ordenes.first().cliente_nombre if ordenes else 'Varios'}")
+    document.add_paragraph(f"Fecha de Emisión: {timezone.now().date()}")
+    document.add_paragraph("_" * 50)
+
+    # 3. Insertar el Texto (Editado por ti)
+    document.add_paragraph(texto_final)
+
+    # 4. ANEXO FOTOGRÁFICO (Aquí insertamos las imágenes reales)
+    if ordenes:
+        document.add_page_break()
+        document.add_heading('ANEXO FOTOGRÁFICO', level=1)
+        
+        table = document.add_table(rows=1, cols=2)
+        table.autofit = True
+        
+        # Iteramos sobre las órdenes y sus evidencias
+        row_cells = table.rows[0].cells
+        idx = 0
+        
+        for orden in ordenes:
+            for evidencia in orden.evidencias.all():
+                # Verificar si el archivo existe físicamente
+                if evidencia.archivo and os.path.exists(evidencia.archivo.path):
+                    # Lógica para hacer una cuadrícula de 2 columnas
+                    if idx % 2 == 0 and idx != 0:
+                        row_cells = table.add_row().cells
+                    
+                    cell = row_cells[idx % 2]
+                    p = cell.paragraphs[0]
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    try:
+                        # Insertar imagen redimensionada
+                        run = p.add_run()
+                        run.add_picture(evidencia.archivo.path, width=Inches(2.5))
+                        # Pie de foto
+                        p.add_run(f"\n{orden.folio}: {evidencia.comentario or 'Evidencia'}")
+                        idx += 1
+                    except Exception as e:
+                        print(f"Error imagen: {e}")
+
+    # 5. Descarga
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    response['Content-Disposition'] = f'attachment; filename="Memoria_Tecnica.docx"'
+    document.save(response)
+    return response
+
+
+    # ================================================================
+# RESTAURACIÓN: FUNCIONES PARA WORD INDIVIDUAL (REPORTES CLÁSICOS)
+# ================================================================
+
+# --- Helpers para estilos de Word ---
+def set_cell_color(cell, color):
+    tc = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:fill'), color)
+    tc.append(shd)
+
+def make_header_blue(cell, text):
+    cell.text = ""; p = cell.paragraphs[0]; r = p.add_run(text)
+    r.bold = True; r.font.color.rgb = RGBColor(255,255,255); set_cell_color(cell, '1F4E78')
+
+def make_label_gray(cell, text):
+    cell.text = ""; p = cell.paragraphs[0]; r = p.add_run(text)
+    r.bold = True; r.font.size = Pt(9); r.font.color.rgb = RGBColor(0,0,0); set_cell_color(cell, 'F2F2F2')
+
+def set_value_text(cell, text):
+    cell.text = str(text) if text else "-"; cell.paragraphs[0].runs[0].font.size = Pt(9)
+
+def insert_signature(cell, title, img_field, name):
+    cell.text = ""; p = cell.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if img_field:
+        try:
+            if hasattr(img_field, 'path') and os.path.exists(img_field.path):
+                p.add_run().add_picture(img_field.path, height=Inches(0.6))
+            elif isinstance(img_field, str) and os.path.exists(img_field):
+                p.add_run().add_picture(img_field, height=Inches(0.6))
+        except: pass
+    else: p.add_run("\n\n\n")
+    p.add_run("\n_______________________\n")
+    if name: p.add_run(str(name)+"\n").bold=True
+    p.add_run(title).font.size = Pt(7)
+
+@login_required
+def download_word(request, pk):
+    order = get_object_or_404(ServiceOrder, pk=pk)
+    doc = Document()
+    
+    # Márgenes
+    s = doc.sections[0]
+    s.left_margin = s.right_margin = s.top_margin = s.bottom_margin = Inches(0.4)
+    w_total = s.page_width - s.left_margin - s.right_margin
+
+    # Encabezado con Logo
+    t = doc.add_table(rows=1, cols=3); t.autofit=False; t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    t.columns[0].width = int(w_total*0.2)
+    t.columns[1].width = int(w_total*0.5)
+    t.columns[2].width = int(w_total*0.3)
+    
+    logo = os.path.join(settings.BASE_DIR, 'static', 'orders', 'inovatech-logo.png')
+    if os.path.exists(logo):
+        t.rows[0].cells[0].paragraphs[0].add_run().add_picture(logo, width=Inches(1.2))
+    
+    p = t.rows[0].cells[1].paragraphs[0]; p.alignment=1
+    r = p.add_run("ORDEN DE SERVICIO TÉCNICO"); r.bold=True; r.font.size=Pt(16); r.font.color.rgb=RGBColor(31,78,120)
+    
+    # Cuadro de Folio
+    tf = t.rows[0].cells[2].add_table(rows=2, cols=1); tf.alignment=2
+    tbl = tf._tbl; borders = OxmlElement('w:tblBorders')
+    for b in ['top','left','bottom','right','insideH']:
+        el = OxmlElement(f'w:{b}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'4'); borders.append(el)
+    tbl.tblPr.append(borders)
+    
+    tf.cell(0,0).paragraphs[0].add_run("FOLIO").bold=True
+    r = tf.cell(1,0).paragraphs[0].add_run(str(order.folio)); r.bold=True; r.font.color.rgb=RGBColor(192,0,0); r.font.size=Pt(12)
+    doc.add_paragraph()
+
+    # Tabla Principal
+    t = doc.add_table(rows=0, cols=4); t.style='Table Grid'
+    w1=int(w_total*0.15); w2=int(w_total*0.35)
+    for i in range(4): t.columns[i].width = w1 if i%2==0 else w2
+
+    # A. Info General
+    r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " A. INFORMACIÓN GENERAL")
+    r=t.add_row(); make_label_gray(r.cells[0],"1. Cliente"); set_value_text(r.cells[1], order.cliente_nombre)
+    make_label_gray(r.cells[2],"2. Ubicación"); set_value_text(r.cells[3], order.ubicacion)
+    
+    r=t.add_row(); make_label_gray(r.cells[0],"3. Fecha"); set_value_text(r.cells[1], order.fecha_servicio)
+    make_label_gray(r.cells[2],"4. Contacto"); set_value_text(r.cells[3], order.cliente_contacto)
+
+    r=t.add_row(); make_label_gray(r.cells[0],"5. Tipo serv.")
+    bd = str(order.tipos_servicio).lower()
+    chk = lambda x: "☒" if x in bd else "☐"
+    txt = (f"{chk('instal')} Instalación   {chk('config')} Configuración\n"
+           f"{chk('mantenim')} Mantenimiento   {chk('garant')} Garantía\n"
+           f"{chk('revis')} Falla/Revisión   {chk('capacit')} Capacitación")
+    set_value_text(r.cells[1], txt)
+    make_label_gray(r.cells[2],"6. Ingeniero"); set_value_text(r.cells[3], order.ingeniero_nombre)
+
+    r=t.add_row(); set_cell_color(r.cells[0],'FFFFFF'); set_cell_color(r.cells[1],'FFFFFF')
+    make_label_gray(r.cells[2],"7. ID Ticket"); set_value_text(r.cells[3], order.ticket_id)
+
+    # B. Equipo
+    r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " B. DATOS DEL EQUIPO")
+    r=t.add_row()
+    for i,x in enumerate(["Marca","Modelo","Serie","Descripción"]): make_label_gray(r.cells[i], x)
+    eq = order.equipos.first()
+    r=t.add_row()
+    if eq:
+        set_value_text(r.cells[0], eq.marca); set_value_text(r.cells[1], eq.modelo)
+        set_value_text(r.cells[2], eq.serie); set_value_text(r.cells[3], eq.descripcion)
+    else: r.cells[0].merge(r.cells[3]); set_value_text(r.cells[0], "Sin equipo.")
+
+    # C. Datos Técnicos
+    r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " C. DATOS TÉCNICOS")
+    r=t.add_row(); make_label_gray(r.cells[0],"1. Título"); r.cells[1].merge(r.cells[3]); set_value_text(r.cells[1], order.titulo)
+    
+    r=t.add_row(); make_label_gray(r.cells[0],"2. Actividades"); c=r.cells[1]; c.merge(r.cells[3]); c.text=""
+    c.paragraphs[0].add_run(str(order.actividades)).font.size=Pt(9)
+    
+    # Evidencias en Word individual
+    if order.evidencias.exists():
+        c.paragraphs[0].add_run("\n\n--- EVIDENCIA FOTOGRÁFICA ---\n").bold=True
+        for f in order.evidencias.all():
+            if f.archivo and os.path.exists(f.archivo.path):
+                try: c.paragraphs[0].add_run().add_picture(f.archivo.path, width=Inches(2.5))
+                except: pass
+
+    r=t.add_row(); make_label_gray(r.cells[0],"3. Comentarios"); r.cells[1].merge(r.cells[3]); set_value_text(r.cells[1], order.comentarios)
+
+    # D. Costos
+    r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " D. COSTOS Y TIEMPOS")
+    r=t.add_row(); make_label_gray(r.cells[0],"Tiempo (hrs)"); set_value_text(r.cells[1], order.horas)
+    make_label_gray(r.cells[2],"Costo"); set_value_text(r.cells[3], str(order.costo_mxn))
+
+    # E. Firmas
+    r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " E. ACEPTACIÓN DEL SERVICIO")
+    r=t.add_row(); r.cells[0].merge(r.cells[3])
+    r.cells[0].paragraphs[0].add_run("Al firmar acepta conformidad.").font.size=Pt(7)
+
+    r=t.add_row(); c=r.cells[0]; c.merge(r.cells[3]); ts=c.add_table(rows=1,cols=3); ts.autofit=False; ts.alignment=1
+    w3 = int(w_total/3)
+    for cl in ts.rows[0].cells: cl.width = w3
+
+    # Buscador de firmas
+    def find_u(n):
+        if not n: return None
+        target = str(n).lower().strip()
+        for u in User.objects.all():
+            fn = (u.get_full_name() or "").lower().strip()
+            un = u.username.lower().strip()
+            if fn == target or un == target: return u
+        return None
+
+    fi = None; ui = find_u(order.ingeniero_nombre)
+    if ui:
+        if hasattr(ui,'engineerprofile') and ui.engineerprofile.firma: fi=ui.engineerprofile.firma
+        elif hasattr(ui,'profile') and ui.profile.firma: fi=ui.profile.firma
+    
+    fv = None; uv = find_u(order.contacto_nombre)
+    if uv:
+        if hasattr(uv,'engineerprofile') and uv.engineerprofile.firma: fv=uv.engineerprofile.firma
+        elif hasattr(uv,'profile') and uv.profile.firma: fv=uv.profile.firma
+
+    insert_signature(ts.cell(0,0), "Ingeniero de Soporte", fi, order.ingeniero_nombre)
+    insert_signature(ts.cell(0,1), "Cliente", order.firma, order.cliente_contacto)
+    insert_signature(ts.cell(0,2), "Contacto Interno / Visor", fv, order.contacto_nombre)
+
+    resp = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    resp['Content-Disposition'] = f'attachment; filename="Orden_{order.folio}.docx"'
+    doc.save(resp)
+    return resp

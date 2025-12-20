@@ -22,4 +22,8 @@ urlpatterns = [
     path('usuarios/editar/<int:pk>/', views.edit_user_view, name='edit_user'),
     path('usuarios/eliminar/<int:pk>/', views.delete_user_view, name='delete_user'),
     path('editar/<int:pk>/', views.order_update, name='update'),
+    path('order/<int:pk>/word/', views.download_word, name='download_word'),
+    path('memoria/seleccion/', views.memory_selection_view, name='memory_select'),
+    path('memoria/previsualizar/', views.memory_preview_view, name='memory_preview'),
+    path('memoria/descargar/', views.memory_download_view, name='memory_download'),
 ]

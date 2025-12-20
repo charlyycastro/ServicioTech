@@ -1,0 +1,42 @@
+{% extends 'orders/base.html' %}
+
+{% block title %}Resultado IA · ServicioTech{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 fw-bold">Contexto Generado para IA</h2>
+        <a href="{% url 'orders:memory_select' %}" class="btn btn-outline-secondary">Volver</a>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        Se han procesado <strong>{{ cantidad }}</strong> reportes del cliente <strong>{{ cliente }}</strong>.
+        Copia el siguiente bloque y pégalo en ChatGPT/Gemini para obtener tu memoria técnica profesional.
+    </div>
+
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-dark text-white d-flex justify-content-between">
+            <span>PROMPT MAESTRO</span>
+            <button class="btn btn-sm btn-light" onclick="copiarPrompt()">
+                <i class="bi bi-clipboard me-1"></i> Copiar Texto
+            </button>
+        </div>
+        <div class="card-body bg-light">
+            <textarea id="prompt-area" class="form-control font-monospace" rows="20" readonly style="font-size: 0.85rem; background: #fff;">
+{{ prompt }}
+            </textarea>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copiarPrompt() {
+        const copyText = document.getElementById("prompt-area");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); 
+        navigator.clipboard.writeText(copyText.value);
+        alert("Prompt copiado al portapapeles. ¡Ahora pégalo en tu IA de preferencia!");
+    }
+</script>
+{% endblock %}

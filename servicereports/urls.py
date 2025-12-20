@@ -15,3 +15,4 @@ urlpatterns = [
 # Esto le dice a Django: "Si estamos en modo DEBUG, sirve las fotos tú mismo"
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    

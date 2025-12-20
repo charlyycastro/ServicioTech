@@ -11,9 +11,17 @@
     
     {# BOTÓN SUPERIOR: SOLO VISIBLE PARA INGENIEROS Y ADMIN #}
     {% if user.is_staff %}
-    <a href="{% url 'orders:create' %}" class="btn btn-primary shadow-sm">
-        <i class="bi bi-plus-lg me-2"></i>Nueva Orden
-    </a>
+    <div class="d-flex gap-2">
+        {# Botón IA: Memoria Técnica #}
+        <a href="{% url 'orders:memory_select' %}" class="btn btn-dark shadow-sm d-flex align-items-center gap-2">
+            <i class="bi bi-stars text-warning"></i> 
+            <span>Memoria Técnica IA</span>
+        </a>
+
+        <a href="{% url 'orders:create' %}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-lg me-2"></i>Nueva Orden
+        </a>
+    </div>
     {% endif %}
 </div>
 
