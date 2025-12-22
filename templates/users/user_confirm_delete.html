@@ -1,0 +1,37 @@
+{% extends 'orders/base.html' %}
+
+{% block title %}Eliminar Usuario{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white fw-bold">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación
+                </div>
+                <div class="card-body text-center p-5">
+                    <h5 class="card-title text-danger mb-3">¿Estás seguro?</h5>
+                    <p class="card-text text-secondary mb-4">
+                        Estás a punto de eliminar al usuario: <br>
+                        <strong class="fs-4 text-dark">{{ object.get_full_name|default:object.username }}</strong>
+                    </p>
+                    
+                    <div class="alert alert-warning small text-start">
+                        <i class="bi bi-info-circle me-1"></i> 
+                        <strong>Atención:</strong> Si este usuario tiene órdenes de servicio o firmas asociadas, es posible que desaparezcan o queden huérfanas. Se recomienda desactivarlo en lugar de borrarlo.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-center gap-2 mt-4">
+                            <a href="{% url 'users:user_list' %}" class="btn btn-secondary px-4">Cancelar</a>
+                            <button type="submit" class="btn btn-danger px-4 fw-bold">Sí, Eliminar Definitivamente</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

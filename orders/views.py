@@ -2,11 +2,11 @@ import os
 import uuid
 import base64
 import unicodedata
+import ast  # <--- ¡IMPORTANTE! Faltaba este para leer la lista de IDs
 
 # --- TERCEROS ---
 import weasyprint
 import google.generativeai as genai
-from docx.shared import Inches
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -32,7 +32,7 @@ from django.contrib.auth.hashers import make_password
 from django.core.mail import EmailMessage
 from django.core.files.base import ContentFile
 from django.utils.dateparse import parse_date
-from django.utils import timezone  # <--- FALTABA ESTA PARA LA FECHA
+from django.utils import timezone
 from django.db import IntegrityError
 
 # --- MODELOS Y FORMULARIOS ---
@@ -42,7 +42,6 @@ from .forms import (
     ShelterEquipmentFormSet, ServiceEvidenceFormSet,
     CustomUserCreationForm, UserEditForm
 )
-
 # ================================================================
 # FUNCIONES AUXILIARES
 # ================================================================
@@ -670,59 +669,164 @@ def memory_preview_view(request):
 @user_passes_test(es_ingeniero_o_admin)
 @require_POST
 def memory_download_view(request):
-    # Recibimos el texto FINAL (posiblemente editado por el usuario)
-    texto_final = request.POST.get('texto_final')
-    # Recibimos los IDs de nuevo para buscar las fotos
-    selected_ids_str = request.POST.get('selected_ids', '')
+    # 1. Recibir datos del formulario
+    texto_final = request.POST.get('texto_final', '')
+    selected_ids_str = request.POST.get('selected_ids', '[]')
     
-    # Convertir string de lista "[1, 2]" a lista real python
-    import ast
     try:
         selected_ids = ast.literal_eval(selected_ids_str)
         ordenes = ServiceOrder.objects.filter(id__in=selected_ids).order_by('fecha_servicio')
     except:
         ordenes = []
 
-    # Crear Documento
+    cliente_nombre = ordenes.first().cliente_nombre if ordenes else "Cliente General"
+    autor = request.user.get_full_name() or request.user.username
+
+    # 2. Iniciar Documento
     document = Document()
+    
+    # --- ESTILOS ---
     style = document.styles['Normal']
     font = style.font
     font.name = 'Calibri'
     font.size = Pt(11)
+    
+    # Helper para tablas con bordes negros (Grid)
+    def create_bordered_table(rows, cols):
+        t = document.add_table(rows=rows, cols=cols)
+        t.style = 'Table Grid'
+        return t
 
-    # 1. Encabezado Profesional
-    header = document.sections[0].header
-    paragraph = header.paragraphs[0]
-    paragraph.text = f"MEMORIA TÉCNICA - {timezone.now().year}"
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    # ==========================================
+    # PÁGINA 1: PORTADA PROFESIONAL
+    # ==========================================
+    
+    # Logo
+    logo_path = os.path.join(settings.BASE_DIR, 'static', 'orders', 'inovatech-logo.png')
+    if os.path.exists(logo_path):
+        p = document.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        try:
+            p.add_run().add_picture(logo_path, width=Inches(2.0))
+        except: pass
 
-    # 2. Título Principal
-    titulo = document.add_heading('MEMORIA TÉCNICA DE SERVICIO', 0)
-    titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    document.add_paragraph(f"Cliente: {ordenes.first().cliente_nombre if ordenes else 'Varios'}")
-    document.add_paragraph(f"Fecha de Emisión: {timezone.now().date()}")
-    document.add_paragraph("_" * 50)
+    document.add_paragraph("\n" * 4) 
 
-    # 3. Insertar el Texto (Editado por ti)
-    document.add_paragraph(texto_final)
+    # Título
+    title = document.add_paragraph("MEMORIA TÉCNICA")
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = title.runs[0]
+    run.bold = True
+    run.font.size = Pt(24)
+    run.font.color.rgb = RGBColor(31, 78, 120) # Azul Corporativo
 
-    # 4. ANEXO FOTOGRÁFICO (Aquí insertamos las imágenes reales)
+    document.add_paragraph("\n")
+
+    # Subtítulos
+    p = document.add_paragraph(cliente_nombre.upper())
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.runs[0].bold = True
+    p.runs[0].font.size = Pt(18)
+
+    p = document.add_paragraph("Servicio de Ingeniería y Soporte Técnico")
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.runs[0].font.size = Pt(14)
+    p.runs[0].italic = True
+
+    document.add_paragraph("\n" * 8) 
+
+    # Pie de página portada
+    p = document.add_paragraph("IT SOLUCIONES DE INNOVACION TECNOLOGICA AVANZA SA DE CV")
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.runs[0].bold = True
+    
+    p = document.add_paragraph(f"Monterrey, N.L. México | {timezone.now().strftime('%B %Y')}")
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    document.add_page_break()
+
+    # ==========================================
+    # PÁGINA 2: CONTROL DE DOCUMENTO
+    # ==========================================
+    
+    document.add_heading('INFORMACIÓN DEL DOCUMENTO', level=1)
+    
+    table = create_bordered_table(3, 2)
+    table.autofit = False
+    
+    datos_info = [
+        ("Autor:", autor),
+        ("Área:", "Ingeniería de IT"),
+        ("Localidad:", "Monterrey, Nuevo León")
+    ]
+    
+    for i, (label, valor) in enumerate(datos_info):
+        cell_k = table.cell(i, 0)
+        cell_v = table.cell(i, 1)
+        cell_k.text = label
+        cell_k.paragraphs[0].runs[0].bold = True
+        cell_v.text = valor
+
+    document.add_paragraph("\n")
+    
+    document.add_heading('HISTORIAL DE VERSIONES', level=2)
+    table_hist = create_bordered_table(2, 5)
+    
+    headers = ["Versión", "Fecha", "Nombre", "Estado", "Comentario"]
+    for i, h in enumerate(headers):
+        cell = table_hist.cell(0, i)
+        cell.text = h
+        cell.paragraphs[0].runs[0].bold = True
+
+    row = table_hist.rows[1]
+    row.cells[0].text = "1.0"
+    row.cells[1].text = timezone.now().strftime("%d/%m/%Y")
+    row.cells[2].text = autor
+    row.cells[3].text = "Finalizado"
+    row.cells[4].text = "Generación automática"
+
+    document.add_page_break()
+
+    # ==========================================
+    # PÁGINA 3: CONTENIDO GENERADO POR IA
+    # ==========================================
+    
+    lines = texto_final.split('\n')
+    for line in lines:
+        line = line.strip()
+        if not line: continue
+            
+        # Detectar títulos (Mayúsculas, cortos, sin punto final)
+        if line.isupper() and len(line) < 60 and not line.endswith('.'):
+            document.add_heading(line, level=1)
+        elif line.startswith('1.') or line.startswith('2.') or line.startswith('-'):
+            p = document.add_paragraph(line)
+            p.style = 'List Bullet'
+        else:
+            p = document.add_paragraph(line)
+            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+    document.add_page_break()
+
+    # ==========================================
+    # ANEXO FOTOGRÁFICO (REJILLA DE FOTOS)
+    # ==========================================
+    
     if ordenes:
-        document.add_page_break()
         document.add_heading('ANEXO FOTOGRÁFICO', level=1)
+        document.add_paragraph("Evidencias visuales de los servicios realizados.")
         
+        # Tabla invisible 2 columnas
         table = document.add_table(rows=1, cols=2)
         table.autofit = True
         
-        # Iteramos sobre las órdenes y sus evidencias
-        row_cells = table.rows[0].cells
         idx = 0
+        row_cells = table.rows[0].cells
         
         for orden in ordenes:
             for evidencia in orden.evidencias.all():
-                # Verificar si el archivo existe físicamente
                 if evidencia.archivo and os.path.exists(evidencia.archivo.path):
-                    # Lógica para hacer una cuadrícula de 2 columnas
+                    # Crear nueva fila cada 2 fotos
                     if idx % 2 == 0 and idx != 0:
                         row_cells = table.add_row().cells
                     
@@ -731,19 +835,24 @@ def memory_download_view(request):
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     
                     try:
-                        # Insertar imagen redimensionada
                         run = p.add_run()
-                        run.add_picture(evidencia.archivo.path, width=Inches(2.5))
+                        run.add_picture(evidencia.archivo.path, width=Inches(2.8))
                         # Pie de foto
-                        p.add_run(f"\n{orden.folio}: {evidencia.comentario or 'Evidencia'}")
+                        caption = p.add_run(f"\nFig {idx+1}. {evidencia.comentario or 'Evidencia del servicio'}")
+                        caption.font.size = Pt(9)
+                        caption.bold = True
+                        caption.font.color.rgb = RGBColor(100, 100, 100)
+                        
                         idx += 1
                     except Exception as e:
-                        print(f"Error imagen: {e}")
+                        pass # Ignorar errores de imagen corrupta
 
-    # 5. Descarga
+    # Descarga
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-    response['Content-Disposition'] = f'attachment; filename="Memoria_Tecnica.docx"'
+    filename = f"Memoria_{cliente_nombre.replace(' ', '_')}.docx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     document.save(response)
+    
     return response
 
 
