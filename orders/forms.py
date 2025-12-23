@@ -18,7 +18,7 @@ class ServiceOrderForm(forms.ModelForm):
         model = ServiceOrder
         fields = [
             "cliente_nombre", "cliente_contacto", "cliente_email", "cliente_telefono",
-            "ubicacion", "fecha_servicio", "contacto_nombre", "tipos_servicio",
+            "ubicacion", "fecha_servicio", "contacto_nombre", "visor","tipos_servicio",
             "tipo_servicio_otro", "ingeniero_nombre", "ticket_id", "titulo",
             "actividades", "comentarios", "horas", "costo_mxn", "costo_no_aplica",
             "costo_se_cotizara", "reagenda", "reagenda_fecha", "reagenda_hora",
@@ -37,11 +37,24 @@ class ServiceOrderForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Selector de Ingenieros
+        # 1. Selector de Ingenieros (Staff)
         ingenieros = User.objects.filter(is_staff=True).order_by('first_name')
-        opciones = [(u.get_full_name() or u.username, u.get_full_name() or u.username) for u in ingenieros]
-        self.fields['ingeniero_nombre'].widget = forms.Select(choices=[('', 'Seleccione...')] + opciones)
+        op_ing = [(u.get_full_name() or u.username, u.get_full_name() or u.username) for u in ingenieros]
+        self.fields['ingeniero_nombre'].widget = forms.Select(choices=[('', 'Seleccione Ingeniero...')] + op_ing)
 
+        # 2. Selector de Visores (Ventas)
+        # Filtramos usuarios que NO son staff o superuser (o ajusta según tu lógica de roles)
+        visores = User.objects.filter(is_staff=False, is_superuser=False).order_by('first_name')
+        
+        # Configuramos el campo 'visor' del modelo como un Select con nombres legibles
+        self.fields['visor'].queryset = visores
+        self.fields['visor'].empty_label = "Seleccione Ejecutivo de Ventas..."
+        self.fields['visor'].label_from_instance = lambda obj: obj.get_full_name() or obj.username
+
+        # --- ESTILO VISUAL (Para que se vea igual a la foto) ---
+        self.fields['visor'].label = "Contacto Interno (Visor)"
+        self.fields['visor'].widget.attrs.update({'class': 'form-select'})
+   
         # ETIQUETAS
         self.fields["cliente_nombre"].label = "Cliente / Empresa"
         self.fields["cliente_contacto"].label = "Persona de contacto"

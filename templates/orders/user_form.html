@@ -71,13 +71,13 @@
                         <label class="form-label fw-bold">Rol del Usuario</label>
                         {{ form.role }}
                         <div class="form-text">
-                            Selecciona "Ingeniero" para habilitar la firma.
+                            Selecciona "Ingeniero o  visor" para habilitar la firma.
                         </div>
                     </div>
 
                     <div id="signature-section" class="mb-4 p-3 bg-light rounded border" style="display: none;">
                         <label class="form-label fw-bold d-flex justify-content-between">
-                            <span><i class="bi bi-pen me-2"></i>Firma del Ingeniero</span>
+                            <span><i class="bi bi-pen me-2"></i>Firma del Ingeniero/contacto ventas</span>
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-sig">Limpiar</button>
                         </label>
                         
@@ -137,14 +137,15 @@
 
         // 3. Mostrar/Ocultar y Recalcular tamaño
         function toggleSignature() {
-            if (roleSelect.value === 'ingeniero') {
-                sigSection.style.display = 'block';
-                // CRUCIAL: Esperar un microsegundo a que el navegador muestre el div para calcular tamaño
-                setTimeout(resizeCanvas, 50); 
-            } else {
-                sigSection.style.display = 'none';
-            }
-        }
+    const selectedRole = roleSelect.value;
+    // MODIFICACIÓN: Ahora incluimos 'visor'
+    if (selectedRole === 'ingeniero' || selectedRole === 'visor') {
+        sigSection.style.display = 'block';
+        setTimeout(resizeCanvas, 50); 
+    } else {
+        sigSection.style.display = 'none';
+    }
+}
 
         // Eventos
         roleSelect.addEventListener('change', toggleSignature);
@@ -155,10 +156,11 @@
 
         // 4. Guardar al enviar
         document.getElementById('userForm').addEventListener('submit', function(e) {
-            // Solo guardamos si es Ingeniero y hay dibujo
-            if (roleSelect.value === 'ingeniero' && signaturePad && !signaturePad.isEmpty()) {
-                hiddenInput.value = signaturePad.toDataURL();
-            }
+    const selectedRole = roleSelect.value;
+    // MODIFICACIÓN: Guardar firma si es Ingeniero O Visor
+    if ((selectedRole === 'ingeniero' || selectedRole === 'visor') && signaturePad && !signaturePad.isEmpty()) {
+        hiddenInput.value = signaturePad.toDataURL();
+    }
         });
     });
 

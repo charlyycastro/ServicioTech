@@ -767,36 +767,42 @@
       Es responsabilidad del cliente realizar el respaldo de la información contenida en los equipos antes de la atención del servicio.
     </div>
 
+    
     <div class="signature-row">
-      <table class="signature-grid">
-        <tr>
-          <td>
-            <div class="signature-img-container">
-               {% if firma_ingeniero_url %}
-                 <img src="{{ firma_ingeniero_url }}" style="max-height: 50px; max-width: 90%;">
-               {% endif %}
-            </div>
-            <div class="signature-space"></div>
-            <div class="signature-label">Ingeniero de soporte</div>
-          </td>
+  <table class="signature-grid">
+    <tr>
+      <td>
+        <div class="signature-img-container">
+           {% if firma_ingeniero_url %}
+             <img src="{{ firma_ingeniero_url }}" style="max-height: 50px; max-width: 90%;">
+           {% endif %}
+        </div>
+        <div class="signature-space"></div>
+        <div class="signature-label">Ingeniero de soporte</div>
+      </td>
 
-          <td>
-            <div class="signature-img-container">
-               {% if object.firma %}
-                 <img src="{{ object.firma.url }}" style="max-height: 50px; max-width: 90%;">
-               {% endif %}
-            </div>
-            <div class="signature-space"></div>
-            <div class="signature-label">Cliente</div>
-          </td>
+      <td>
+        <div class="signature-img-container">
+           {% if object.firma %}
+             <img src="{{ object.firma.url }}" style="max-height: 50px; max-width: 90%;">
+           {% endif %}
+        </div>
+        <div class="signature-space"></div>
+        <div class="signature-label">Cliente</div>
+      </td>
 
-          <td>
-            <div class="signature-space"></div>
-            <div class="signature-label">Contacto ventas</div>
-          </td>
-        </tr>
-      </table>
-    </div>
+      <td>
+        <div class="signature-img-container">
+           {% if firma_visor_url %}
+             <img src="{{ firma_visor_url }}" style="max-height: 50px; max-width: 90%;">
+           {% endif %}
+        </div>
+        <div class="signature-space"></div>
+        <div class="signature-label">Contacto ventas</div>
+      </td>
+    </tr>
+  </table>
+</div>
 
   </div>
 </div>

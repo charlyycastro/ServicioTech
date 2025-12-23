@@ -170,9 +170,12 @@
             </div>
             
             <div class="col-md-3">
-              <label class="form-label">Contacto Interno</label>
-              {{ form.contacto_nombre }}
-            </div>
+    <label class="form-label fw-bold">{{ form.visor.label }}</label> 
+    
+    {{ form.visor }} 
+    
+    <div class="text-danger small">{{ form.visor.errors }}</div>
+</div>
 
             <div class="col-md-8">
               <label class="form-label d-block fw-bold">Tipo(s) de servicio <span class="text-danger">*</span></label>
@@ -327,21 +330,92 @@
       </div>
     </div>
 
-    {# NUEVO: EVIDENCIAS #}
+  {# F) EVIDENCIAS - CARGA DINÁMICA REAL #}
     <div class="accordion-item">
-        <h2 class="accordion-header" id="headingEvidencias">
-          <button class="accordion-button collapsed bg-light-subtle" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvidencias">
-            <i class="bi bi-camera me-2"></i> Evidencias (Fotos/Archivos)
-          </button>
-        </h2>
-        <div id="collapseEvidencias" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
-          <div class="accordion-body">
-            <div class="alert alert-info py-2 small">
-                <i class="bi bi-info-circle me-1"></i> Las imágenes se comprimirán automáticamente. Puedes subir fotos, PDFs o videos cortos.
+      <h2 class="accordion-header" id="headingEvidencias">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvidencias">
+          F) Evidencias (Fotos/Archivos)
+        </button>
+      </h2>
+      <div id="collapseEvidencias" class="accordion-collapse collapse" data-bs-parent="#ordenAccordion">
+        <div class="accordion-body bg-light">
+            
+            {# 1. ZONA DROPZONE #}
+            <div id="drop-zone" class="card mb-4 border-0 shadow-sm position-relative">
+                <div class="card-body text-center p-4" style="border: 2px dashed #cbd5e1; border-radius: 0.5rem; background-color: #f8f9fa; transition: all 0.3s ease;">
+                    <div id="drop-content">
+                        <i class="bi bi-cloud-arrow-up-fill display-3 text-primary opacity-50 mb-2"></i>
+                        <h5 class="fw-bold text-dark">Arrastra archivos aquí</h5>
+                        <p class="text-muted small mb-0">Se agregarán a la tabla automáticamente</p>
+                    </div>
+                    {# El input real (se alimenta via JS) #}
+                    <input type="file" id="input-masivo" name="imagenes_masivas" multiple 
+                           class="position-absolute top-0 start-0 w-100 h-100 opacity-0" 
+                           style="cursor: pointer;">
+                </div>
             </div>
-            {% include "orders/partials/formset_table.html" with formset=evidencias_fs title="Archivos" prefix="evidencias" cols="Archivo,Comentario" fields="archivo,comentario" %}
-          </div>
+
+            {# 2. TABLA MIXTA (EXISTENTES + NUEVOS) #}
+            <h6 class="fw-bold text-secondary ps-2 mb-2 border-start border-4 border-primary">
+                &nbsp;Listado de Archivos
+            </h6>
+            
+            <div class="card border-0 shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 bg-white">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th style="width: 10%; text-align: center;">Vista</th>
+                                <th style="width: 75%;">Descripción / Nombre</th>
+                                <th style="width: 15%; text-align: center;">Acción</th>
+                            </tr>
+                        </thead>
+                        
+                        {# A) ARCHIVOS YA GUARDADOS (Base de Datos) #}
+                        <tbody id="evidencias-existentes">
+                            {{ evidencias_fs.management_form }}
+                            {% for form in evidencias_fs %}
+                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                <tr class="formset-row" {% if form.DELETE.value %}style="display:none"{% endif %}>
+                                    <td class="text-center bg-light">
+                                        {% if form.instance.pk and form.instance.archivo %}
+                                            <a href="{{ form.instance.archivo.url }}" target="_blank" class="text-decoration-none">
+                                                {% with f=form.instance.archivo.name|lower %}
+                                                    {% if '.pdf' in f %}<i class="bi bi-file-earmark-pdf-fill text-danger fs-3"></i>
+                                                    {% elif '.doc' in f %}<i class="bi bi-file-earmark-word-fill text-primary fs-3"></i>
+                                                    {% elif '.xls' in f %}<i class="bi bi-file-earmark-excel-fill text-success fs-3"></i>
+                                                    {% elif '.jpg' in f or '.png' in f %}<img src="{{ form.instance.archivo.url }}" class="rounded border" style="width:40px;height:40px;object-fit:cover;">
+                                                    {% else %}<i class="bi bi-file-earmark-text fs-3 text-secondary"></i>{% endif %}
+                                                {% endwith %}
+                                            </a>
+                                        {% else %}<i class="bi bi-paperclip text-muted"></i>{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if form.instance.pk %}
+                                            <div class="small fw-bold text-muted mb-1">{{ form.instance.archivo.name|cut:'evidencias/' }}</div>
+                                            <div class="d-none">{{ form.archivo }}</div>
+                                        {% else %}
+                                            {{ form.archivo }}
+                                        {% endif %}
+                                        {{ form.comentario }}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="form-check d-flex justify-content-center">
+                                            <label class="btn btn-outline-danger border-0 btn-sm"><i class="bi bi-trash-fill"></i><span class="d-none">{{ form.DELETE }}</span></label>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+
+                        {# B) NUEVOS ARCHIVOS (JavaScript los pone aquí) #}
+                        <tbody id="evidencias-nuevas" class="border-top border-2">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
+      </div>
     </div>
 
     {# F) FIRMA #}
@@ -398,6 +472,120 @@
 
 {% block scripts %}
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('drop-zone');
+    const inputMasivo = document.getElementById('input-masivo');
+    const tablaNuevos = document.getElementById('evidencias-nuevas');
+    
+    // Usamos DataTransfer para manipular la lista de archivos real del input
+    let dataTransfer = new DataTransfer();
+
+    // 1. EFECTOS VISUALES DRAG & DROP
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.firstElementChild.style.backgroundColor = '#e0e7ff'; // Azulito
+        dropZone.firstElementChild.style.borderColor = '#0d6efd';
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.firstElementChild.style.backgroundColor = '#f8f9fa'; // Gris original
+        dropZone.firstElementChild.style.borderColor = '#cbd5e1';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.firstElementChild.style.backgroundColor = '#f8f9fa';
+        dropZone.firstElementChild.style.borderColor = '#cbd5e1';
+        
+        // Agregar archivos soltados a nuestro gestor
+        const files = e.dataTransfer.files;
+        handleFiles(files);
+    });
+
+    inputMasivo.addEventListener('change', (e) => {
+        handleFiles(inputMasivo.files);
+    });
+
+    // 2. PROCESAR ARCHIVOS Y PINTAR TABLA
+    function handleFiles(files) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Evitar duplicados exactos (opcional)
+            let exists = false;
+            for(let j=0; j<dataTransfer.items.length; j++){
+                if(dataTransfer.items[j].getAsFile().name === file.name && 
+                   dataTransfer.items[j].getAsFile().size === file.size){
+                    exists = true; break;
+                }
+            }
+            if(exists) continue; 
+
+            // Agregar al DataTransfer (la memoria del input)
+            dataTransfer.items.add(file);
+
+            // Crear Fila HTML
+            const row = document.createElement('tr');
+            row.className = 'fade-in-row'; // Animación opcional
+            
+            // Determinar Icono
+            let iconHtml = '<i class="bi bi-file-earmark-text fs-3 text-secondary"></i>';
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                // Previsualización de imagen real
+                const url = URL.createObjectURL(file);
+                iconHtml = `<img src="${url}" class="rounded border shadow-sm" style="width:40px;height:40px;object-fit:cover;">`;
+            } else if (ext === 'pdf') {
+                iconHtml = '<i class="bi bi-file-earmark-pdf-fill text-danger fs-3"></i>';
+            } else if (['doc', 'docx'].includes(ext)) {
+                iconHtml = '<i class="bi bi-file-earmark-word-fill text-primary fs-3"></i>';
+            } else if (['xls', 'xlsx'].includes(ext)) {
+                iconHtml = '<i class="bi bi-file-earmark-excel-fill text-success fs-3"></i>';
+            }
+
+            row.innerHTML = `
+                <td class="text-center bg-light align-middle">${iconHtml}</td>
+                <td class="align-middle">
+                    <input type="text" name="comentarios_masivos" value="${file.name}" 
+                           class="form-control form-control-sm" placeholder="Descripción del archivo">
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-outline-danger border-0 btn-sm delete-new-file">
+                        <i class="bi bi-x-circle-fill fs-5"></i>
+                    </button>
+                </td>
+            `;
+
+            // Lógica de borrado para esta fila específica
+            const btnDelete = row.querySelector('.delete-new-file');
+            btnDelete.onclick = function() {
+                // Borrar del DataTransfer
+                const newDataTransfer = new DataTransfer();
+                for (let j = 0; j < dataTransfer.items.length; j++) {
+                    const f = dataTransfer.items[j].getAsFile();
+                    // Filtramos por nombre y tamaño (simple match)
+                    if (f.name !== file.name || f.size !== file.size) {
+                        newDataTransfer.items.add(f);
+                    }
+                }
+                dataTransfer = newDataTransfer;
+                inputMasivo.files = dataTransfer.files; // Actualizar input real
+                
+                // Borrar fila visual y el input de comentario asociado
+                row.remove();
+            };
+
+            tablaNuevos.appendChild(row);
+        }
+        
+        // ACTUALIZAR EL INPUT REAL CON TODOS LOS ARCHIVOS ACUMULADOS
+        inputMasivo.files = dataTransfer.files;
+    }
+});
+
+
 document.addEventListener('DOMContentLoaded', function () {
   
   // --- 1. DETECTAR Y ABRIR ERRORES OCULTOS ---

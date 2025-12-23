@@ -2,7 +2,7 @@ import os
 import uuid
 import base64
 import unicodedata
-import ast  # <--- ¡IMPORTANTE! Faltaba este para leer la lista de IDs
+import ast # Vital para leer listas de IDs
 
 # --- TERCEROS ---
 import weasyprint
@@ -19,7 +19,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
 from django.views.decorators.cache import never_cache
-from django.urls import reverse
+from django.urls import reverse_lazy
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.http import HttpResponse
@@ -33,7 +33,9 @@ from django.core.mail import EmailMessage
 from django.core.files.base import ContentFile
 from django.utils.dateparse import parse_date
 from django.utils import timezone
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 # --- MODELOS Y FORMULARIOS ---
 from .models import ServiceOrder, EngineerProfile, ServiceEvidence 
@@ -91,50 +93,35 @@ def guardar_firma(user, data_url):
 @login_required
 def dashboard_view(request):
     user = request.user
-    
-    # Variables iniciales
-    pendientes = 0
-    mis_asignadas = 0
-    finalizadas = 0
-    total_ordenes = 0
-    recientes = []
+    nombre_usuario = user.get_full_name() or user.username
 
-    # --- CASO 1: SUPERUSUARIO (Ve todo) ---
-    if user.is_superuser:
-        pendientes = ServiceOrder.objects.filter(estatus='borrador').count()
-        # Mis asignadas para el admin (si se auto-asigna)
-        nombre_admin = user.get_full_name() or user.username
-        mis_asignadas = ServiceOrder.objects.filter(ingeniero_nombre__icontains=nombre_admin).exclude(estatus='finalizado').count()
-        finalizadas = ServiceOrder.objects.filter(estatus='finalizado').count()
-        total_ordenes = ServiceOrder.objects.count()
-        
-        # Tabla: Las 5 más recientes de TODA la empresa
-        recientes = ServiceOrder.objects.all().order_by('-creado')[:5]
+    # 1. TOTAL HISTÓRICO (Global de la empresa)
+    # Cuenta TODO lo que existe en la base de datos, sin importar de quién sea.
+    total = ServiceOrder.objects.count()
 
-    # --- CASO 2: INGENIEROS / MORTALES (Ven solo lo suyo) ---
-    else:
-        # Buscamos por nombre (ya que tu modelo guarda el nombre en texto)
-        nombre_busqueda = user.get_full_name() or user.username
+    # 2. PENDIENTES (Global de la empresa)
+    # Cuenta todas las que están en pausa/borrador.
+    pendientes = ServiceOrder.objects.filter(estatus='borrador').count()
 
-        # Filtramos solo por el nombre del ingeniero
-        mis_ordenes = ServiceOrder.objects.filter(
-            ingeniero_nombre__icontains=nombre_busqueda
-        )
+    # 3. FINALIZADAS (Global de la empresa)
+    # Cuenta todas las que ya se cerraron.
+    finalizadas = ServiceOrder.objects.filter(estatus='finalizado').count()
 
-        # Calculamos estadísticas solo sobre "sus" órdenes
-        pendientes = mis_ordenes.filter(estatus='borrador').count()
-        mis_asignadas = mis_asignadas = mis_ordenes.count()
-        finalizadas = mis_ordenes.filter(estatus='finalizado').count()
-        total_ordenes = mis_ordenes.count()
+    # 4. MIS ASIGNACIONES (Personal)
+    # Aquí sí filtramos por TU nombre y que NO estén terminadas.
+    mis_asignadas = ServiceOrder.objects.filter(
+        ingeniero_nombre__icontains=nombre_usuario
+    ).exclude(estatus='finalizado').count()
 
-        # Tabla: Solo SUS 5 más recientes
-        recientes = mis_ordenes.order_by('-creado')[:5]
+    # 5. TABLA RECIENTES (Global)
+    # Muestra las últimas 5 que han entrado al sistema.
+    recientes = ServiceOrder.objects.all().order_by('-creado')[:5]
 
     context = {
-        'total': total_ordenes,
+        'total': total,
         'pendientes': pendientes,
         'finalizadas': finalizadas,
-        'mis_asignadas': mis_asignadas,
+        'mis_asignadas': mis_asignadas, # Esta será 0 si nadie te ha asignado nada a ti "Carlos"
         'recientes': recientes,
     }
     return render(request, 'orders/dashboard.html', context)
@@ -201,11 +188,21 @@ def order_list(request):
 @login_required
 def order_detail(request, pk):
     order = get_object_or_404(ServiceOrder, pk=pk)
-    firma_url = obtener_firma_ingeniero(order.ingeniero_nombre, request)
+    
+    # 1. Firma Ingeniero (Lógica existente)
+    firma_ingeniero_url = obtener_firma_ingeniero(order.ingeniero_nombre, request)
+
+    # 2. NUEVO: Firma Visor (Ventas)
+    firma_visor_url = None
+    # Verificamos si hay un usuario seleccionado en el campo 'visor' y si tiene perfil con firma
+    if order.visor and hasattr(order.visor, 'profile') and order.visor.profile.firma:
+        # build_absolute_uri es CRUCIAL para que WeasyPrint vea la imagen
+        firma_visor_url = request.build_absolute_uri(order.visor.profile.firma.url)
 
     return render(request, 'orders/order_detail.html', {
         'object': order,
-        'firma_ingeniero_url': firma_url
+        'firma_ingeniero_url': firma_ingeniero_url,
+        'firma_visor_url': firma_visor_url, # <--- Agregamos esto al contexto
     })
 
 # ===== CREAR ORDEN =====
@@ -258,6 +255,13 @@ def order_create(request):
                     print(f"Error firma cliente: {e}")
 
             order.save()
+            
+            # --- CARGA MASIVA DE FOTOS (NUEVO) ---
+            archivos_masivos = request.FILES.getlist('imagenes_masivas')
+            for f in archivos_masivos:
+                ServiceEvidence.objects.create(order=order, archivo=f)
+            # -------------------------------------
+
             equipos_fs.instance = order; equipos_fs.save()
             materiales_fs.instance = order; materiales_fs.save()
             resguardos_fs.instance = order; resguardos_fs.save()
@@ -291,7 +295,7 @@ def order_create(request):
 @user_passes_test(es_ingeniero_o_admin)
 def order_update(request, pk):
     order = get_object_or_404(ServiceOrder, pk=pk)
-# --- BLOQUEO DE SEGURIDAD INTELIGENTE ---
+    # --- BLOQUEO DE SEGURIDAD INTELIGENTE ---
     # Si el usuario NO es Superusuario Y la orden YA está finalizada...
     if not request.user.is_superuser and order.estatus == 'finalizado':
         messages.error(request, "⚠️ No puedes editar una orden finalizada. Solicita correcciones al Administrador.")
@@ -341,6 +345,13 @@ def order_update(request, pk):
                     pass
 
             order.save()
+            
+            # --- CARGA MASIVA DE FOTOS (NUEVO) ---
+            archivos_masivos = request.FILES.getlist('imagenes_masivas')
+            for f in archivos_masivos:
+                ServiceEvidence.objects.create(order=order, archivo=f)
+            # -------------------------------------
+
             equipos_fs.save()
             materiales_fs.save()
             resguardos_fs.save()
@@ -495,8 +506,8 @@ def create_user_view(request):
             user.save()
 
             firma_b64 = form.cleaned_data.get('firma_b64')
-            if firma_b64 and role == 'ingeniero':
-                guardar_firma(user, firma_b64)
+            if firma_b64 and role in ['ingeniero', 'visor']:
+                    guardar_firma(user, firma_b64)
 
             messages.success(request, f"Usuario {user.username} creado.")
             return redirect('orders:user_list')
@@ -527,8 +538,8 @@ def edit_user_view(request, pk):
             user.save()
 
             firma_b64 = form.cleaned_data.get('firma_b64')
-            if firma_b64 and role == 'ingeniero':
-                guardar_firma(user, firma_b64)
+            if firma_b64 and role in ['ingeniero', 'visor']:
+                          guardar_firma(user, firma_b64)
 
             messages.success(request, f"Usuario {user.username} actualizado.")
             return redirect('orders:user_list')
@@ -1012,12 +1023,27 @@ def download_word(request, pk):
     if uv:
         if hasattr(uv,'engineerprofile') and uv.engineerprofile.firma: fv=uv.engineerprofile.firma
         elif hasattr(uv,'profile') and uv.profile.firma: fv=uv.profile.firma
+    
+# Firma del Visor (Ejecutivo de Ventas)
+    fv = None
+    nombre_visor = ""
+    if order.visor:
+     nombre_visor = order.visor.get_full_name() or order.visor.username
+    if hasattr(order.visor, 'profile') and order.visor.profile.firma:
+        fv = order.visor.profile.firma
 
+# -----------------------------------------------------------------------------------
+    # ESTE BLOQUE DEBE TENER 4 ESPACIOS AL INICIO (ESTAR DENTRO DE LA FUNCIÓN)
+    # -----------------------------------------------------------------------------------
+    
     insert_signature(ts.cell(0,0), "Ingeniero de Soporte", fi, order.ingeniero_nombre)
     insert_signature(ts.cell(0,1), "Cliente", order.firma, order.cliente_contacto)
-    insert_signature(ts.cell(0,2), "Contacto Interno / Visor", fv, order.contacto_nombre)
+    
+    # Esta es la línea nueva para el Visor
+    insert_signature(ts.cell(0,2), "Contacto Ventas (Visor)", fv, nombre_visor)
 
     resp = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     resp['Content-Disposition'] = f'attachment; filename="Orden_{order.folio}.docx"'
     doc.save(resp)
+    
     return resp
