@@ -3,16 +3,18 @@ import uuid
 import base64
 import unicodedata
 import ast # Vital para leer listas de IDs
-
+import re
+import markdown
 # --- TERCEROS ---
 import weasyprint
-import google.generativeai as genai
+from google import genai
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+
 
 # --- DJANGO ---
 from django.shortcuts import render, redirect, get_object_or_404
@@ -37,8 +39,9 @@ from django.db import IntegrityError, transaction
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+
 # --- MODELOS Y FORMULARIOS ---
-from .models import ServiceOrder, EngineerProfile, ServiceEvidence 
+from .models import ServiceOrder, EngineerProfile, ServiceEvidence, TechnicalMemory 
 from .forms import (
     ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet,
     ShelterEquipmentFormSet, ServiceEvidenceFormSet,
@@ -584,288 +587,286 @@ def logout_view(request):
     messages.info(request, "Has cerrado sesión.")
     return redirect("account_login")
 
+
+
 # ================================================================
-# MÓDULO INTELIGENCIA ARTIFICIAL: MEMORIA TÉCNICA
+# AUXILIARES PARA EL WORD (DISEÑO CORPORATIVO)
+# ================================================================
+
+def add_page_number(run):
+    """Inserta numeración dinámica 'Página X'."""
+    fldChar = OxmlElement('w:fldChar')
+    fldChar.set(qn('w:fldCharType'), 'begin')
+    run._r.append(fldChar)
+    instrText = OxmlElement('w:instrText')
+    instrText.set(qn('xml:space'), 'preserve')
+    instrText.text = "PAGE"
+    run._r.append(instrText)
+    fldChar = OxmlElement('w:fldChar')
+    fldChar.set(qn('w:fldCharType'), 'end')
+    run._r.append(fldChar)
+
+def add_table_of_contents(paragraph):
+    """Inserta el código de campo para el Índice Automático (TOC)."""
+    run = paragraph.add_run()
+    fldChar = OxmlElement('w:fldChar')
+    fldChar.set(qn('w:fldCharType'), 'begin')
+    run._r.append(fldChar)
+    instrText = OxmlElement('w:instrText')
+    instrText.set(qn('xml:space'), 'preserve')
+    instrText.text = 'TOC \\o "1-3" \\h \\z \\u'
+    run._r.append(instrText)
+    fldChar = OxmlElement('w:fldChar')
+    fldChar.set(qn('w:fldCharType'), 'end')
+    run._r.append(fldChar)
+
+def add_formatted_text(paragraph, text):
+    """Parsea negritas (**) para aplicarlas en el Word."""
+    parts = re.split(r'(\*\*.*?\*\*)', text)
+    for part in parts:
+        if part.startswith('**') and part.endswith('**'):
+            run = paragraph.add_run(part.replace('**', ''))
+            run.bold = True
+        else:
+            paragraph.add_run(part)
+
+# ================================================================
+# VISTA 1: SELECCIÓN (RESTAURADA PARA EVITAR ATTRIBUTEERROR)
 # ================================================================
 
 @login_required
-@user_passes_test(es_ingeniero_o_admin)
 def memory_selection_view(request):
-    """
-    Vista para seleccionar múltiples reportes y generar la memoria.
-    Funciona igual que order_list pero con checkboxes.
-    """
-    orders = ServiceOrder.objects.filter(estatus='finalizado').order_by('-fecha_servicio')
+    """Muestra órdenes finalizadas. Variable 'orders' para el HTML."""
+    orders_query = ServiceOrder.objects.filter(estatus='finalizado').order_by('-fecha_servicio')
     
-    # --- FILTROS (Misma lógica que tu lista) ---
-    cliente = request.GET.get('cliente', '').strip()
-    if cliente:
-        orders = orders.filter(cliente_nombre__icontains=cliente)
+    cliente_f = request.GET.get('cliente', '').strip()
+    if cliente_f:
+        orders_query = orders_query.filter(cliente_nombre__icontains=cliente_f)
     
-    fecha_ini = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
-    if fecha_ini: orders = orders.filter(fecha_servicio__gte=fecha_ini)
-    if fecha_fin: orders = orders.filter(fecha_servicio__lte=fecha_fin)
-
-    # Obtenemos lista única de clientes para el dropdown
     clientes_list = ServiceOrder.objects.values_list('cliente_nombre', flat=True).distinct().order_by('cliente_nombre')
 
+    # 'orders' coincide con {% for orden in orders %} de tu plantilla
     return render(request, 'orders/memory_selection.html', {
-        'orders': orders,
-        'clientes_list': clientes_list
+        'orders': orders_query, 
+        'clientes_list': clientes_list,
+        'titulo': 'Selección de Órdenes'
     })
 
+# ================================================================
+# VISTA 2: PREVIEW IA (MODELO FLASH-LATEST)
+# ================================================================
+
+# orders/views.py
+
 @login_required
-@user_passes_test(es_ingeniero_o_admin)
-@require_POST
+@transaction.atomic
 def memory_preview_view(request):
+    """VISTA 2: Previsualización. Asegura que el Historial sea visible."""
+    if request.method != "POST":
+        return redirect('orders:memory_select')
+
     selected_ids = request.POST.getlist('selected_orders')
-    if not selected_ids:
+    ordenes = ServiceOrder.objects.filter(id__in=selected_ids).order_by('fecha_servicio')
+    
+    if not ordenes.exists():
         messages.error(request, "Selecciona al menos una orden.")
         return redirect('orders:memory_select')
 
-    # Recuperar datos
-    ordenes = ServiceOrder.objects.filter(id__in=selected_ids).order_by('fecha_servicio')
-    cliente_principal = ordenes.first().cliente_nombre
-    
-    # Construir Contexto
-    contexto = ""
-    for orden in ordenes:
-        act = (orden.actividades or "").replace('\n', ' ')
-        hallazgos = (orden.comentarios or "").replace('\n', ' ')
-        contexto += f"""
-        [FOLIO {orden.folio}]
-        - Tipo: {', '.join(orden.tipos_servicio)}
-        - Actividades: {act}
-        - Hallazgos: {hallazgos}
-        --------------------------------------------------
-        """
+    # Limpiamos el nombre del cliente para evitar errores de búsqueda
+    cliente_raw = ordenes.first().cliente_nombre
+    cliente_busqueda = cliente_raw.strip()
 
-    prompt = f"""
-    Actúa como Gerente Técnico. Redacta una MEMORIA TÉCNICA para "{cliente_principal}".
+    # Generación con IA (gemini-flash-latest)
+    contexto = "".join([f"\n[FOLIO {o.folio}] Actividades: {o.actividades}." for o in ordenes])
+    prompt = f"Actúa como Consultor Senior. Redacta una MEMORIA TÉCNICA para {cliente_busqueda}. Usa Markdown. Datos: {contexto}"
     
-    DATOS:
-    {contexto}
-    
-    INSTRUCCIONES:
-    - Texto plano para Word.
-    - Sin Markdown (**).
-    - Secciones: RESUMEN, DETALLES, HALLAZGOS, RECOMENDACIONES.
-    """
+    try:
+        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        response = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
+        texto_ia = response.text if response.text else "Redacte manualmente."
+    except Exception:
+        texto_ia = "Error de conexión con Gemini."
 
-    # Conexión Gemini (Usando el modelo 'latest' que nos funcionó)
-    api_key = os.getenv("GEMINI_API_KEY")
-    texto_ia = "Error: No hay API Key."
-    
-    if api_key:
-        try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-flash-latest') # O el que te funcionó
-            response = model.generate_content(prompt)
-            texto_ia = response.text.replace('**', '').replace('##', '')
-        except Exception as e:
-            texto_ia = f"Error generando texto con IA: {e}.\n\nPuedes escribir el reporte manualmente aquí."
+    texto_html = markdown.markdown(texto_ia)
 
-    # Renderizamos la vista previa (NO descargamos aún)
+    # Persistencia v1
+    memoria_db = TechnicalMemory.objects.create(
+        cliente_nombre=cliente_busqueda,
+        contenido_v1_ia=texto_html,
+        creado_por=request.user
+    )
+    memoria_db.orders.set(ordenes)
+
+    # BUSQUEDA DEL HISTORIAL (Solución para image_fa1e85.png)
+    # Buscamos registros previos ignorando mayúsculas/minúsculas
+    historial_query = TechnicalMemory.objects.filter(
+        cliente_nombre__iexact=cliente_busqueda
+    ).order_by('-creado')[:5]
+
     return render(request, 'orders/memory_preview.html', {
-        'texto_generado': texto_ia,
-        'selected_ids': selected_ids, # Pasamos los IDs ocultos para usarlos al descargar
-        'cliente': cliente_principal
+        'texto_generado': texto_html,
+        'memoria_id': memoria_db.id,
+        'selected_ids': selected_ids,
+        'cliente': cliente_busqueda,
+        'historial': historial_query, # <--- Esta variable llena el 'Historial de Control'
     })
 
-# ------------------------------------------------------------------
-# VISTA 2: DESCARGA FINAL (Word Profesional + Fotos)
-# ------------------------------------------------------------------
 @login_required
-@user_passes_test(es_ingeniero_o_admin)
 @require_POST
 def memory_download_view(request):
-    # 1. Recibir datos del formulario
-    texto_final = request.POST.get('texto_final', '')
+    memoria_id = request.POST.get('memoria_id')
+    texto_html = request.POST.get('texto_final', '')
     selected_ids_str = request.POST.get('selected_ids', '[]')
     
+    # 1. Variables de Respaldo y Persistencia
+    fecha_ejecucion = "No definida"
+    tecnico = "No asignado"
+    
+    texto_pre_limpio = texto_html.replace('</p>', '\n').replace('<br>', '\n').replace('</h2>', '\n')
+    texto_limpio = re.sub('<[^<]+?>', '', texto_pre_limpio).strip()
+
+    memoria = get_object_or_404(TechnicalMemory, id=memoria_id)
+    memoria.contenido_v2_user = texto_limpio
+    memoria.save()
+
     try:
         selected_ids = ast.literal_eval(selected_ids_str)
         ordenes = ServiceOrder.objects.filter(id__in=selected_ids).order_by('fecha_servicio')
-    except:
-        ordenes = []
+        orden_principal = ordenes.first()
+        
+        if orden_principal:
+            if orden_principal.fecha_servicio:
+                fecha_ejecucion = orden_principal.fecha_servicio.strftime("%d/%m/%Y")
+            if orden_principal.ingeniero_nombre:
+                tecnico = orden_principal.ingeniero_nombre
+    except: 
+        return redirect('orders:memory_select')
 
-    cliente_nombre = ordenes.first().cliente_nombre if ordenes else "Cliente General"
-    autor = request.user.get_full_name() or request.user.username
-
-    # 2. Iniciar Documento
     document = Document()
-    
-    # --- ESTILOS ---
-    style = document.styles['Normal']
-    font = style.font
-    font.name = 'Calibri'
-    font.size = Pt(11)
-    
-    # Helper para tablas con bordes negros (Grid)
-    def create_bordered_table(rows, cols):
-        t = document.add_table(rows=rows, cols=cols)
-        t.style = 'Table Grid'
-        return t
 
-    # ==========================================
-    # PÁGINA 1: PORTADA PROFESIONAL
-    # ==========================================
-    
-    # Logo
+    # --- ENCABEZADO Y PIE (Logo Inova y Páginas) ---
+    section = document.sections[0]
+    header_para = section.header.paragraphs[0]
+    header_para.alignment = 2 # Derecha
     logo_path = os.path.join(settings.BASE_DIR, 'static', 'orders', 'inovatech-logo.png')
     if os.path.exists(logo_path):
-        p = document.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        try:
-            p.add_run().add_picture(logo_path, width=Inches(2.0))
-        except: pass
+        header_para.add_run().add_picture(logo_path, width=Inches(1.0))
 
-    document.add_paragraph("\n" * 4) 
+    footer_para = section.footer.paragraphs[0]
+    footer_para.alignment = 1 # Centro
+    footer_para.add_run("Página ")
+    add_page_number(footer_para.add_run())
 
-    # Título
-    title = document.add_paragraph("MEMORIA TÉCNICA")
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = title.runs[0]
-    run.bold = True
-    run.font.size = Pt(24)
-    run.font.color.rgb = RGBColor(31, 78, 120) # Azul Corporativo
-
-    document.add_paragraph("\n")
-
-    # Subtítulos
-    p = document.add_paragraph(cliente_nombre.upper())
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.runs[0].bold = True
-    p.runs[0].font.size = Pt(18)
-
-    p = document.add_paragraph("Servicio de Ingeniería y Soporte Técnico")
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.runs[0].font.size = Pt(14)
-    p.runs[0].italic = True
-
-    document.add_paragraph("\n" * 8) 
-
-    # Pie de página portada
-    p = document.add_paragraph("IT SOLUCIONES DE INNOVACION TECNOLOGICA AVANZA SA DE CV")
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.runs[0].bold = True
+    # --- PORTADA (RESTAURADA SEGÚN TU DISEÑO) ---
+    meses_es = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    mes_es = meses_es[timezone.now().month - 1]
     
-    p = document.add_paragraph(f"Monterrey, N.L. México | {timezone.now().strftime('%B %Y')}")
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    document.add_paragraph("\n" * 4)
+    p_titulo = document.add_paragraph()
+    p_titulo.alignment = 1
+    run_t = p_titulo.add_run("MEMORIA TÉCNICA")
+    run_t.bold = True; run_t.font.size = Pt(28); run_t.font.color.rgb = RGBColor(31, 78, 120)
 
+    document.add_paragraph("\n" * 2)
+    p_cliente = document.add_paragraph()
+    p_cliente.alignment = 1
+    run_c = p_cliente.add_run(memoria.cliente_nombre.upper())
+    run_c.bold = True; run_c.font.size = Pt(22)
+    
+    p_sub = document.add_paragraph("Servicio de Ingeniería y Soporte Técnico")
+    p_sub.alignment = 1; p_sub.runs[0].font.size = Pt(14)
+
+    document.add_paragraph("\n" * 7)
+    p_empresa = document.add_paragraph("IT SOLUCIONES DE INNOVACION TECNOLOGICA AVANZA SA DE CV")
+    p_empresa.alignment = 1; p_empresa.runs[0].bold = True
+    
+    p_loc = document.add_paragraph(f"Monterrey, N.L. México | {mes_es} {timezone.now().year}")
+    p_loc.alignment = 1
     document.add_page_break()
 
-    # ==========================================
-    # PÁGINA 2: CONTROL DE DOCUMENTO
-    # ==========================================
-    
-    document.add_heading('INFORMACIÓN DEL DOCUMENTO', level=1)
-    
-    table = create_bordered_table(3, 2)
-    table.autofit = False
-    
-    datos_info = [
-        ("Autor:", autor),
-        ("Área:", "Ingeniería de IT"),
-        ("Localidad:", "Monterrey, Nuevo León")
+    # --- TABLAS DE CONTROL ---
+    document.add_heading('CONTROL DE DOCUMENTACIÓN', level=1)
+    table_info = document.add_table(rows=3, cols=2); table_info.style = 'Table Grid'
+    for i, (l, v) in enumerate([("Autor:", request.user.get_full_name() or request.user.username), ("Área:", "Ingeniería de IT"), ("Localidad:", "Monterrey, Nuevo León")]):
+        table_info.cell(i, 0).text = l; table_info.cell(i, 1).text = v
+
+    document.add_paragraph("\n")
+    document.add_heading('HISTORIAL DE VERSIONES', level=1)
+    table_hist = document.add_table(rows=2, cols=5); table_hist.style = 'Table Grid'
+    for i, h in enumerate(["Versión", "Fecha", "Nombre", "Estado", "Comentario"]): table_hist.cell(0, i).text = h
+    row = table_hist.rows[1].cells
+    row[0].text = "2.0" if memoria.contenido_v2_user else "1.0"
+    row[1].text = timezone.now().strftime("%d/%m/%Y"); row[2].text = tecnico
+    row[3].text = "Finalizado"; row[4].text = "Revisión y firma"
+    document.add_page_break()
+
+    # --- TABLA DE CONTENIDOS (REEMPLAZA AL ÍNDICE) ---
+    document.add_heading('TABLA DE CONTENIDOS', level=1)
+    add_table_of_contents(document.add_paragraph())
+    document.add_page_break()
+
+    # --- RESUMEN DEL SERVICIO ---
+    document.add_heading('RESUMEN DEL SERVICIO', level=1)
+    table_sum = document.add_table(rows=5, cols=2); table_sum.style = 'Table Grid'
+    resumen_data = [
+        ("Folio de Referencia:", orden_principal.folio if orden_principal else "N/A"),
+        ("Cliente:", memoria.cliente_nombre),
+        ("Ubicación del Servicio:", orden_principal.ubicacion if (orden_principal and orden_principal.ubicacion) else "No especificada"),
+        ("Fecha de Ejecución:", fecha_ejecucion),
+        ("Técnico Responsable:", tecnico)
     ]
-    
-    for i, (label, valor) in enumerate(datos_info):
-        cell_k = table.cell(i, 0)
-        cell_v = table.cell(i, 1)
-        cell_k.text = label
-        cell_k.paragraphs[0].runs[0].bold = True
-        cell_v.text = valor
-
+    for i, (l, v) in enumerate(resumen_data):
+        table_sum.cell(i, 0).text = l; table_sum.cell(i, 1).text = str(v)
     document.add_paragraph("\n")
-    
-    document.add_heading('HISTORIAL DE VERSIONES', level=2)
-    table_hist = create_bordered_table(2, 5)
-    
-    headers = ["Versión", "Fecha", "Nombre", "Estado", "Comentario"]
-    for i, h in enumerate(headers):
-        cell = table_hist.cell(0, i)
-        cell.text = h
-        cell.paragraphs[0].runs[0].bold = True
 
-    row = table_hist.rows[1]
-    row.cells[0].text = "1.0"
-    row.cells[1].text = timezone.now().strftime("%d/%m/%Y")
-    row.cells[2].text = autor
-    row.cells[3].text = "Finalizado"
-    row.cells[4].text = "Generación automática"
-
-    document.add_page_break()
-
-    # ==========================================
-    # PÁGINA 3: CONTENIDO GENERADO POR IA
-    # ==========================================
-    
-    lines = texto_final.split('\n')
-    for line in lines:
+    # --- CUERPO TÉCNICO (Detección refinada de Títulos) ---
+    for line in texto_limpio.split('\n'):
         line = line.strip()
         if not line: continue
-            
-        # Detectar títulos (Mayúsculas, cortos, sin punto final)
-        if line.isupper() and len(line) < 60 and not line.endswith('.'):
-            document.add_heading(line, level=1)
-        elif line.startswith('1.') or line.startswith('2.') or line.startswith('-'):
-            p = document.add_paragraph(line)
-            p.style = 'List Bullet'
+        
+        # Regla: Solo números romanos I al X al inicio de línea son Heading 2
+        # Quitamos la regla de 'isupper' para que no tome textos normales como títulos
+        if re.match(r'^(I|II|III|IV|V|VI|VII|VIII|IX|X)\.\s', line):
+            document.add_heading(line, level=2)
+        # Regla: A., B., C. o 1., 2. son Heading 3
+        elif re.match(r'^([A-Z]|\d+)\.\s', line):
+            document.add_heading(line, level=3)
         else:
-            p = document.add_paragraph(line)
-            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            p = document.add_paragraph(); p.alignment = 3
+            add_formatted_text(p, line)
 
-    document.add_page_break()
+    # --- ANEXO FOTOGRÁFICO (ANTES DE ELABORO) ---
+    evidencias = []
+    for o in ordenes: evidencias.extend(o.evidencias.all())
 
-    # ==========================================
-    # ANEXO FOTOGRÁFICO (REJILLA DE FOTOS)
-    # ==========================================
-    
-    if ordenes:
+    if evidencias:
+        document.add_page_break()
         document.add_heading('ANEXO FOTOGRÁFICO', level=1)
-        document.add_paragraph("Evidencias visuales de los servicios realizados.")
-        
-        # Tabla invisible 2 columnas
-        table = document.add_table(rows=1, cols=2)
-        table.autofit = True
-        
-        idx = 0
-        row_cells = table.rows[0].cells
-        
-        for orden in ordenes:
-            for evidencia in orden.evidencias.all():
-                if evidencia.archivo and os.path.exists(evidencia.archivo.path):
-                    # Crear nueva fila cada 2 fotos
-                    if idx % 2 == 0 and idx != 0:
-                        row_cells = table.add_row().cells
-                    
-                    cell = row_cells[idx % 2]
-                    p = cell.paragraphs[0]
-                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    try:
-                        run = p.add_run()
-                        run.add_picture(evidencia.archivo.path, width=Inches(2.8))
-                        # Pie de foto
-                        caption = p.add_run(f"\nFig {idx+1}. {evidencia.comentario or 'Evidencia del servicio'}")
-                        caption.font.size = Pt(9)
-                        caption.bold = True
-                        caption.font.color.rgb = RGBColor(100, 100, 100)
-                        
-                        idx += 1
-                    except Exception as e:
-                        pass # Ignorar errores de imagen corrupta
+        table_pics = document.add_table(rows=0, cols=2)
+        for i in range(0, len(evidencias), 2):
+            row_cells = table_pics.add_row().cells
+            for j in range(2):
+                if i + j < len(evidencias):
+                    ev = evidencias[i+j]
+                    if ev.archivo and os.path.exists(ev.archivo.path):
+                        p = row_cells[j].paragraphs[0]; p.alignment = 1
+                        try:
+                            run = p.add_run(); run.add_picture(ev.archivo.path, width=Inches(2.5))
+                            cap = row_cells[j].add_paragraph(f"Fig {i+j+1}. {ev.comentario or 'Evidencia'}")
+                            cap.alignment = 1; cap.runs[0].font.size = Pt(9)
+                        except: pass
 
-    # Descarga
+    # --- FIRMA (ELABORO) ---
+    document.add_page_break()
+    document.add_paragraph("\n" * 5)
+    f = document.add_paragraph("ELABORO:"); f.alignment = 1
+    f.add_run("\n" * 3 + f"{tecnico.upper()}\n").bold = True
+    f.add_run("Gerencia Técnica")
+
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-    filename = f"Memoria_{cliente_nombre.replace(' ', '_')}.docx"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['Content-Disposition'] = f'attachment; filename="Memoria_{memoria.cliente_nombre.replace(" ", "_")}.docx"'
     document.save(response)
-    
     return response
-
 
     # ================================================================
 # RESTAURACIÓN: FUNCIONES PARA WORD INDIVIDUAL (REPORTES CLÁSICOS)

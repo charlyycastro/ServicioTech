@@ -1,33 +1,78 @@
 {% extends 'orders/base.html' %}
-
-{% block title %}Vista Previa · ServicioTech{% endblock %}
+{% block title %}Editor de Memoria · ServicioTech{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <h2 class="h4 fw-bold mb-3">Vista Previa y Edición</h2>
-    <p class="text-muted">La IA ha generado este borrador. Puedes editarlo libremente. Al finalizar, se generará el Word incluyendo las fotos de los reportes seleccionados.</p>
+<style>
+    .word-container { background-color: #f0f2f5; padding: 40px 0; }
+    .word-page {
+        background: white; width: 21cm; min-height: 29.7cm;
+        padding: 2.5cm; margin: 0 auto;
+        box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 2px;
+    }
+    .ck-editor__editable { border: none !important; min-height: 25cm; font-family: 'Calibri', sans-serif; }
+    .control-card { border-radius: 12px; border: none; overflow: hidden; }
+</style>
+
+<div class="word-container">
+    <div class="container text-center mb-4">
+        <h2 class="fw-bold text-dark">Editor de Memoria Técnica</h2>
+        <span class="badge bg-primary px-3 py-2">Versión 2: Edición Activa</span>
+    </div>
 
     <form method="post" action="{% url 'orders:memory_download' %}">
         {% csrf_token %}
-        
-        {# Pasamos los IDs ocultos para que la vista de descarga sepa qué fotos buscar #}
+        <input type="hidden" name="memoria_id" value="{{ memoria_id }}">
         <input type="hidden" name="selected_ids" value="{{ selected_ids }}">
 
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-dark text-white">
-                <i class="bi bi-file-earmark-text me-2"></i>Contenido del Reporte
-            </div>
-            <div class="card-body p-0">
-                <textarea name="texto_final" class="form-control border-0 p-4" rows="20" style="font-family: 'Courier New', monospace; font-size: 0.95rem; resize: vertical;">{{ texto_generado }}</textarea>
-            </div>
+        <div class="word-page mb-5">
+            <textarea name="texto_final" id="editor">{{ texto_generado|safe }}</textarea>
         </div>
 
-        <div class="d-flex justify-content-end gap-3">
-            <a href="{% url 'orders:memory_select' %}" class="btn btn-outline-secondary">Cancelar</a>
-            <button type="submit" class="btn btn-success fw-bold px-4">
-                <i class="bi bi-file-word me-2"></i>Descargar Word con Fotos
+        <div class="container d-flex justify-content-center gap-3 mb-5">
+            <a href="{% url 'orders:memory_select' %}" class="btn btn-outline-secondary px-4">Cancelar</a>
+            <button type="submit" class="btn btn-success fw-bold px-5 shadow">
+                <i class="bi bi-file-earmark-word me-2"></i>Guardar y Generar Word
             </button>
         </div>
     </form>
+
+    <div class="container mt-5">
+        <div class="card control-card shadow-sm">
+            <div class="card-header bg-dark text-white py-3">
+                <h5 class="mb-0 text-center"><i class="bi bi-table me-2"></i>Historial de Control: {{ cliente }}</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Autor</th>
+                            <th>Estado</th>
+                            <th>v1 (IA)</th>
+                            <th>v2 (Manual)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in historial %}
+                        <tr>
+                            <td>{{ h.creado|date:"d/m/Y H:i" }}</td>
+                            <td>{{ h.creado_por.get_full_name }}</td>
+                            <td><span class="badge bg-success">Completado</span></td>
+                            <td><small class="text-muted">{{ h.contenido_v1_ia|striptags|truncatechars:40 }}</small></td>
+                            <td><small class="text-primary">{{ h.contenido_v2_user|truncatechars:40|default:"Pendiente" }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script src="https://cdn.ckeditor.com/ckeditor5/34.0.0/classic/ckeditor.js"></script>
+<script>
+    ClassicEditor.create(document.querySelector('#editor'), {
+        toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', 'blockQuote', 'undo', 'redo']
+    });
+</script>
 {% endblock %}

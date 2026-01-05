@@ -174,3 +174,23 @@ class ServiceEvidence(models.Model):
                 print(f"No se pudo comprimir imagen (posiblemente es PDF/Video): {e}")
 
         super().save(*args, **kwargs)
+
+
+# orders/models.py
+
+class TechnicalMemory(models.Model):
+    # Relación con las órdenes seleccionadas
+    orders = models.ManyToManyField(ServiceOrder, related_name="memories")
+    cliente_nombre = models.CharField(max_length=255)
+    
+    # v1: Generada por IA (Original)
+    contenido_v1_ia = models.TextField()
+    
+    # v2: Editada por el usuario (Versión Activa)
+    contenido_v2_user = models.TextField(blank=True, null=True)
+    
+    creado_por = models.ForeignKey(User, on_delete=models.CASCADE)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Memoria {self.cliente_nombre} - {self.creado.date()}"
