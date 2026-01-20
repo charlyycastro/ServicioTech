@@ -41,7 +41,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 
 
 # --- MODELOS Y FORMULARIOS ---
-from .models import ServiceOrder, EngineerProfile, ServiceEvidence, TechnicalMemory 
+from .models import ServiceOrder, EngineerProfile, ServiceEvidence, TechnicalMemory
 from .forms import (
     ServiceOrderForm, EquipmentFormSet, ServiceMaterialFormSet,
     ShelterEquipmentFormSet, ServiceEvidenceFormSet,
@@ -96,7 +96,10 @@ def guardar_firma(user, data_url):
 @login_required
 def dashboard_view(request):
     user = request.user
-    nombre_usuario = user.get_full_name() or user.username
+    if user.get_full_name():
+        criterio_busqueda = user.get_full_name()
+    else:
+        criterio_busqueda = user.username
 
     # 1. TOTAL HISTÓRICO (Global de la empresa)
     # Cuenta TODO lo que existe en la base de datos, sin importar de quién sea.
@@ -113,8 +116,8 @@ def dashboard_view(request):
     # 4. MIS ASIGNACIONES (Personal)
     # Aquí sí filtramos por TU nombre y que NO estén terminadas.
     mis_asignadas = ServiceOrder.objects.filter(
-        ingeniero_nombre__icontains=nombre_usuario
-    ).exclude(estatus='finalizado').count()
+        ingeniero_nombre__icontains=criterio_busqueda
+    ).count()
 
     # 5. TABLA RECIENTES (Global)
     # Muestra las últimas 5 que han entrado al sistema.
@@ -124,7 +127,8 @@ def dashboard_view(request):
         'total': total,
         'pendientes': pendientes,
         'finalizadas': finalizadas,
-        'mis_asignadas': mis_asignadas, # Esta será 0 si nadie te ha asignado nada a ti "Carlos"
+        'mis_asignadas': mis_asignadas,
+        'nombre_busqueda': criterio_busqueda, # Esta será 0 si nadie te ha asignado nada a ti "Carlos"
         'recientes': recientes,
     }
     return render(request, 'orders/dashboard.html', context)
@@ -159,7 +163,7 @@ def order_list(request):
     if filtro_estatus:
         orders = orders.filter(estatus=filtro_estatus)
     if filtro_ingeniero:
-        orders = orders.filter(ingeniero_nombre=filtro_ingeniero)
+        orders = orders.filter(ingeniero_nombre__icontains=filtro_ingeniero)
     if fecha_inicio:
         orders = orders.filter(creado__date__gte=fecha_inicio) 
     if fecha_fin:
@@ -483,6 +487,28 @@ def email_order(request, pk):
 
     return redirect('orders:detail', pk=pk)
 
+#----------preview order 
+def order_preview(request, pk):
+    try:
+        # Usamos el modelo correcto: ServiceOrder
+        orden = ServiceOrder.objects.get(pk=pk)
+        
+        # Renderizamos el template chiquito para el panel lateral
+        return render(request, 'orders/partials/order_preview.html', {'orden': orden})
+
+    except ServiceOrder.DoesNotExist:
+        # Si la orden no existe (ej. ID incorrecto)
+        return HttpResponse(
+            "<div class='p-4 text-danger text-center'>Error: Orden no encontrada.</div>", 
+            status=404
+        )
+        
+    except Exception as e:
+        # Error general
+        return HttpResponse(
+            f"<div class='p-4 text-danger'>Error interno: {str(e)}</div>", 
+            status=500
+        )
 
 # ================================================================
 # GESTIÓN DE USUARIOS
@@ -999,7 +1025,7 @@ def download_word(request, pk):
     # E. Firmas
     r=t.add_row(); r.cells[0].merge(r.cells[3]); make_header_blue(r.cells[0], " E. ACEPTACIÓN DEL SERVICIO")
     r=t.add_row(); r.cells[0].merge(r.cells[3])
-    r.cells[0].paragraphs[0].add_run("Al firmar acepta conformidad.").font.size=Pt(7)
+    r.cells[0].paragraphs[0].add_run("Al firmar este documento se da por aceptada la conformidad de la entrega y finalización de los servicios y/o trabajos realizados. Este documento será comprobante del servicio realizado. Cualquier cambio posterior a la instalación (reinstalación, modificaciones, reubicación, reconfiguración o implementación adicional) podrá generar cargos extra. Es responsabilidad del cliente realizar el respaldo de la información contenida en los equipos antes de la atención del servicio. ").font.size=Pt(9)
 
     r=t.add_row(); c=r.cells[0]; c.merge(r.cells[3]); ts=c.add_table(rows=1,cols=3); ts.autofit=False; ts.alignment=1
     w3 = int(w_total/3)

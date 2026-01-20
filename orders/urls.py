@@ -26,4 +26,5 @@ urlpatterns = [
     path('memoria/seleccion/', views.memory_selection_view, name='memory_select'),
     path('memoria/previsualizar/', views.memory_preview_view, name='memory_preview'),
     path('memoria/descargar/', views.memory_download_view, name='memory_download'),
+    path('preview/<int:pk>/', views.order_preview, name='preview'),
 ]

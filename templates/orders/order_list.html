@@ -3,188 +3,218 @@
 
 {% block title %}Listado de Órdenes{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Efecto hover suave en las filas */
+    .cursor-pointer { cursor: pointer; }
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.04) !important;
+        transform: scale(1.001);
+        transition: all 0.2s ease;
+        z-index: 10;
+        position: relative;
+    }
+    
+    /* Offcanvas Ancho personalizado */
+    .offcanvas-wide {
+        width: 400px;
+    }
+    @media (min-width: 992px) {
+        .offcanvas-wide { width: 600px; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h2 class="mb-0 fw-bold text-primary">Órdenes de Servicio</h2>
+  <h2 class="mb-0 fw-bold text-dark">Órdenes de Servicio</h2>
   <div class="d-flex gap-2">
     {% if user.is_staff or user.is_superuser %}
-    <a href="{% url 'orders:create' %}" class="btn btn-primary">
+    <a href="{% url 'orders:create' %}" class="btn btn-primary shadow-sm">
       <i class="bi bi-plus-lg me-1"></i> Nueva orden
     </a>
     {% endif %}
 
     {% if user.is_superuser %}
-    <button type="submit" form="bulkDeleteForm" class="btn btn-danger" id="btn-delete" disabled>
-      <i class="bi bi-trash me-1"></i> Eliminar seleccionadas
+    <button type="submit" form="bulkDeleteForm" class="btn btn-danger shadow-sm" id="btn-delete" disabled>
+      <i class="bi bi-trash me-1"></i> Eliminar
     </button>
     {% endif %}
   </div>
 </div>
 
-{# === TARJETA DE FILTROS AVANZADOS (Harmonizada Final) === #}
-<div class="card mb-4 shadow-sm">
-  <div class="card-body p-3">
+{# === TARJETA DE FILTROS AVANZADOS === #}
+<div class="card mb-4 shadow-sm border-0">
+  <div class="card-body p-4">
     <form method="get" class="row g-3 align-items-end">
-        
-      {# --- PRIMERA FILA: BÚSQUEDA Y FECHAS --- #}
       
-      {# CAMPO DE BÚSQUEDA GENERAL #}
       <div class="col-12 col-md-6 col-lg-4">
-        <label class="form-label small fw-bold text-muted mb-1">Buscar Texto (Folio, Cliente, Título)</label>
+        <label class="form-label small fw-bold text-muted mb-1">Buscar Texto</label>
         <div class="input-group">
           <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-search"></i></span>
-          <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Escribe aquí para buscar..." value="{{ query }}">
+          <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Folio, Cliente, Título..." value="{{ query|default:'' }}">
         </div>
       </div>
-      
-      {# RANGO DE FECHAS DESDE #}
       <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label small fw-bold text-muted mb-1">Desde</label>
         <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}">
       </div>
-      
-      {# RANGO DE FECHAS HASTA #}
       <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label small fw-bold text-muted mb-1">Hasta</label>
         <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}">
       </div>
-
-      {# Separador Visual #}
-      <div class="col-12"><hr class="my-2"></div>
-
-      {# --- SEGUNDA FILA: CATEGORÍAS Y BOTÓN ÚNICO --- #}
-
-      {# FILTRO 1: EMPRESA #}
+      <div class="col-12"><hr class="my-2 text-muted opacity-25"></div>
+      
       <div class="col-12 col-md-4 col-lg-3">
         <label class="form-label small fw-bold text-muted mb-1">Empresa</label>
-        <select name="empresa" class="form-select">
-          <option value="">— Todas las Empresas —</option>
+        <select name="empresa" class="form-select form-select-sm">
+          <option value="">— Todas —</option>
           {% for empresa in empresas %}
-            <option value="{{ empresa }}" {% if filtro_empresa == empresa %}selected{% endif %}>
-              {{ empresa }}
-            </option>
+            <option value="{{ empresa }}" {% if filtro_empresa == empresa %}selected{% endif %}>{{ empresa }}</option>
           {% endfor %}
         </select>
       </div>
 
-      {# FILTRO 2: ESTATUS #}
       <div class="col-12 col-md-4 col-lg-2">
         <label class="form-label small fw-bold text-muted mb-1">Estatus</label>
-        <select name="estatus" class="form-select">
-          <option value="">— Todos los Estatus —</option>
+        <select name="estatus" class="form-select form-select-sm">
+          <option value="">— Todos —</option>
           {% for code, label in STATUS_CHOICES %}
-            <option value="{{ code }}" {% if filtro_estatus == code %}selected{% endif %}>
-              {{ label }}
-            </option>
+            <option value="{{ code }}" {% if filtro_estatus == code %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
       
-      {# FILTRO 3: INGENIERO #}
       <div class="col-12 col-md-4 col-lg-3">
         <label class="form-label small fw-bold text-muted mb-1">Ingeniero</label>
-        <select name="ingeniero" class="form-select">
-          <option value="">— Todos los Ingenieros —</option>
+        <select name="ingeniero" class="form-select form-select-sm">
+          <option value="">— Todos —</option>
           {% for ingeniero in ingenieros_list %}
-            <option value="{{ ingeniero }}" {% if filtro_ingeniero == ingeniero %}selected{% endif %}>
-              {{ ingeniero }}
-            </option>
+            <option value="{{ ingeniero }}" {% if filtro_ingeniero == ingeniero %}selected{% endif %}>{{ ingeniero }}</option>
           {% endfor %}
         </select>
       </div>
 
-      {# BOTÓN ÚNICO DE APLICAR (Aplica todos los 6 filtros) #}
       <div class="col-12 col-md-12 col-lg-4 d-grid">
-        <label class="form-label small fw-bold text-muted mb-1">&nbsp;</label>
-        <button type="submit" class="btn btn-primary fw-bold">
-            <i class="bi bi-funnel me-1"></i> Aplicar Filtros
+        <button type="submit" class="btn btn-primary fw-bold btn-sm h-100">
+            <i class="bi bi-funnel me-1"></i> Filtrar
         </button>
       </div>
       
-      {# BOTÓN DE LIMPIAR FILTROS (Visual si hay filtros activos) #}
       {% if filtro_empresa or filtro_estatus or filtro_ingeniero or query or fecha_inicio or fecha_fin %}
-        <div class="col-12 text-end">
-            <a href="{% url 'orders:list' %}" class="btn btn-sm btn-link text-danger p-0">
-                <i class="bi bi-x-circle-fill me-1"></i> Limpiar todos los filtros
+        <div class="col-12 text-end mt-2">
+            <a href="{% url 'orders:list' %}" class="text-decoration-none text-danger small fw-bold">
+                <i class="bi bi-x-circle-fill me-1"></i> Limpiar filtros
             </a>
         </div>
       {% endif %}
-
     </form>
   </div>
 </div>
-{# === FIN TARJETA DE FILTROS === #}
 
 
+{# === TABLA DE RESULTADOS === #}
 <form id="bulkDeleteForm" method="post" action="{% url 'orders:bulk_delete' %}">
   {% csrf_token %}
-  <div class="card shadow-sm border-0">
+  <div class="card shadow-sm border-0 overflow-hidden">
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table align-middle mb-0 table-hover">
           <thead class="bg-light">
             <tr>
               {% if user.is_superuser %}
-              <th scope="col" style="width: 40px;" class="text-center">
-                <input type="checkbox" class="form-check-input" id="select-all">
+              <th scope="col" style="width: 40px;" class="text-center py-3">
+                <input type="checkbox" class="form-check-input" id="select-all" style="cursor: pointer;">
               </th>
               {% endif %}
-              <th scope="col" class="ps-3">Folio</th>
-              <th scope="col">Cliente</th>
-              <th scope="col">Título</th>
-              <th scope="col">Fecha</th>
-              <th scope="col">Ingeniero</th>
-              <th scope="col" class="text-center">Estado / Acciones</th>
+              <th scope="col" class="ps-4 py-3 text-secondary text-uppercase small fw-bold">Folio</th>
+              <th scope="col" class="py-3 text-secondary text-uppercase small fw-bold">Cliente</th>
+              <th scope="col" class="py-3 text-secondary text-uppercase small fw-bold">Título</th>
+              <th scope="col" class="py-3 text-secondary text-uppercase small fw-bold">Fecha</th>
+              <th scope="col" class="py-3 text-secondary text-uppercase small fw-bold">Ingeniero</th>
+              <th scope="col" class="text-center py-3 text-secondary text-uppercase small fw-bold">Estado</th>
+              <th scope="col" class="text-end pe-4 py-3"></th> {# Columna para el botón ojo #}
             </tr>
           </thead>
-          <tbody>
+          <tbody class="border-top-0">
             {% for orden in page_obj %}
-            <tr style="cursor: pointer;" onclick="window.location.href='{% url 'orders:detail' orden.pk %}'">
+            
+            {# 1. CLIC EN FILA -> VA AL DETALLE COMPLETO (orders:detail) #}
+            <tr class="cursor-pointer" onclick="window.location.href='{% url 'orders:detail' orden.pk %}'">
+              
               {% if user.is_superuser %}
               <td class="text-center" onclick="event.stopPropagation();">
-                <input type="checkbox" name="ids" value="{{ orden.pk }}" class="form-check-input order-check">
+                <input type="checkbox" name="ids" value="{{ orden.pk }}" class="form-check-input order-check" style="cursor: pointer;">
               </td>
               {% endif %}
               
-              <td class="fw-medium ps-3 text-primary">{{ orden.folio }}</td>
+              <td class="fw-bold ps-4 text-primary">#{{ orden.folio }}</td>
               
               <td>
-                <div class="fw-medium">{{ orden.cliente_nombre }}</div>
-                {% if orden.cliente_contacto %}<small class="text-muted">{{ orden.cliente_contacto }}</small>{% endif %}
+                <div class="fw-bold text-dark">{{ orden.cliente_nombre }}</div>
+                {% if orden.cliente_contacto %}
+                    <small class="text-muted d-block text-truncate" style="max-width: 150px;">
+                        <i class="bi bi-person me-1"></i>{{ orden.cliente_contacto }}
+                    </small>
+                {% endif %}
               </td>
               
-              <td>{{ orden.titulo }}</td>
+              <td>
+                  <div class="text-truncate" style="max-width: 200px;">{{ orden.titulo }}</div>
+              </td>
               
-              <td>{{ orden.creado|date:"d/M/Y" }}</td>
+              <td class="text-muted small">
+                  <i class="bi bi-calendar3 me-1"></i>{{ orden.creado|date:"d M Y" }}
+              </td>
               
               <td>
                   {% if orden.ingeniero_nombre %}
-                  <span class="badge bg-light text-dark border">{{ orden.ingeniero_nombre|truncatechars:20 }}</span>
+                   <div class="d-flex align-items-center">
+                       <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold me-2" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                           {{ orden.ingeniero_nombre|slice:":1" }}
+                       </div>
+                       <span class="small">{{ orden.ingeniero_nombre|truncatechars:15 }}</span>
+                   </div>
                   {% else %}
                   <span class="text-muted small">-</span>
                   {% endif %}
               </td>
               
-              <td class="text-center" onclick="event.stopPropagation();">
-                {# Lógica de Estado y Botón Editar #}
+              <td class="text-center">
                 {% if orden.estatus == 'borrador' %}
-                    <a href="{% url 'orders:update' orden.pk %}" class="btn btn-sm btn-warning text-dark fw-bold py-0" style="font-size: 0.85rem;" title="Continuar Editando">
-                        <i class="bi bi-pencil-square me-1"></i>Borrador
-                    </a>
+                    <span class="badge bg-warning text-dark border border-warning rounded-pill px-2">
+                        <i class="bi bi-pencil me-1"></i>Borrador
+                    </span>
                 {% else %}
                     {% if orden.email_enviado %}
-                        <span class="badge bg-success-subtle text-success border border-success-subtle">Enviado</span>
+                        <span class="badge bg-success border border-success rounded-pill px-2">
+                            <i class="bi bi-check-all me-1"></i>Enviado
+                        </span>
                     {% else %}
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Finalizado</span>
+                        <span class="badge bg-primary border border-primary rounded-pill px-2">
+                            <i class="bi bi-check me-1"></i>Finalizado
+                        </span>
                     {% endif %}
                 {% endif %}
+              </td>
+
+              {# 2. CLIC EN OJO -> ABRE EL OFFCANVAS (Detenemos la propagación para que no abra el detalle completo) #}
+              <td class="text-end pe-4">
+                  <button type="button" 
+                          onclick="event.stopPropagation(); openQuickView(event, '{{ orden.pk }}')" 
+                          class="btn btn-sm btn-light text-primary rounded-circle shadow-sm" 
+                          style="width: 32px; height: 32px; padding: 0;"
+                          title="Vista Rápida">
+                      <i class="bi bi-eye"></i>
+                  </button>
               </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="{% if user.is_superuser %}7{% else %}6{% endif %}" class="text-center py-5 text-muted">
-                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                No se encontraron órdenes.
+              <td colspan="8" class="text-center py-5 text-muted">
+                <div class="mb-3"><i class="bi bi-inbox fs-1 opacity-25"></i></div>
+                <h6 class="fw-bold">No se encontraron órdenes</h6>
+                <p class="small">Intenta ajustar los filtros de búsqueda.</p>
               </td>
             </tr>
             {% endfor %}
@@ -198,38 +228,57 @@
 {# PAGINACIÓN #}
 {% if page_obj.has_other_pages %}
 <nav class="mt-4">
-  <ul class="pagination justify-content-center mb-0">
+  <ul class="pagination justify-content-center">
     {% if page_obj.has_previous %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">&laquo;</a>
+        <a class="page-link border-0 shadow-sm rounded-start" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">&laquo;</a>
       </li>
     {% else %}
-      <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+      <li class="page-item disabled"><span class="page-link border-0 shadow-sm rounded-start">&laquo;</span></li>
     {% endif %}
-    {% for i in page_obj.paginator.page_range %}
-      {% if page_obj.number == i %}
-        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
-      {% else %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ i }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">{{ i }}</a>
-        </li>
-      {% endif %}
-    {% endfor %}
+    
+    <li class="page-item disabled"><span class="page-link border-0 shadow-sm bg-white text-dark fw-bold">Página {{ page_obj.number }}</span></li>
+    
     {% if page_obj.has_next %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filtro_empresa %}&empresa={{ filtro_empresa }}{% endif %}{% if filtro_estatus %}&estatus={{ filtro_estatus }}{% endif %}{% if filtro_ingeniero %}&ingeniero={{ filtro_ingeniero }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">&raquo;</a>
+        <a class="page-link border-0 shadow-sm rounded-end" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">&raquo;</a>
       </li>
     {% else %}
-      <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+      <li class="page-item disabled"><span class="page-link border-0 shadow-sm rounded-end">&raquo;</span></li>
     {% endif %}
   </ul>
 </nav>
 {% endif %}
+
+
+{# === AQUÍ EL OFFCANVAS (PANEL LATERAL OCULTO) === #}
+<div class="offcanvas offcanvas-end offcanvas-wide shadow-lg border-0" tabindex="-1" id="quickViewOffcanvas" aria-labelledby="quickViewLabel">
+  <div class="offcanvas-header bg-light border-bottom">
+    <h5 class="offcanvas-title fw-bold text-primary" id="quickViewLabel">
+        <i class="bi bi-file-text me-2"></i>Detalle de Orden
+    </h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  
+  <div class="offcanvas-body p-0 position-relative">
+      {# Spinner de Carga #}
+      <div id="offcanvas-loader" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white" style="z-index: 10;">
+          <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
+          </div>
+      </div>
+      
+      {# Contenedor donde se inyectará el HTML via AJAX #}
+      <div id="offcanvas-content">
+      </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Script para manejar la selección masiva (ya existía)
+  // Script de Selección Masiva
   const selectAll = document.getElementById('select-all');
   const btnDelete = document.getElementById('btn-delete');
   const checks = document.querySelectorAll('.order-check');
@@ -249,6 +298,43 @@
         const anyChecked = Array.from(checks).some(c => c.checked);
         btnDelete.disabled = !anyChecked;
       }
+  }
+
+  // Script para el Quick View (SOLO SE ABRE DESDE EL OJO)
+  function openQuickView(event, orderId) {
+      // Importante: detener la propagación para que no se dispare el click de la fila
+      event.stopPropagation();
+      
+      // 1. Mostrar el Offcanvas
+      const offcanvasElement = document.getElementById('quickViewOffcanvas');
+      const bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
+      bsOffcanvas.show();
+
+      // 2. Preparar el loader
+      const loader = document.getElementById('offcanvas-loader');
+      const content = document.getElementById('offcanvas-content');
+      loader.classList.remove('d-none');
+      content.innerHTML = ''; 
+
+      // 3. GENERAR LA URL CORRECTA AUTOMÁTICAMENTE (Esto arregla el 404)
+      let urlTemplate = "{% url 'orders:preview' 0 %}"; 
+      let finalUrl = urlTemplate.replace('0', orderId);
+
+      // 4. Pedir los datos
+      fetch(finalUrl) 
+          .then(response => {
+              if (!response.ok) throw new Error('Error de conexión o 404');
+              return response.text();
+          })
+          .then(html => {
+              content.innerHTML = html;
+              setTimeout(() => { loader.classList.add('d-none'); }, 200);
+          })
+          .catch(error => {
+              console.error(error);
+              content.innerHTML = '<div class="p-5 text-center text-danger"><i class="bi bi-exclamation-triangle"></i> Error al cargar datos.</div>';
+              loader.classList.add('d-none');
+          });
   }
 </script>
 {% endblock %}

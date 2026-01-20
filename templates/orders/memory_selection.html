@@ -1,6 +1,35 @@
 {% extends 'orders/base.html' %}
+{% load static %}
 
 {% block title %}Selección IA · ServicioTech{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos para mejorar la selección */
+    .cursor-pointer { cursor: pointer; }
+    
+    /* Hover suave en filas */
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.04) !important;
+        transition: background-color 0.2s ease;
+    }
+    
+    /* Color cuando la fila está seleccionada */
+    .table-active-custom {
+        background-color: rgba(13, 110, 253, 0.1) !important;
+    }
+
+    /* Checkbox más grande */
+    .order-check {
+        transform: scale(1.2);
+        cursor: pointer;
+    }
+    
+    /* Offcanvas ancho */
+    .offcanvas-wide { width: 400px; }
+    @media (min-width: 992px) { .offcanvas-wide { width: 600px; } }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -10,7 +39,7 @@
     </div>
 </div>
 
-{# FILTROS #}
+{# FILTROS (Tus filtros originales) #}
 <div class="card shadow-sm border-0 mb-4 bg-light">
     <div class="card-body">
         <form method="get" class="row g-3">
@@ -38,13 +67,15 @@
     </div>
 </div>
 
-<form method="post" action="{% url 'orders:memory_preview' %}">
+<form method="post" action="{% url 'orders:memory_preview' %}" id="memoryForm">
     {% csrf_token %}
     
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 fw-bold text-primary">Reportes Finalizados Disponibles</h6>
-            <button type="submit" class="btn btn-dark">
+            
+            {# Botón inteligente que cambia texto según selección #}
+            <button type="submit" class="btn btn-dark" id="btn-generar" disabled>
                 <i class="bi bi-cpu me-2"></i>Generar Memoria con IA
             </button>
         </div>
@@ -52,34 +83,56 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light">
                     <tr>
-                        <th width="50" class="text-center"><input type="checkbox" id="select-all"></th>
+                        <th width="50" class="text-center"><input type="checkbox" id="select-all" style="cursor: pointer;"></th>
                         <th>Folio</th>
                         <th>Fecha</th>
                         <th>Cliente</th>
                         <th>Título / Actividad</th>
                         <th>Ingeniero</th>
+                        <th class="text-end pe-4">Vista Rápida</th> {# COLUMNA NUEVA #}
                     </tr>
                 </thead>
                 <tbody>
                     {% for orden in orders %}
-                    <tr>
+                    {# LOGICA: Clic en la fila -> Marca el checkbox (toggleSelection) #}
+                    <tr class="cursor-pointer" onclick="toggleSelection(event, '{{ orden.pk }}')">
+                        
                         <td class="text-center">
-                            <input type="checkbox" name="selected_orders" value="{{ orden.id }}" class="form-check-input order-check">
+                            <input type="checkbox" name="selected_orders" value="{{ orden.pk }}" 
+                                   class="form-check-input order-check" 
+                                   id="chk-{{ orden.pk }}">
                         </td>
-                        <td class="fw-bold">{{ orden.folio }}</td>
+                        
+                        <td class="fw-bold text-primary">
+                            <label for="chk-{{ orden.pk }}" class="cursor-pointer mb-0 w-100">{{ orden.folio }}</label>
+                        </td>
+                        
                         <td>{{ orden.fecha_servicio|date:"d/m/Y" }}</td>
                         <td>{{ orden.cliente_nombre }}</td>
+                        
                         <td>
-                            <div class="small fw-bold">{{ orden.titulo }}</div>
+                            <div class="small fw-bold text-dark">{{ orden.titulo }}</div>
                             <div class="text-muted small text-truncate" style="max-width: 300px;">
                                 {{ orden.actividades }}
                             </div>
                         </td>
-                        <td><span class="badge bg-secondary">{{ orden.ingeniero_nombre }}</span></td>
+                        
+                        <td><span class="badge bg-secondary">{{ orden.ingeniero_nombre|truncatechars:15 }}</span></td>
+
+                        {# BOTÓN OJO: Detiene propagación para NO seleccionar la fila, solo abrir preview #}
+                        <td class="text-end pe-4">
+                            <button type="button" 
+                                    onclick="event.stopPropagation(); openQuickView(event, '{{ orden.pk }}')" 
+                                    class="btn btn-sm btn-light text-primary rounded-circle shadow-sm border"
+                                    title="Ver detalle">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 opacity-50 mb-2 d-block"></i>
                             No se encontraron reportes finalizados con estos filtros.
                         </td>
                     </tr>
@@ -90,11 +143,115 @@
     </div>
 </form>
 
+{# === EL OFFCANVAS OCULTO (Necesario para que funcione el ojo) === #}
+<div class="offcanvas offcanvas-end offcanvas-wide shadow-lg border-0" tabindex="-1" id="quickViewOffcanvas">
+    <div class="offcanvas-header bg-light border-bottom">
+        <h5 class="offcanvas-title fw-bold text-primary"><i class="bi bi-file-text me-2"></i>Resumen de Orden</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0 position-relative">
+        {# Loader #}
+        <div id="offcanvas-loader" class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center bg-white" style="z-index: 10;">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+        {# Contenido AJAX #}
+        <div id="offcanvas-content"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
 <script>
-    // Script simple para "Seleccionar Todos"
+    // 1. Script "Seleccionar Todos" (Tu original mejorado)
     document.getElementById('select-all').addEventListener('change', function(e){
         const checkboxes = document.querySelectorAll('.order-check');
-        checkboxes.forEach(chk => chk.checked = e.target.checked);
+        checkboxes.forEach(chk => {
+            chk.checked = e.target.checked;
+            highlightRow(chk.value); // Colorear fila
+        });
+        updateButtonState();
     });
+
+    // 2. Lógica para seleccionar haciendo clic en la fila (UX)
+    function toggleSelection(event, pk) {
+        // Si el click fue directo en el checkbox, solo actualizamos visuales
+        if (event.target.type === 'checkbox') {
+            updateButtonState();
+            highlightRow(pk);
+            return;
+        }
+        
+        // Si fue en la fila, buscamos el checkbox y lo cambiamos
+        const checkbox = document.getElementById('chk-' + pk);
+        if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            updateButtonState();
+            highlightRow(pk);
+        }
+    }
+
+    // Función visual: Pinta la fila de azulito si está seleccionada
+    function highlightRow(pk) {
+        const checkbox = document.getElementById('chk-' + pk);
+        if (!checkbox) return;
+        const row = checkbox.closest('tr');
+        
+        if (checkbox.checked) {
+            row.classList.add('table-active-custom');
+        } else {
+            row.classList.remove('table-active-custom');
+        }
+    }
+
+    // Función visual: Actualiza el botón de "Generar"
+    function updateButtonState() {
+        const count = document.querySelectorAll('.order-check:checked').length;
+        const btn = document.getElementById('btn-generar');
+        
+        if (count > 0) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-stars me-2"></i>Generar Memoria (${count})`;
+            btn.classList.replace('btn-dark', 'btn-primary');
+        } else {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="bi bi-cpu me-2"></i>Generar Memoria con IA`;
+            btn.classList.replace('btn-primary', 'btn-dark');
+        }
+    }
+
+    // 3. Script del Quick View (BLINDADO CONTRA ERROR 404)
+    function openQuickView(event, orderId) {
+        event.stopPropagation(); // Evita seleccionar la fila al abrir el ojo
+        
+        const offcanvasEl = document.getElementById('quickViewOffcanvas');
+        const bsOffcanvas = new bootstrap.Offcanvas(offcanvasEl);
+        bsOffcanvas.show();
+
+        const loader = document.getElementById('offcanvas-loader');
+        const content = document.getElementById('offcanvas-content');
+        
+        loader.classList.remove('d-none');
+        content.innerHTML = '';
+
+        // --- LA MAGIA: URL DINÁMICA ---
+        let urlTemplate = "{% url 'orders:preview' 0 %}";
+        let finalUrl = urlTemplate.replace('0', orderId);
+
+        fetch(finalUrl)
+            .then(res => {
+                if(!res.ok) throw new Error("Error HTTP " + res.status);
+                return res.text();
+            })
+            .then(html => {
+                content.innerHTML = html;
+                setTimeout(() => loader.classList.add('d-none'), 200);
+            })
+            .catch(err => {
+                console.error(err);
+                content.innerHTML = '<div class="p-5 text-center text-danger">No se pudo cargar la info.</div>';
+                loader.classList.add('d-none');
+            });
+    }
 </script>
 {% endblock %}
